@@ -44,7 +44,54 @@
   // 2. 场景 / 相机 / 渲染器
   // ============================================================
   var scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0d141c);
+
+  // ---- 天空与大气（B1）----
+  // 北半球 15:00 的晴天：天顶偏蓝、地平线发白，配合轻雾让远景自然淡出
+  var FOG_COLOR = col(0xcfe3f2);
+  var sceneSpan = Math.max(spanX, spanZ);
+  scene.background = FOG_COLOR.clone();
+  scene.fog = new THREE.Fog(FOG_COLOR.clone(), sceneSpan * 1.15, sceneSpan * 4.5);
+
+  function makeSkyDome(radius) {
+    var geo = new THREE.SphereGeometry(radius, 32, 16);
+    var mat = new THREE.ShaderMaterial({
+      uniforms: {
+        topColor: { value: col(0x2f6ea8) },
+        bottomColor: { value: col(0xdfeaf4) },
+        offset: { value: 0.12 },
+        exponent: { value: 0.85 }
+      },
+      vertexShader: [
+        "varying vec3 vWorldPosition;",
+        "void main() {",
+        "  vec4 worldPosition = modelMatrix * vec4(position, 1.0);",
+        "  vWorldPosition = worldPosition.xyz;",
+        "  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);",
+        "}"
+      ].join("\n"),
+      fragmentShader: [
+        "uniform vec3 topColor;",
+        "uniform vec3 bottomColor;",
+        "uniform float offset;",
+        "uniform float exponent;",
+        "varying vec3 vWorldPosition;",
+        "void main() {",
+        "  float h = normalize(vWorldPosition + offset).y;",
+        "  float k = max(pow(max(h, 0.0), exponent), 0.0);",
+        "  gl_FragColor = vec4(mix(bottomColor, topColor, k), 1.0);",
+        "}"
+      ].join("\n"),
+      side: THREE.BackSide,
+      depthWrite: false,
+      fog: false
+    });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = -1;
+    return mesh;
+  }
+
+  scene.add(makeSkyDome(sceneSpan * 3.2));
 
   var camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 4, 14000);
 
@@ -55,7 +102,7 @@
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.12;
   document.getElementById("app").appendChild(renderer.domElement);
 
   var controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -64,10 +111,10 @@
   controls.dampingFactor = 0.08;
 
   function resetView() {
-    var dist = Math.max(spanZ, spanX) * 0.84;
-    controls.target.set(centerX, 0, centerZ);
-    camera.position.set(centerX + dist * 0.20, dist * 0.70, centerZ - dist * 0.80);
-    camera.lookAt(centerX, 0, centerZ);
+    var dist = Math.max(spanZ, spanX) * 0.82;
+    controls.target.set(centerX, 0, centerZ - spanZ * 0.10);
+    camera.position.set(centerX + dist * 0.07, dist * 0.32, centerZ - dist * 0.86);
+    camera.lookAt(centerX, 0, centerZ - spanZ * 0.10);
     controls.update();
   }
   resetView();
@@ -77,12 +124,14 @@
   // ============================================================
   scene.add(new THREE.HemisphereLight(0xdfefff, 0x26332a, 0.46));
   scene.add(new THREE.AmbientLight(0xffffff, 0.20));
-  var sun = new THREE.DirectionalLight(0xfff1d8, 1.00);
-  sun.position.set(centerX + spanX * 0.6, Math.max(spanZ, spanX) * 0.9, centerZ - spanZ * 0.45);
+  var sun = new THREE.DirectionalLight(0xfff1d8, 1.05);
+  // 东南向 45°：坐标里 x=西为正、z=北为正，所以东南是 -x / -z
+  var sunDist = Math.max(spanX, spanZ) * 1.15;
+  sun.position.set(centerX - sunDist * 0.55, sunDist * 0.88, centerZ - sunDist * 0.55);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(4096, 4096);
   var sc = sun.shadow.camera;
-  var half = Math.max(spanX, spanZ) * 0.62;
+  var half = Math.max(spanX, spanZ) * 0.78;
   sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half;
   sc.near = 10; sc.far = Math.max(spanX, spanZ) * 3;
   sun.shadow.bias = -0.0008;
@@ -157,7 +206,7 @@
   var groundSize = Math.max(spanX, spanZ) * 4.5;
   var ground = new THREE.Mesh(
     new THREE.PlaneGeometry(groundSize, groundSize),
-    new THREE.MeshLambertMaterial({ color: col(0x2f3f33) })
+    new THREE.MeshLambertMaterial({ color: col(0x59654f) })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(centerX, -0.6, centerZ);
