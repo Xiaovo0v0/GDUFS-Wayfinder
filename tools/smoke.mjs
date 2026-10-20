@@ -70,6 +70,20 @@ try {
   const overflow = await browser.eval('document.documentElement.scrollWidth - window.innerWidth');
   check('无横向溢出', overflow <= 2, 'overflow=' + overflow + 'px');
 
+  // 6. 第一人称漫游：进入→相机降到人眼高度，退出→恢复
+  const walkOk = await browser.eval(`(() => {
+    window.__navDebug.setPlaces('文采园','图书馆');
+    return window.__walk ? window.__walk.start() : false;
+  })()`, { awaitPromise: false });
+  await sleep(900);
+  const eyeY = await browser.eval('window.__navDebug.camera.position.y');
+  check('漫游进入后相机降到人眼高度', walkOk && eyeY > 0.8 && eyeY < 3, 'y=' + (eyeY || 0).toFixed(2) + 'm');
+
+  await browser.eval('window.__walk.stop()', { awaitPromise: false });
+  await sleep(300);
+  const backY = await browser.eval('window.__navDebug.camera.position.y');
+  check('漫游退出后相机复位', backY > 50, 'y=' + (backY || 0).toFixed(0) + 'm');
+
   // 6. AI 面板（可选，真实调用 Dify）
   if (WITH_AI) {
     await browser.eval(`document.querySelector('#bcard').classList.add('hidden')`, { awaitPromise: false });

@@ -303,10 +303,12 @@
 
   D.boundary.forEach(function (ring) {
     var pts = ring.map(function (p) { return new THREE.Vector3(p[0], 0.9, p[1]); });
-    scene.add(new THREE.Line(
+    var bl = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(pts),
       new THREE.LineBasicMaterial({ color: 0xbcd0ae, transparent: true, opacity: 0.55 })
-    ));
+    );
+    bl.name = "boundaryLine";   // 漫游时隐藏，避免一条白线横在眼前
+    scene.add(bl);
   });
 
   // 楼前铺装：每栋楼按包围盒外扩 3.5 m，浅灰圆角台，让建筑稳稳落在地上
@@ -1314,7 +1316,11 @@
       pts.push([endPlace.x, endPlace.z]);
     }
 
-    var geo = ribbonGeometry(pts, 6, 1.1);
+    // 供第一人称漫游（walk.js）取用
+    window.__lastRoute = pts;
+    window.__lastRouteDist = res.dist;
+
+    var geo = ribbonGeometry(pts, 4.6, 0.42);
     pathGroup.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff5a00, side: THREE.DoubleSide })));
 
     // 只在明显转折处画小圆点
@@ -1428,8 +1434,11 @@
 
   function animate() {
     requestAnimationFrame(animate);
-    tickFly();
-    controls.update();
+    // 漫游（walk.js）接管相机时，暂停轨道控制与相机飞行，避免互相覆盖
+    if (!window.__walkActive) {
+      tickFly();
+      controls.update();
+    }
     renderer.render(scene, camera);
     updateLabels();
     camera.getWorldDirection(camDir);
