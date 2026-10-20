@@ -181,8 +181,11 @@
     return group;
   }
 
-  function ribbonGeometry(pts, width, y) {
+  function ribbonGeometry(pts, width, y, tileLen) {
     var pos = [];
+    var uv = [];
+    var run = 0;
+    var tl = tileLen || 12;
     for (var i = 0; i < pts.length - 1; i++) {
       var a = pts[i], b = pts[i + 1];
       var dx = b[0] - a[0], dz = b[1] - a[1];
@@ -191,11 +194,16 @@
       var nx = -dz / L * width / 2, nz = dx / L * width / 2;
       var a1 = [a[0] + nx, a[1] + nz], a2 = [a[0] - nx, a[1] - nz];
       var b1 = [b[0] + nx, b[1] + nz], b2 = [b[0] - nx, b[1] - nz];
+      var v0 = run / tl, v1 = (run + L) / tl;
       pos.push(a1[0], y, a1[1], a2[0], y, a2[1], b1[0], y, b1[1]);
+      uv.push(0, v0, 1, v0, 0, v1);
       pos.push(a2[0], y, a2[1], b2[0], y, b2[1], b1[0], y, b1[1]);
+      uv.push(1, v0, 1, v1, 0, v1);
+      run += L;
     }
     var g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
     g.computeVertexNormals();
     return g;
   }
@@ -209,7 +217,7 @@
     var c = document.createElement("canvas");
     c.width = 256; c.height = 256;
     var g = c.getContext("2d");
-    g.fillStyle = "#6d7c5f";
+    g.fillStyle = "#7d8b6a";
     g.fillRect(0, 0, 256, 256);
 
     var rnd = rng(20261021);
@@ -235,6 +243,7 @@
     }
 
     var tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.anisotropy = 4;
     return tex;
@@ -282,7 +291,7 @@
   groundTex.repeat.set(groundSize / 90, groundSize / 90);
   var ground = new THREE.Mesh(
     new THREE.PlaneGeometry(groundSize, groundSize),
-    new THREE.MeshLambertMaterial({ map: groundTex, color: col(0x8a9480) })
+    new THREE.MeshLambertMaterial({ map: groundTex, color: col(0xb3bda6) })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(centerX, -0.6, centerZ);
@@ -389,12 +398,75 @@
 
   var roadGroup = new THREE.Group();
   var ROAD_W = { primary: 7, secondary: 6, tertiary: 5, residential: 4.5, service: 3.5, footway: 2.2, path: 2.2, steps: 2.2, track: 3 };
+
+  // ---- 路面贴图（B3）：沥青底 + 主路双黄线 / 次路白虚线 ----
+  var roadTexCache = {};
+  function roadTexture(level) {
+    if (roadTexCache[level]) return roadTexCache[level];
+    var W = 64, H = 256;
+    var c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    var g = c.getContext("2d");
+    g.fillStyle = "#3d4144";
+    g.fillRect(0, 0, W, H);
+
+    var rnd = rng(77001);
+    for (var i = 0; i < 2000; i++) {
+      var v = 44 + rnd() * 42;
+      g.fillStyle = "rgba(" + (v | 0) + "," + ((v + 2) | 0) + "," + ((v + 5) | 0) + ",0.22)";
+      g.fillRect(rnd() * W, rnd() * H, 1.6, 1.6);
+    }
+
+    if (level === "primary") {
+      g.fillStyle = "#d8b44a";
+      g.fillRect(W / 2 - 3, 0, 2, H);
+      g.fillRect(W / 2 + 1, 0, 2, H);
+      g.fillStyle = "rgba(232,238,238,0.55)";
+      g.fillRect(2, 0, 1.6, H);
+      g.fillRect(W - 3.6, 0, 1.6, H);
+    } else if (level === "secondary" || level === "tertiary") {
+      g.fillStyle = "rgba(238,242,242,0.72)";
+      for (var y2 = 0; y2 < H; y2 += 28) g.fillRect(W / 2 - 1, y2, 2, 15);
+      g.fillStyle = "rgba(228,234,234,0.35)";
+      g.fillRect(2, 0, 1.2, H);
+      g.fillRect(W - 3.2, 0, 1.2, H);
+    } else {
+      g.fillStyle = "rgba(226,232,232,0.22)";
+      g.fillRect(2, 0, 1, H);
+      g.fillRect(W - 3, 0, 1, H);
+    }
+
+    var t = new THREE.CanvasTexture(c);
+    t.encoding = THREE.sRGBEncoding;
+    t.wrapS = THREE.ClampToEdgeWrapping;
+    t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 4;
+    roadTexCache[level] = t;
+    return t;
+  }
+
+  var roadMatCache = {};
+  var sidewalkMat = new THREE.MeshLambertMaterial({ color: col(0xb2b6ab), side: THREE.DoubleSide });
+
   D.roads.forEach(function (r) {
     if (r.tunnel) return;
-    var w = ROAD_W[r.highway] || 3;
+    var level = r.highway || "service";
+    var w = ROAD_W[level] || 3;
+    if (!roadMatCache[level]) {
+      roadMatCache[level] = new THREE.MeshLambertMaterial({
+        map: roadTexture(level), side: THREE.DoubleSide
+      });
+    }
     r.lines.forEach(function (pts) {
-      var g = ribbonGeometry(pts, w, 0.6);
-      roadGroup.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: col(0x5d5a53), side: THREE.DoubleSide })));
+      // 主/次干道两侧加人行道，先在下面铺一条更宽的浅色带
+      if (level === "primary" || level === "secondary") {
+        var sw = new THREE.Mesh(ribbonGeometry(pts, w + 2.8, 0.56, 12), sidewalkMat);
+        sw.name = "sidewalk:" + level;
+        roadGroup.add(sw);
+      }
+      var rm = new THREE.Mesh(ribbonGeometry(pts, w, 0.6, 12), roadMatCache[level]);
+      rm.name = "road:" + level;
+      roadGroup.add(rm);
     });
   });
   scene.add(roadGroup);
