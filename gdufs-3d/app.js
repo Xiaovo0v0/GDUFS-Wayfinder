@@ -203,25 +203,132 @@
   // ============================================================
   // 5. 地面 / 校园范围 / 配景
   // ============================================================
+
+  // ---- 程序化草地贴图（B2）：不引外部图片，单文件体积不受影响 ----
+  function makeGrassTexture() {
+    var c = document.createElement("canvas");
+    c.width = 256; c.height = 256;
+    var g = c.getContext("2d");
+    g.fillStyle = "#6d7c5f";
+    g.fillRect(0, 0, 256, 256);
+
+    var rnd = rng(20261021);
+    // 细碎草点
+    for (var i = 0; i < 3200; i++) {
+      var x = rnd() * 256, y = rnd() * 256;
+      var r = 0.5 + rnd() * 1.8;
+      var v = 78 + rnd() * 62;
+      g.fillStyle = "rgba(" + Math.round(v - 14) + "," + Math.round(v + 6) + "," + Math.round(v - 22) + ",0.30)";
+      g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+    }
+    // 大块明暗起伏，避免出现规则噪点
+    for (var j = 0; j < 70; j++) {
+      var x2 = rnd() * 256, y2 = rnd() * 256, rr = 5 + rnd() * 20;
+      g.fillStyle = rnd() > 0.5 ? "rgba(58,74,50,0.16)" : "rgba(150,164,132,0.10)";
+      g.beginPath(); g.arc(x2, y2, rr, 0, 6.2832); g.fill();
+    }
+    // 少量土色斑，让地面不显得像塑料
+    for (var k = 0; k < 14; k++) {
+      var x3 = rnd() * 256, y3 = rnd() * 256, r3 = 3 + rnd() * 9;
+      g.fillStyle = "rgba(122,110,84,0.10)";
+      g.beginPath(); g.arc(x3, y3, r3, 0, 6.2832); g.fill();
+    }
+
+    var tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 4;
+    return tex;
+  }
+
+  // 带贴图的多边形面：ShapeGeometry 的 UV 等于形状坐标，所以按米设置平铺密度
+  function texturedPolygonMesh(rings, tex, y, metersPerTile, tint) {
+    var group = new THREE.Group();
+    rings.forEach(function (ring) {
+      var shape = ringToShape(ring);
+      if (!shape) return;
+      var geo = new THREE.ShapeGeometry(shape);
+      geo.rotateX(-Math.PI / 2);
+      geo.translate(0, y, 0);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(1 / metersPerTile, 1 / metersPerTile);
+      var mat = new THREE.MeshLambertMaterial({
+        map: tex, color: col(tint || 0xffffff), side: THREE.DoubleSide
+      });
+      group.add(new THREE.Mesh(geo, mat));
+    });
+    return group;
+  }
+
+  // 圆角矩形（用于楼前铺装），形状坐标系里 y = -z
+  function roundedRectShape(cx, cz, halfW, halfD, r) {
+    var s = new THREE.Shape();
+    var x = cx, y = -cz, w = halfW, h = halfD;
+    r = Math.max(0.5, Math.min(r, w * 0.9, h * 0.9));
+    s.moveTo(x - w + r, y - h);
+    s.lineTo(x + w - r, y - h);
+    s.quadraticCurveTo(x + w, y - h, x + w, y - h + r);
+    s.lineTo(x + w, y + h - r);
+    s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    s.lineTo(x - w + r, y + h);
+    s.quadraticCurveTo(x - w, y + h, x - w, y + h - r);
+    s.lineTo(x - w, y - h + r);
+    s.quadraticCurveTo(x - w, y - h, x - w + r, y - h);
+    return s;
+  }
+
   var groundSize = Math.max(spanX, spanZ) * 4.5;
+  var groundTex = makeGrassTexture();
+  groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+  groundTex.repeat.set(groundSize / 90, groundSize / 90);
   var ground = new THREE.Mesh(
     new THREE.PlaneGeometry(groundSize, groundSize),
-    new THREE.MeshLambertMaterial({ color: col(0x59654f) })
+    new THREE.MeshLambertMaterial({ map: groundTex, color: col(0x8a9480) })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(centerX, -0.6, centerZ);
   ground.receiveShadow = true;
   scene.add(ground);
 
-  scene.add(flatPolygonMesh(D.boundary, col(0x54704a), 0.0, 1.0));
+  // 校园范围内：叠一层半透明深绿，让边界可辨，同时保留草地纹理
+  scene.add(flatPolygonMesh(D.boundary, col(0x4e6642), 0.02, 0.28));
 
   D.boundary.forEach(function (ring) {
     var pts = ring.map(function (p) { return new THREE.Vector3(p[0], 0.9, p[1]); });
     scene.add(new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({ color: 0x8fd6a8 })
+      new THREE.LineBasicMaterial({ color: 0xbcd0ae, transparent: true, opacity: 0.55 })
     ));
   });
+
+  // 楼前铺装：每栋楼按包围盒外扩 3.5 m，浅灰圆角台，让建筑稳稳落在地上
+  (function buildingAprons() {
+    var group = new THREE.Group();
+    var apronMat = new THREE.MeshLambertMaterial({
+      color: col(0x6b7161), side: THREE.DoubleSide
+    });
+    D.buildings.forEach(function (b) {
+      var minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      (b.rings || []).forEach(function (ring) {
+        ring.forEach(function (p) {
+          if (p[0] < minX) minX = p[0];
+          if (p[0] > maxX) maxX = p[0];
+          if (p[1] < minZ) minZ = p[1];
+          if (p[1] > maxZ) maxZ = p[1];
+        });
+      });
+      if (!isFinite(minX)) return;
+      var pad = 3.5;
+      var cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
+      var hw = (maxX - minX) / 2 + pad, hd = (maxZ - minZ) / 2 + pad;
+      var geo = new THREE.ShapeGeometry(roundedRectShape(cx, cz, hw, hd, 6));
+      geo.rotateX(-Math.PI / 2);
+      geo.translate(0, 0.07, 0);
+      group.add(new THREE.Mesh(geo, apronMat));
+    });
+    group.receiveShadow = true;
+    scene.add(group);
+  })();
+
 
   // 运动场地按 OSM sport 标签着色（篮球/网球/羽毛球/足球/排球）
   var PITCH_COLOR = {
