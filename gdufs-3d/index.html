@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="data:," />
+<title>广外南校区 · 3D 导航</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; }
+  #app { position: fixed; inset: 0; }
+
+  #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
+  #labels .lbl {
+    position: absolute; transform: translate(-50%, -100%);
+    font-size: 11px; line-height: 1.35; color: #eef5fb;
+    background: rgba(12, 18, 24, 0.62);
+    border: 1px solid rgba(120, 150, 170, 0.32);
+    border-radius: 4px; padding: 1px 5px; white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  }
+  #labels .lbl.gate {
+    color: #ffd6d6; border-color: rgba(255, 120, 120, 0.45);
+    background: rgba(48, 16, 16, 0.65);
+  }
+
+  #panel {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    background: rgba(18, 24, 30, 0.9); color: #eef2f7;
+    padding: 16px 18px; border-radius: 14px; width: 320px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.4); backdrop-filter: blur(6px);
+  }
+  #panel h1 { margin: 0 0 4px; font-size: 18px; letter-spacing: .02em; }
+  #panel .sub { margin: 0 0 14px; font-size: 11.5px; line-height: 1.6; color: #93a4b6; }
+  .row { margin: 9px 0; }
+  .row label { display: block; font-size: 11.5px; color: #93a4b6; margin-bottom: 3px; }
+  select {
+    width: 100%; padding: 7px 9px; border-radius: 7px; border: 1px solid #3a4456;
+    background: #141b25; color: #eef2f7; font-size: 13px;
+  }
+  #status {
+    margin-top: 12px; font-size: 12.5px; line-height: 1.7; color: #ffd479;
+    min-height: 44px; border-top: 1px solid #2a3442; padding-top: 10px;
+  }
+  #status .ok { color: #7ee0a0; }
+  #status .warn { color: #ff9c6e; }
+  .btns { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  button {
+    border: 1px solid #39445a; background: #1a2331; color: #cfdae7;
+    padding: 6px 10px; border-radius: 7px; font-size: 12px; cursor: pointer; font-family: inherit;
+  }
+  button:hover { border-color: #5a6a86; }
+  button.on { background: #2f6b4a; border-color: #2f6b4a; color: #fff; }
+  .legend { margin-top: 13px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px 9px; font-size: 11px; color: #b7c4d3; }
+  .lg { display: flex; align-items: center; gap: 6px; }
+  .sw { width: 12px; height: 9px; border-radius: 2px; display: inline-block; }
+  .hint { margin-top: 12px; font-size: 11px; line-height: 1.6; color: #7d8ea1; border-top: 1px solid #2a3442; padding-top: 10px; }
+
+  /* ---------- 建筑信息卡 ---------- */
+  #bcard {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    width: min(520px, calc(100vw - 420px)); z-index: 28;
+    background: rgba(16, 22, 30, 0.96); color: #e8eef6;
+    border: 1px solid #2c3947; border-radius: 12px; padding: 12px 14px 11px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.45); backdrop-filter: blur(8px);
+    font-size: 12.5px; line-height: 1.6;
+  }
+  #bcard.hidden { display: none; }
+  #bcard h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  #bcard .meta { color: #9fb2c6; font-size: 11.5px; margin-bottom: 6px; }
+  #bcard .meta b { color: #ffd479; font-weight: 600; }
+  #bcard .func { color: #d5e0ec; margin: 0 0 6px; }
+  #bcard .foot { color: #7f93a8; font-size: 11px; display: flex; gap: 10px; flex-wrap: wrap; }
+  #bcard .foot a { color: #7fc4ff; text-decoration: none; }
+  #bcard .x {
+    position: absolute; right: 8px; top: 6px; background: none; border: 0;
+    color: #7f93a8; font-size: 18px; cursor: pointer; line-height: 1;
+  }
+  #bcard .x:hover { color: #fff; }
+
+  /* ---------- AI 向导面板 ---------- */
+  #ai {
+    position: fixed; right: 20px; bottom: 92px; width: 368px; max-height: 66vh;
+    display: flex; flex-direction: column; z-index: 30;
+    background: rgba(16, 22, 30, 0.95); color: #e8eef6;
+    border: 1px solid #2c3947; border-radius: 14px;
+    box-shadow: 0 10px 34px rgba(0,0,0,.45); backdrop-filter: blur(8px);
+    font-size: 13px;
+  }
+  #ai.collapsed .ai-body, #ai.collapsed .ai-input { display: none; }
+  #ai-head {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    border-bottom: 1px solid #26313d; cursor: pointer; user-select: none;
+  }
+  #ai-head b { font-size: 13.5px; font-weight: 600; }
+  #ai-badge {
+    font-size: 10.5px; padding: 1px 7px; border-radius: 9px;
+    background: #1f3a2c; color: #7ee0a0; border: 1px solid #2f6b4a;
+  }
+  #ai-badge.off { background: #3a2a1f; color: #ffb27e; border-color: #6b4a2f; }
+  #ai-body { padding: 10px 12px; overflow-y: auto; max-height: 44vh; display: flex; flex-direction: column; gap: 8px; }
+  .msg { line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+  .msg.user { align-self: flex-end; background: #1d3a5c; border: 1px solid #2b5580; border-radius: 10px 10px 2px 10px; padding: 6px 9px; max-width: 86%; }
+  .msg.bot { align-self: flex-start; background: #18222d; border: 1px solid #2a3644; border-radius: 10px 10px 10px 2px; padding: 6px 9px; max-width: 92%; }
+  .msg.bot a { color: #7fc4ff; }
+  .msg.sys { align-self: center; color: #8fa2b6; font-size: 11.5px; }
+  .card { margin-top: 6px; border: 1px solid #2f4256; border-radius: 8px; padding: 7px 9px; background: #141d27; }
+  .card b { color: #ffd479; font-weight: 600; }
+  .card .meta { color: #9fb2c6; font-size: 11.5px; margin-top: 2px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 8px; }
+  .chip { font-size: 11.5px; padding: 3px 8px; border-radius: 12px; border: 1px solid #33455a; background: #18222d; color: #b9cbe0; cursor: pointer; }
+  .chip:hover { border-color: #4d6b8c; color: #dfeaf7; }
+  .ai-input { display: flex; gap: 6px; padding: 8px 10px 10px; border-top: 1px solid #26313d; }
+  .ai-input input {
+    flex: 1; background: #0f171f; border: 1px solid #2b3949; border-radius: 8px;
+    color: #e8eef6; padding: 7px 9px; font-size: 13px; font-family: inherit;
+  }
+  .ai-input input:focus { outline: none; border-color: #3f6c9a; }
+  .ai-input button {
+    border: 1px solid #2f5f8f; background: #1d3a5c; color: #dbeaff;
+    padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  }
+  .ai-input button:disabled { opacity: .5; cursor: default; }
+
+  #compass {
+    position: fixed; right: 22px; bottom: 22px; z-index: 10;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(18, 24, 30, 0.85); border: 1px solid #39445a;
+    pointer-events: none;
+  }
+  #needle {
+    position: absolute; inset: 0; display: flex; justify-content: center; align-items: flex-start;
+    padding-top: 5px; color: #ff6b6b; font-size: 13px; transform-origin: 50% 50%;
+  }
+  #compass .n {
+    position: absolute; inset: 0; display: flex; justify-content: center; align-items: flex-end;
+    padding-bottom: 6px; font-size: 10px; color: #93a4b6;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="labels"></div>
+<div id="compass"><div id="needle">▲</div><div class="n">北</div></div>
+
+<div id="bcard" class="hidden">
+  <button class="x" id="bcard-x">×</button>
+  <h2 id="bcard-name"></h2>
+  <div class="meta" id="bcard-meta"></div>
+  <p class="func" id="bcard-func"></p>
+  <div class="foot" id="bcard-foot"></div>
+</div>
+
+<div id="ai">
+  <div id="ai-head">
+    <span>🧭</span><b>校园向导</b>
+    <span id="ai-badge">连接中…</span>
+    <span style="margin-left:auto;color:#7b8ea3" id="ai-toggle">▾</span>
+  </div>
+  <div id="ai-body"></div>
+  <div class="chips" id="ai-chips"></div>
+  <div class="ai-input">
+    <input id="ai-input" placeholder="问：从文采园怎么去图书馆？" autocomplete="off" />
+    <button id="ai-send">发送</button>
+  </div>
+</div>
+
+<div id="panel">
+  <h1>广外南校区 3D 导航</h1>
+  <p class="sub">
+    广东外语外贸大学 · 大学城校区<br>
+    51 栋建筑 · 程序化立面与屋顶 · 近千棵行道树 · 步行路径规划
+  </p>
+
+  <div class="row">
+    <label>起点</label>
+    <select id="startSelect"></select>
+  </div>
+  <div class="row">
+    <label>终点</label>
+    <select id="endSelect"></select>
+  </div>
+
+  <div id="status"></div>
+
+  <div class="btns">
+    <button id="btnLabels" class="on">建筑标注</button>
+    <button id="btnRoads" class="on">道路</button>
+    <button id="btnReset">重置视角</button>
+  </div>
+
+  <div class="legend">
+    <div class="lg"><span class="sw" style="background:#c4bba8"></span>教学 / 实验</div>
+    <div class="lg"><span class="sw" style="background:#cbbd9f"></span>学生宿舍</div>
+    <div class="lg"><span class="sw" style="background:#854b39"></span>图书馆</div>
+    <div class="lg"><span class="sw" style="background:#a4644c"></span>食堂</div>
+    <div class="lg"><span class="sw" style="background:#b3bfc7"></span>体育场馆</div>
+    <div class="lg"><span class="sw" style="background:#b9a684"></span>文化 / 会堂</div>
+    <div class="lg"><span class="sw" style="background:#cfd6da"></span>门诊</div>
+    <div class="lg"><span class="sw" style="background:#b6b1a5"></span>其他</div>
+  </div>
+
+  <div class="hint">
+    左键拖动旋转 · 滚轮缩放 · 右键平移<br>
+    可直接点击建筑设置起点 / 终点。<br>
+    生活区和教学区经 <b style="color:#49c8ff">地下隧道</b> 穿行（图中青色）。<br>
+    名称/层数已按官方资料与规划验收合格证修正；立面为程序化生成，非测绘成果。
+  </div>
+</div>
+
+<!-- Three.js r128（UMD，本地 vendor，完全离线可双击打开） -->
+<script src="vendor/three.min.js"></script>
+<script src="vendor/OrbitControls.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
+<script src="gdufs-data.js"></script>
+<script src="faq-data.js"></script>
+<script src="info-data.js"></script>
+<script src="app.js"></script>
+<script src="ai-config.js"></script>
+<script src="navigator-ui.js"></script>
+</body>
+</html>

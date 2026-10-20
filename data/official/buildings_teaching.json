@@ -1,0 +1,510 @@
+[
+  {
+    "name": "教学楼A栋",
+    "aliases": [
+      "教学楼A座",
+      "A座",
+      "A栋"
+    ],
+    "function": "公共多媒体课室楼，承担本科公共课/专业课课堂教学，兼作考试考场；在『ABC教学楼厕所改造，更换天花、门及洁具』范围内",
+    "floors": null,
+    "built_year": "2004（校区启用前已建成；单栋验收年份未查到）",
+    "appearance": "平屋顶（官方原文『BCD教学楼天面层进行防水改造』）；首层各出入口设雨棚（原文『教学楼首层各个出入口位置设置雨棚』）；外墙贴面砖（同批F栋原文为『外墙原有松动瓷砖』，A-D为同期同型，属推测）；官方效果图显示为带内院的回字形多层连排体量，米黄/浅褐色调（图像推测）。来源：https://zcc.gdufs.edu.cn/info/1051/4156.htm",
+    "location_hint": "校园中部偏西的教学楼群（官方楼宇示意图编号⑩『教学楼A-D栋』），中心广场西南侧、图书馆以南；官方地图标注『教学楼-A座』",
+    "sources": [
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://zcc.gdufs.edu.cn/info/1051/4156.htm",
+      "https://gwkszx.gdufs.edu.cn/jtzy/jtzn.htm",
+      "https://lib.gdufs.edu.cn/gybg/gswz.htm"
+    ],
+    "confidence": "中",
+    "notes": "总层数无任何官方数字；若规划验收『教学楼（B12～B15）』(35546㎡, 验收2005-06-16)即为A-D四栋，则合计35546㎡，此对应关系为推测。"
+  },
+  {
+    "name": "教学楼B栋",
+    "aliases": [
+      "教学楼B座",
+      "B座",
+      "B栋"
+    ],
+    "function": "公共多媒体课室楼，承担本科公共课/专业课课堂教学，兼作考试考场；在『ABC教学楼厕所改造，更换天花、门及洁具』范围内；在『BCD教学楼天面层进行防水改造』范围内",
+    "floors": null,
+    "built_year": "2004（校区启用前已建成；单栋验收年份未查到）",
+    "appearance": "平屋顶（官方原文『BCD教学楼天面层进行防水改造』）；首层各出入口设雨棚（原文『教学楼首层各个出入口位置设置雨棚』）；外墙贴面砖（同批F栋原文为『外墙原有松动瓷砖』，A-D为同期同型，属推测）；官方效果图显示为带内院的回字形多层连排体量，米黄/浅褐色调（图像推测）。来源：https://zcc.gdufs.edu.cn/info/1051/4156.htm",
+    "location_hint": "校园中部偏西的教学楼群（官方楼宇示意图编号⑩『教学楼A-D栋』），中心广场西南侧、图书馆以南；官方地图标注『教学楼-B座』",
+    "sources": [
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://zcc.gdufs.edu.cn/info/1051/4156.htm",
+      "https://gwkszx.gdufs.edu.cn/jtzy/jtzn.htm",
+      "https://lib.gdufs.edu.cn/gybg/gswz.htm"
+    ],
+    "confidence": "中",
+    "notes": "总层数无任何官方数字；若规划验收『教学楼（B12～B15）』(35546㎡, 验收2005-06-16)即为A-D四栋，则合计35546㎡，此对应关系为推测。"
+  },
+  {
+    "name": "教学楼C栋",
+    "aliases": [
+      "教学楼C座",
+      "C座",
+      "C栋"
+    ],
+    "function": "公共多媒体课室楼，承担本科公共课/专业课课堂教学，兼作考试考场；在『ABC教学楼厕所改造，更换天花、门及洁具』范围内；在『BCD教学楼天面层进行防水改造』范围内",
+    "floors": null,
+    "built_year": "2004（校区启用前已建成；单栋验收年份未查到）",
+    "appearance": "平屋顶（官方原文『BCD教学楼天面层进行防水改造』）；首层各出入口设雨棚（原文『教学楼首层各个出入口位置设置雨棚』）；外墙贴面砖（同批F栋原文为『外墙原有松动瓷砖』，A-D为同期同型，属推测）；官方效果图显示为带内院的回字形多层连排体量，米黄/浅褐色调（图像推测）。来源：https://zcc.gdufs.edu.cn/info/1051/4156.htm",
+    "location_hint": "校园中部偏西的教学楼群（官方楼宇示意图编号⑩『教学楼A-D栋』），中心广场西南侧、图书馆以南；官方地图标注『教学楼-C座』",
+    "sources": [
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://zcc.gdufs.edu.cn/info/1051/4156.htm",
+      "https://gwkszx.gdufs.edu.cn/jtzy/jtzn.htm",
+      "https://lib.gdufs.edu.cn/gybg/gswz.htm"
+    ],
+    "confidence": "中",
+    "notes": "总层数无任何官方数字；若规划验收『教学楼（B12～B15）』(35546㎡, 验收2005-06-16)即为A-D四栋，则合计35546㎡，此对应关系为推测。"
+  },
+  {
+    "name": "教学楼D栋",
+    "aliases": [
+      "教学楼D座",
+      "D座",
+      "D栋"
+    ],
+    "function": "公共多媒体课室楼，承担本科公共课/专业课课堂教学，兼作考试考场；在『BCD教学楼天面层进行防水改造』范围内",
+    "floors": null,
+    "built_year": "2004（校区启用前已建成；单栋验收年份未查到）",
+    "appearance": "平屋顶（官方原文『BCD教学楼天面层进行防水改造』）；首层各出入口设雨棚（原文『教学楼首层各个出入口位置设置雨棚』）；外墙贴面砖（同批F栋原文为『外墙原有松动瓷砖』，A-D为同期同型，属推测）；官方效果图显示为带内院的回字形多层连排体量，米黄/浅褐色调（图像推测）。来源：https://zcc.gdufs.edu.cn/info/1051/4156.htm",
+    "location_hint": "校园中部偏西的教学楼群（官方楼宇示意图编号⑩『教学楼A-D栋』），中心广场西南侧、图书馆以南；官方地图标注『教学楼-D座』",
+    "sources": [
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://zcc.gdufs.edu.cn/info/1051/4156.htm",
+      "https://gwkszx.gdufs.edu.cn/jtzy/jtzn.htm",
+      "https://lib.gdufs.edu.cn/gybg/gswz.htm"
+    ],
+    "confidence": "中",
+    "notes": "总层数无任何官方数字；若规划验收『教学楼（B12～B15）』(35546㎡, 验收2005-06-16)即为A-D四栋，则合计35546㎡，此对应关系为推测。"
+  },
+  {
+    "name": "教学楼E栋",
+    "aliases": [
+      "教学楼E座",
+      "E座"
+    ],
+    "function": "公共多媒体课室楼；可录播教室E座301(70人)/302(70)/303(140)/305(140)/306(40)/307(40)/308(40)，均为『普通多媒体教室』；南校区考点考场之一",
+    "floors": "地上5层",
+    "built_year": "2004（校区启用前已建成；单栋验收年份未查到）",
+    "appearance": "平屋顶（同批BCD天面防水）；首层出入口雨棚；内部为5层走廊，教室集中在3层（301-308）；外墙材质未查到。2024年『对E座整栋楼宇进行翻新改造，包含1-5楼走廊天花板升级改造、课室内部墙面地面翻新改造』。",
+    "location_hint": "教学楼东组『教学楼E-G栋』（官方示意图编号⑨），中心广场东侧、水渠西侧",
+    "sources": [
+      "https://zcc.gdufs.edu.cn/info/1051/4156.htm",
+      "https://etr.gdufs.edu.cn/info/1015/1967.htm",
+      "https://gwkszx.gdufs.edu.cn/jtzy/jtzn.htm",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg"
+    ],
+    "confidence": "高",
+    "notes": "层数5层为硬证据（原文『1-5楼走廊天花板升级改造』）。外墙颜色未查到。"
+  },
+  {
+    "name": "教学楼F栋",
+    "aliases": [
+      "教学楼F座",
+      "F座"
+    ],
+    "function": "公共多媒体课室楼；南校区考点考场",
+    "floors": null,
+    "built_year": "2004（推测，同教学楼群；单栋验收记录未查到）",
+    "appearance": "有内庭（内院）：原文『拆除教学楼F座内庭外墙原有松动瓷砖以及铁构件，重新安装栏杆以及恢复墙身贴砖处理』；外墙为贴面砖；平屋顶：『天面层防水层局部修缮以及对水沟进行坡度改造』；内庭外墙带铁艺栏杆/铁构件。",
+    "location_hint": "教学楼东组（E-G群，官方示意图编号⑨）；考试中心定位点『大学城校区（南校区）教学楼F座』",
+    "sources": [
+      "https://zcc.gdufs.edu.cn/info/1049/6359.htm",
+      "https://gwkszx.gdufs.edu.cn/jtzy/jtzn.htm",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg"
+    ],
+    "confidence": "中",
+    "notes": "全表外观文字证据最具体的一栋（内庭+瓷砖+平屋顶）。层数未查到。"
+  },
+  {
+    "name": "教学楼G栋",
+    "aliases": [
+      "教学楼G座",
+      "G座"
+    ],
+    "function": "公共多媒体课室楼；可录播教室G座209(70人)/210(70)/309(70)/310(70)/311(70)/312(70)；另有G307课室专项装修；考点考场",
+    "floors": "未查到总层数（由G209/G210/G309-G312及G307可知至少3层）",
+    "built_year": "2004（推测，同教学楼群）",
+    "appearance": "未查到文字描述；官方效果图显示与E栋同型（推测为平屋顶、多层、带内院体量）",
+    "location_hint": "教学楼东组（E-G群，官方示意图编号⑨）最东/最南侧；官方地图标注『教学楼-G座』",
+    "sources": [
+      "https://etr.gdufs.edu.cn/info/1015/1967.htm",
+      "https://zcc.gdufs.edu.cn/info/1049/2150.htm",
+      "https://gwkszx.gdufs.edu.cn/jtzy/jtzn.htm",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg"
+    ],
+    "confidence": "中",
+    "notes": "至少3层为硬证据；总层数与外观缺。"
+  },
+  {
+    "name": "实验楼A区",
+    "aliases": [
+      "实验楼A",
+      "实验楼A座"
+    ],
+    "function": "实验室及学院用房：『法学院大学城校区实验楼A302、303装修项目』（预算约28万元）",
+    "floors": "至少3层（由A302/303反推）",
+    "built_year": "2004（校区启用前已建成；原文『实验楼已经建好了』）",
+    "appearance": "设计单位（中信华南设计院）论文摘要：『建筑布局、交通主廊、庭院绿化共同创造了大学城广东外语外贸大学实验楼立体的多层次交流的教学空间』→ 有交通主廊、庭院绿化、立体多层次空间（非官方域名，属设计文献）。官方效果图显示为长条形板楼、平屋顶（图像推测）。",
+    "location_hint": "校园东侧带状区（官方示意图编号⑪『实验楼A-E区』），教学楼E-G栋以东、隔水渠，与B8学术报告厅同带",
+    "sources": [
+      "https://zcc.gdufs.edu.cn/info/1049/2151.htm",
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://wap.cnki.net/touch/web/Journal/Article/NFJZ200502039.html",
+      "https://gw-alumni.gdufs.edu.cn/article/2027"
+    ],
+    "confidence": "中",
+    "notes": "分区功能为办公/考场/机房等片段证据；单区层数、面积、颜色全部未查到。B/C区常被合并写作『实验楼B/C区』，E区单独命名。"
+  },
+  {
+    "name": "实验楼B区",
+    "aliases": [
+      "实验楼B",
+      "实验楼B座"
+    ],
+    "function": "社会考试考场（雅思/托福/GRE/德福/JLPT等）；官方定位写作『实验楼B/C区』",
+    "floors": "未查到",
+    "built_year": "2004（校区启用前已建成；原文『实验楼已经建好了』）",
+    "appearance": "设计单位（中信华南设计院）论文摘要：『建筑布局、交通主廊、庭院绿化共同创造了大学城广东外语外贸大学实验楼立体的多层次交流的教学空间』→ 有交通主廊、庭院绿化、立体多层次空间（非官方域名，属设计文献）。官方效果图显示为长条形板楼、平屋顶（图像推测）。",
+    "location_hint": "校园东侧带状区（官方示意图编号⑪『实验楼A-E区』），教学楼E-G栋以东、隔水渠，与B8学术报告厅同带",
+    "sources": [
+      "https://gwkszx.gdufs.edu.cn/jtzy/jtzn.htm",
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://wap.cnki.net/touch/web/Journal/Article/NFJZ200502039.html",
+      "https://gw-alumni.gdufs.edu.cn/article/2027"
+    ],
+    "confidence": "中",
+    "notes": "分区功能为办公/考场/机房等片段证据；单区层数、面积、颜色全部未查到。B/C区常被合并写作『实验楼B/C区』，E区单独命名。"
+  },
+  {
+    "name": "实验楼C区",
+    "aliases": [
+      "实验楼C",
+      "实验楼C座"
+    ],
+    "function": "机房/实验室＋考场：『大学城校区实验楼C310机房承重加固项目』（需楼板承重加固的大型机房）",
+    "floors": "至少3层（由C310反推）",
+    "built_year": "2004（校区启用前已建成；原文『实验楼已经建好了』）",
+    "appearance": "设计单位（中信华南设计院）论文摘要：『建筑布局、交通主廊、庭院绿化共同创造了大学城广东外语外贸大学实验楼立体的多层次交流的教学空间』→ 有交通主廊、庭院绿化、立体多层次空间（非官方域名，属设计文献）。官方效果图显示为长条形板楼、平屋顶（图像推测）。",
+    "location_hint": "校园东侧带状区（官方示意图编号⑪『实验楼A-E区』），教学楼E-G栋以东、隔水渠，与B8学术报告厅同带",
+    "sources": [
+      "https://zcc.gdufs.edu.cn/info/1049/7416.htm",
+      "https://gwkszx.gdufs.edu.cn/jtzy/jtzn.htm",
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://wap.cnki.net/touch/web/Journal/Article/NFJZ200502039.html",
+      "https://gw-alumni.gdufs.edu.cn/article/2027"
+    ],
+    "confidence": "中",
+    "notes": "分区功能为办公/考场/机房等片段证据；单区层数、面积、颜色全部未查到。B/C区常被合并写作『实验楼B/C区』，E区单独命名。"
+  },
+  {
+    "name": "实验楼D区",
+    "aliases": [
+      "实验楼D",
+      "实验楼D座"
+    ],
+    "function": "技术保障与实验教学管理用房：『南校区（实验楼D505）』为现代教育技术中心教学资源部；官方地图另标『教育技术中心』于D区东侧",
+    "floors": "至少5层（由D505反推）",
+    "built_year": "2004（校区启用前已建成；原文『实验楼已经建好了』）",
+    "appearance": "设计单位（中信华南设计院）论文摘要：『建筑布局、交通主廊、庭院绿化共同创造了大学城广东外语外贸大学实验楼立体的多层次交流的教学空间』→ 有交通主廊、庭院绿化、立体多层次空间（非官方域名，属设计文献）。官方效果图显示为长条形板楼、平屋顶（图像推测）。",
+    "location_hint": "校园东侧带状区（官方示意图编号⑪『实验楼A-E区』），教学楼E-G栋以东、隔水渠，与B8学术报告厅同带",
+    "sources": [
+      "https://etr.gdufs.edu.cn/info/1015/1967.htm",
+      "https://lib.gdufs.edu.cn/gybg/gswz.htm",
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://wap.cnki.net/touch/web/Journal/Article/NFJZ200502039.html",
+      "https://gw-alumni.gdufs.edu.cn/article/2027"
+    ],
+    "confidence": "中",
+    "notes": "分区功能为办公/考场/机房等片段证据；单区层数、面积、颜色全部未查到。B/C区常被合并写作『实验楼B/C区』，E区单独命名。"
+  },
+  {
+    "name": "实验楼E区",
+    "aliases": [
+      "实验楼E",
+      "实验楼E座"
+    ],
+    "function": "社会考试考场（考试中心单独给出定位『实验楼E区』）",
+    "floors": "未查到",
+    "built_year": "2004（校区启用前已建成；原文『实验楼已经建好了』）",
+    "appearance": "设计单位（中信华南设计院）论文摘要：『建筑布局、交通主廊、庭院绿化共同创造了大学城广东外语外贸大学实验楼立体的多层次交流的教学空间』→ 有交通主廊、庭院绿化、立体多层次空间（非官方域名，属设计文献）。官方效果图显示为长条形板楼、平屋顶（图像推测）。",
+    "location_hint": "校园东侧带状区（官方示意图编号⑪『实验楼A-E区』），教学楼E-G栋以东、隔水渠，与B8学术报告厅同带",
+    "sources": [
+      "https://gwkszx.gdufs.edu.cn/jtzy/jtzn.htm",
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://wap.cnki.net/touch/web/Journal/Article/NFJZ200502039.html",
+      "https://gw-alumni.gdufs.edu.cn/article/2027"
+    ],
+    "confidence": "中",
+    "notes": "分区功能为办公/考场/机房等片段证据；单区层数、面积、颜色全部未查到。B/C区常被合并写作『实验楼B/C区』，E区单独命名。"
+  },
+  {
+    "name": "图书馆（大学城校区图书馆）",
+    "aliases": [
+      "大学城校区图书馆",
+      "南校区图书馆",
+      "图书馆",
+      "自编B-3栋"
+    ],
+    "function": "藏借阅研一体化开放式管理；含总服务台、多功能报告厅、展览厅、校史馆、羊城晚报资源中心、中文/外文书库、特藏与程贤章藏品陈列、研修间、自助借还、云山咖啡、南校区图书馆办公室；全校阅览座位5278个、信息节点2700个、2个多功能报告厅",
+    "floors": "地上6层，地下1层",
+    "built_year": "2005（规划验收2005-10-14）",
+    "appearance": "主墙面红褐色/赭石色石材或大块面砖，中部为通高数层的蓝绿色玻璃幕墙（竖向分格）；平屋顶，顶部有深色水平挑檐/压顶带；入口正面为大台阶上至通高玻璃门厅；正前方为大片硬质铺装广场；体量方正、横向展开，无坡屋顶、无塔楼。（据官网图集照片观察）",
+    "location_hint": "校园中北部：大会堂正南、学术报告厅/实验楼D区以西、教学楼B/C/D座以北；中心广场西侧（官方图书馆页面所附地图标注）",
+    "sources": [
+      "https://ghzyj.gz.gov.cn/ywpd/cxgh/ghxkgsgb/phgbnew/ghyshgzls/content/post_7694479.html",
+      "https://lib.gdufs.edu.cn/gybg/bggk.htm",
+      "https://lib.gdufs.edu.cn/gybg/lczy.htm",
+      "https://lib.gdufs.edu.cn/gybg/gswz.htm",
+      "https://lib.gdufs.edu.cn/gybg/gsfj.htm",
+      "https://www.gdufs.edu.cn/zjgw/xyfg1/dxcxq.htm",
+      "https://www.gdufs.edu.cn/images/lbnight.jpg",
+      "https://gw-alumni.gdufs.edu.cn/article/2027"
+    ],
+    "confidence": "高",
+    "notes": "层数/面积/验收年份三源一致：规划验收『地上6层：25526平方米：地下1层：3070平方米』；官网『面积2.8万平方米』；楼层指引PDF为1F-6F。逐层功能对应关系未查到（PDF文字层乱码）。"
+  },
+  {
+    "name": "大会堂（教工活动中心）",
+    "aliases": [
+      "大会堂",
+      "会堂",
+      "南校区大会堂",
+      "教工活动中心",
+      "教师活动中心",
+      "凤鸣会堂（低置信）",
+      "自编号A、B、C"
+    ],
+    "function": "大型会议、演出、开学/毕业典礼、校际与省级赛事开闭幕式（2019年广东省第十届大运会闭幕式在此举行）；与教师活动中心为连体建筑的同一幢",
+    "floors": "地上2层（部分1层），地下1层",
+    "built_year": "2005（规划验收2005-10-25）",
+    "appearance": "连体建筑（自编号A、B、C三段拼合）；平屋顶、规整体块、浅色/白色外墙（图像推测）；观众厅座位约1302个，舞台中央LED大屏16.38m×5.632m，两侧副屏2块，会标屏1块，化妆间7个",
+    "location_hint": "中心广场（正门轴线）北端；东南为艺术楼、南为教学楼E-G、西南为图书馆、北侧临水（官方示意图编号④）",
+    "sources": [
+      "https://ghzyj.gz.gov.cn/ywpd/cxgh/ghxkgsgb/phgbnew/ghyshgzls/content/post_7694523.html",
+      "https://etr.gdufs.edu.cn/info/1051/5014.htm",
+      "https://tyb.gdufs.edu.cn/info/1033/1246.htm",
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://etr.gdufs.edu.cn/"
+    ],
+    "confidence": "高",
+    "notes": "『大会堂=教工活动中心』由规划验收证书『会堂及教师活动中心工程（连体，自编号A、B、C）1幢』直接证实。『凤鸣会堂』仅见etr首页询价公告标题『大学城校区凤鸣会堂视频处理器采购询价公告』，未见命名文件，置信度低。外墙颜色无文字记载。"
+  },
+  {
+    "name": "艺术楼",
+    "aliases": [
+      "艺术学院教学楼",
+      "艺术楼（连体）"
+    ],
+    "function": "艺术学院（音乐系、艺术设计系、舞蹈系、公共艺术教学部、艺术专硕教育中心）；数字媒体计算机机房、电子音乐多媒体机房、陶艺/皮雕/环境与展示/数字媒体/视觉传达设计工作室；学院专属展览厅、音乐厅、实验剧场和琴房共计102间；另设阳光大厅",
+    "floors": "地上5层（部分3层）",
+    "built_year": "2005（规划验收2005-10-25）",
+    "appearance": "连体建筑（规划文书写『连体』）；官方效果图显示米黄色石材/面砖、多层带露台与内院、平屋顶体量（图像推测）。文字层面硬信息仅为『连体』与5层（局部3层）。",
+    "location_hint": "校园东北侧，大会堂东南、临水（官方示意图编号⑥）；考试中心定位点『大学城校区（南校区）艺术楼』",
+    "sources": [
+      "https://ghzyj.gz.gov.cn/ywpd/cxgh/ghxkgsgb/phgbnew/ghyshgzls/content/post_7694525.html",
+      "https://art.gdufs.edu.cn/xygk/xyjj.htm",
+      "https://art.gdufs.edu.cn/",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://gwkszx.gdufs.edu.cn/jtzy/jtzn.htm"
+    ],
+    "confidence": "高",
+    "notes": "面积两个口径并存：规划验收13272㎡ vs 学院自述『16000余平方米』。"
+  },
+  {
+    "name": "B8学术报告厅",
+    "aliases": [
+      "学术报告厅",
+      "B8报告厅"
+    ],
+    "function": "学术报告、会议、演出；有偿使用（与六教学术报告厅同价：校内会议300元/小时、演出300元/小时、校外1000-1200元/小时）",
+    "floors": null,
+    "built_year": null,
+    "appearance": "未查到文字描述。官方效果图编号⑤为一长条形、多层、平屋顶建筑，与实验楼带同列（图像推测）。",
+    "location_hint": "校园东侧，教学楼E-G栋以东、隔水渠，实验楼带北端（官方示意图编号⑤）；官方地图『学术报告厅』位于实验楼D区以西、教学楼-G座以北",
+    "sources": [
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://etr.gdufs.edu.cn/info/1051/5009.htm",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://lib.gdufs.edu.cn/gybg/gswz.htm"
+    ],
+    "confidence": "低",
+    "notes": "『B8』应为早期自编号（同体系：图书馆B-3、院系办公楼B-5、教学楼B12-B15），非『B栋8楼』——推断，置信度中。层数/面积/年份/座位数全部未查到。"
+  },
+  {
+    "name": "行政办公楼（校办公楼）",
+    "aliases": [
+      "校办公楼",
+      "学校行政楼",
+      "行政楼"
+    ],
+    "function": "学校党政机关办公（党委办公室/校长办公室等）；大学城校区对外电话020-39328037",
+    "floors": null,
+    "built_year": "2004年9月后建设（校友回忆把『学校行政楼』列入『我们进入之后建设的』清单）；具体验收年份未查到",
+    "appearance": "未查到文字描述。官方效果图编号①显示为深色屋面、含圆形鼓状（rotunda）构件的低层组合体量（图像推测）。",
+    "location_hint": "校园南部，中心广场轴线南端偏东、近东南门；东邻院系办公楼（官方示意图编号①）",
+    "sources": [
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://dbxb.gdufs.edu.cn/",
+      "https://gw-alumni.gdufs.edu.cn/article/2027"
+    ],
+    "confidence": "中",
+    "notes": "名称/位置/建成时段可靠；层数、面积、外观全部未查到。"
+  },
+  {
+    "name": "院系办公楼",
+    "aliases": [
+      "院系办公楼（连体）",
+      "自编B-5"
+    ],
+    "function": "各学院行政与教师办公用房；原设计地下为非机动车库，后调整为地下设备用房",
+    "floors": "地上4层（部分1、2、3层），地下1层",
+    "built_year": "2005（规划验收2005-10-14）",
+    "appearance": "连体（多段拼接）；平屋顶；设地下层（地下车库/设备房）；官方效果图显示为方形大进深、带内院的院落式体量（图像推测）。",
+    "location_hint": "校园东南部，行政办公楼东侧（官方示意图编号②）",
+    "sources": [
+      "https://ghzyj.gz.gov.cn/ywpd/cxgh/ghxkgsgb/phgbnew/ghyshgzls/content/post_7694481.html",
+      "https://gw-alumni.gdufs.edu.cn/article/7427",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg"
+    ],
+    "confidence": "高",
+    "notes": "层数与面积：地上12292㎡、地下4381㎡。各学院具体楼层分布未查到。"
+  },
+  {
+    "name": "学术交流中心",
+    "aliases": [
+      "学术交流中心及外国专家楼",
+      "专家楼"
+    ],
+    "function": "接待住宿＋会议：专家楼安排外教长住，其余房间承担大型接待与培训班；会议室三间（第一会议室208座，第二、三为小会议室）、咖啡厅；并代管『八角楼』中小型会场（双LED屏、投影系统、徽标屏）；联系电话39328328",
+    "floors": "地上6层（部分5、3、2、1层），地下1层",
+    "built_year": "2005（规划验收2005-10-14）",
+    "appearance": "未查到文字描述。官方效果图编号③显示为深色屋面低层院落式建筑（图像推测）。规划文书仅给层数与面积。",
+    "location_hint": "校园南部，行政办公楼西南侧、近南门（官方示意图编号③）",
+    "sources": [
+      "https://ghzyj.gz.gov.cn/ywpd/cxgh/ghxkgsgb/phgbnew/ghyshgzls/content/post_7694483.html",
+      "https://hqc.gdufs.edu.cn/info/1002/1438.htm",
+      "https://etr.gdufs.edu.cn/info/1032/3628.htm",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg"
+    ],
+    "confidence": "高",
+    "notes": "地上13007㎡、地下2039㎡，竣工建筑面积15046㎡。八角楼归属学术交流中心（同一管理单元）。"
+  },
+  {
+    "name": "体育馆（羽毛球馆）",
+    "aliases": [
+      "体育馆",
+      "羽毛球馆",
+      "南校区体育馆"
+    ],
+    "function": "室内体育教学、训练、竞赛与大型活动；2019年广东省第十届大运会开幕式场地及羽毛球比赛场地；2026年『新生杯』羽毛球比赛场地",
+    "floors": "地上3层（部分2层）",
+    "built_year": "2007（规划验收2007-07-05）",
+    "appearance": "未查到文字描述。官方效果图东北角体育区有一栋白色曲面（穹顶/弧壳）屋面建筑，紧邻田径场与游泳池（图像推测）。",
+    "location_hint": "校园东北角体育区，田径场与游泳池东侧（官方示意图未编号，体育区在命名体系之外）",
+    "sources": [
+      "https://ghzyj.gz.gov.cn/ywpd/cxgh/ghxkgsgb/phgbnew/ghyshgzls/content/post_7698271.html",
+      "https://tyb.gdufs.edu.cn/info/1057/1827.htm",
+      "https://tyb.gdufs.edu.cn/info/1032/2918.htm",
+      "https://tyb.gdufs.edu.cn/info/1033/1249.htm",
+      "https://tyb.gdufs.edu.cn/bmgs/bmjj.htm",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg"
+    ],
+    "confidence": "高",
+    "notes": "面积两口径：规划验收10670㎡（建筑面积）vs 体育部统计『体育馆（内）8112㎡（南）』（室内场地面积）。"
+  },
+  {
+    "name": "田径场（体育场）",
+    "aliases": [
+      "体育场",
+      "田径场",
+      "南校区体育场"
+    ],
+    "function": "田径教学、校运会、省级大运会田径比赛",
+    "floors": "场地无层数（附属建筑见『看台/体育场建筑』：地上2层、另设地下1层）",
+    "built_year": "2007（规划验收2007-07-05，与体育馆同一证书）",
+    "appearance": "未查到文字描述；效果图为标准400m环形跑道＋中央草坪，两块场地分列校园北部东西两侧（图像推测）。",
+    "location_hint": "校园北部（两块）：南校区体育场2个——18720㎡（180×104m 真草）、19872㎡（184×108m 人造草）",
+    "sources": [
+      "https://tyb.gdufs.edu.cn/info/1057/1827.htm",
+      "https://ghzyj.gz.gov.cn/ywpd/cxgh/ghxkgsgb/phgbnew/ghyshgzls/content/post_7698271.html",
+      "https://tyb.gdufs.edu.cn/bmgs/bmjj.htm",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg"
+    ],
+    "confidence": "中",
+    "notes": "面积与数量为硬数据；『哪一块在东/西』未查到。"
+  },
+  {
+    "name": "看台",
+    "aliases": [
+      "体育场看台",
+      "体育场（含看台及附属用房）"
+    ],
+    "function": "观众席与赛事附属用房（推测：更衣/器材/控制室，规划文书未列功能明细）",
+    "floors": "地上2层（另设地下1层）——规划验收『体育场』建筑本体",
+    "built_year": "2007（规划验收2007-07-05）",
+    "appearance": "未查到。无座位数、无材质、无是否带罩棚的任何官方描述。",
+    "location_hint": "附属于田径场（校园北部体育区）",
+    "sources": [
+      "https://ghzyj.gz.gov.cn/ywpd/cxgh/ghxkgsgb/phgbnew/ghyshgzls/content/post_7698271.html",
+      "https://tyb.gdufs.edu.cn/info/1057/1827.htm"
+    ],
+    "confidence": "低",
+    "notes": "学校文件中没有『看台』独立命名，能对应的只有『体育场：地上2层（另设地下1层），4713平方米』。"
+  },
+  {
+    "name": "游泳池",
+    "aliases": [
+      "游泳场",
+      "南校区游泳池"
+    ],
+    "function": "游泳教学、训练与开放（学校有『关于校游泳池开放及办理游泳证的通知』『关于南、北校区游泳池开放的通知』等制度）",
+    "floors": "室外场地，无层数（附属用房未查到）",
+    "built_year": "2004年9月后建设（校友回忆将『体育馆游泳池』并称列入后期建设清单）；具体年份未查到",
+    "appearance": "未查到文字描述；官方效果图显示为两片相邻矩形蓝色水面（推测为比赛池＋训练/戏水池），位于田径场东侧（图像推测）。",
+    "location_hint": "校园北部体育区，田径场与体育馆之间；官方地图标注在大会堂北侧",
+    "sources": [
+      "https://tyb.gdufs.edu.cn/info/1057/1827.htm",
+      "https://tyb.gdufs.edu.cn/tycg/cgtj.htm",
+      "https://lib.gdufs.edu.cn/gybg/gswz.htm",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg",
+      "https://gw-alumni.gdufs.edu.cn/article/2027"
+    ],
+    "confidence": "中",
+    "notes": "面积硬数据：游泳场（南）1个，5375㎡。"
+  },
+  {
+    "name": "网球场",
+    "aliases": [
+      "南校区网球场"
+    ],
+    "function": "网球教学、训练与有偿开放",
+    "floors": "室外场地",
+    "built_year": "未查到（体育部统计表2017-05-11发布，仅反映当时存量）",
+    "appearance": "未查到文字描述；效果图显示为成组红褐色硬地球场，位于田径场西侧（图像推测）。",
+    "location_hint": "校园西北部（田径场西侧）",
+    "sources": [
+      "https://tyb.gdufs.edu.cn/info/1057/1827.htm",
+      "https://gw-alumni.gdufs.edu.cn/upload/wxb/static/2022/10/24/ea5e37ea28ae48bc84283289c4e28bbc.jpg"
+    ],
+    "confidence": "中",
+    "notes": "数量与面积硬数据：网球场（南）10片，6480㎡，单片面按36×18m计。"
+  }
+]

@@ -1,0 +1,523 @@
+[
+  {
+    "name": "正门（教学区正门）",
+    "aliases": ["正门", "教学区正门", "大门", "正大门"],
+    "category": "校门",
+    "function": "校园主出入口，人车通行；门外为外环东路，门内为大会堂前广场与艺术楼。2025年完成正门外墙翻新、正门南广场改造及高杆路灯18套、庭院灯38套安装。",
+    "floors": "未查到（门岗建筑，非多层）",
+    "built_year": "未查到",
+    "appearance": "有校门外墙与南广场；2025年外墙面翻新、南广场绿化与铺装重做；正门左侧车道闸加高底座≥20cm防淹，右侧预留双通道闸机条件。外墙颜色官方未描述。",
+    "location_hint": "校园东北角，朝外环东路；门内正对大会堂前广场，东北侧为艺术楼，南侧为报告厅与实验楼E区。",
+    "opening_hours": "未查到（官方未公布现行校门开放时间）",
+    "sources": [
+      "https://yx.gdufs.edu.cn/n.jpg",
+      "https://jbjszx.gdufs.edu.cn/info/1012/1224.htm",
+      "https://zcc.gdufs.edu.cn/info/1049/7135.htm",
+      "https://www.gdufs.edu.cn/info/1106/246436.htm",
+      "https://jbjszx.gdufs.edu.cn/info/1012/1276.htm"
+    ],
+    "confidence": "高"
+  },
+  {
+    "name": "行政出入口（东南门）",
+    "aliases": ["行政出入口", "东南门", "教学区校名石入口", "校名石入口", "行政楼东南门"],
+    "category": "校门",
+    "function": "校园东南侧出入口，紧邻校行政办公楼，是校名石所在入口；2025年门岗升级并新建，校名石前移12米至广场中央。",
+    "floors": "未查到（门岗建筑）",
+    "built_year": "未查到（2025年门岗新建/改造）",
+    "appearance": "入口广场设校名石（2025年向前移动12米至广场中央），周边旧人行道翻新为沥青，新增环绕草坪与12棵红叶石楠球花；门岗为2025年新建。",
+    "location_hint": "校园东南侧，朝外环东路；门内为校行政办公楼，西南侧为学术交流中心。",
+    "opening_hours": "未查到",
+    "sources": [
+      "https://yx.gdufs.edu.cn/n.jpg",
+      "https://www.gdufs.edu.cn/info/1106/65417.htm",
+      "https://zcc.gdufs.edu.cn/info/1049/7288.htm",
+      "https://jbjszx.gdufs.edu.cn/info/1012/1224.htm",
+      "https://zcc.gdufs.edu.cn/info/1049/7135.htm"
+    ],
+    "confidence": "高"
+  },
+  {
+    "name": "1号门（生活区一号门）",
+    "aliases": ["1号门", "生活区1号门", "生活区一号门"],
+    "category": "校门",
+    "function": "生活区主入口之一，连接中环路与北苑宿舍区；门口即下沉式广场/隧道，通往教学区。",
+    "floors": "未查到（门岗建筑）",
+    "built_year": "未查到（2024年道路及门岗环境整治）",
+    "appearance": "2024年整治后门口两侧增加标志性立柱，配套人行道道闸与保安厅；入口20米道路加铺沥青，两侧人行道与路沿石重新铺装，增设雨水收集口。",
+    "location_hint": "中环路上，文采园（第一饭堂）与隧道（下沉式广场）之间；图注‘通往北苑宿舍区’。",
+    "opening_hours": "未查到（官方未公布；2018年非官方媒体转述保卫处通知为7:00—23:00，车辆和行人，已过时，见 life_area.md §1.5）",
+    "sources": [
+      "https://yx.gdufs.edu.cn/n.jpg",
+      "https://zcc.gdufs.edu.cn/info/1051/4145.htm"    ],
+    "confidence": "高"
+  },
+  {
+    "name": "2号门（生活区2号门）",
+    "aliases": ["2号门", "生活区2号门", "生活区2号入口"],
+    "category": "校门",
+    "function": "生活区东南侧出入口，图注‘校园入口 通往宿舍区’；2025年门岗新建并升级道闸、监控。",
+    "floors": "未查到（门岗建筑）",
+    "built_year": "未查到（2025年门岗新建/改造）",
+    "appearance": "2025年新建门岗，增设车辆道闸、人行道闸与监控；具体材质与颜色官方未描述。",
+    "location_hint": "外环东路南段、近中环路交会处；友苑南侧、校园公园旁，西北为北苑6栋。",
+    "opening_hours": "未查到",
+    "sources": [
+      "https://yx.gdufs.edu.cn/n.jpg",
+      "https://jbjszx.gdufs.edu.cn/info/1012/1224.htm",
+      "https://www.gdufs.edu.cn/info/1106/246436.htm",
+      "https://zcc.gdufs.edu.cn/info/1049/7135.htm"
+    ],
+    "confidence": "高"
+  },
+  {
+    "name": "3号门（推断为教学区西南门）",
+    "aliases": ["3号门", "教学区西南门", "西南门", "西南入口"],
+    "category": "校门",
+    "function": "校园西侧出入口，服务学生活动中心与北苑/南苑西侧片区。",
+    "floors": "未查到（门岗建筑）",
+    "built_year": "未查到（2025年门岗改造）",
+    "appearance": "原为移动式门岗，2025年替换为两座红砖墙门岗，与校园色调统一。",
+    "location_hint": "外环西路上，学生活动中心西侧；2018年媒体称其为‘中国银行旁门口’。",
+    "opening_hours": "未查到（2018年非官方媒体转述为6:00—8:00、11:30—14:00、17:00—24:00，仅行人，已过时，见 life_area.md §1.5）",
+    "sources": [
+      "https://yx.gdufs.edu.cn/n.jpg",
+      "https://www.gdufs.edu.cn/info/1106/65417.htm",
+      "https://zcc.gdufs.edu.cn/info/1049/7135.htm",
+      "https://jbjszx.gdufs.edu.cn/info/1012/1224.htm"    ],
+    "confidence": "中"
+  },
+  {
+    "name": "4号门",
+    "aliases": ["4号门", "第三饭堂旁的门"],
+    "category": "校门",
+    "function": "校园西南角出入口，紧邻风采园（第三饭堂）与南苑13栋，通向大学城内环路。",
+    "floors": "未查到（门岗建筑）",
+    "built_year": "未查到",
+    "appearance": "未查到",
+    "location_hint": "内环东路东端、校园最南端；风采园（第三饭堂）南侧，南苑13栋西侧。",
+    "opening_hours": "未查到（2018年非官方媒体称该门当时全天锁闭，见 life_area.md §1.5）",
+    "sources": [
+      "https://yx.gdufs.edu.cn/n.jpg"    ],
+    "confidence": "高"
+  },
+  {
+    "name": "文采园（学生第一食堂）",
+    "aliases": ["文采园", "学生第一食堂", "第一食堂", "第一饭堂", "一饭", "学一"],
+    "category": "食堂",
+    "function": "学生食堂。一楼大众伙食（1736座），二楼明档套餐、粥粉面、地方特色美食、炖汤等风味（1250座）；二楼经量化改造升A级。共2986个餐位。",
+    "floors": "2层（一楼大众伙食、二楼风味明档）",
+    "built_year": "未查到",
+    "appearance": "官方未描述外墙颜色；2025年完成首层洗手间改造（拆除原铝扣板天花、墙面砖重做）。",
+    "location_hint": "1号门西侧、北苑1栋东北侧，紧邻下沉式广场/隧道；西侧为外环西路。平面图标注‘文采园（第一饭堂）’。",
+    "opening_hours": "早餐7:00—9:00；午餐11:00—13:00；晚餐17:00—19:00",
+    "sources": [
+      "https://hqc.gdufs.edu.cn/info/1002/1444.htm",
+      "https://yx.gdufs.edu.cn/n.jpg",
+      "https://jbjszx.gdufs.edu.cn/info/1012/1192.htm"
+    ],
+    "confidence": "高"
+  },
+  {
+    "name": "博雅园（学生第二食堂）",
+    "aliases": ["博雅园", "学生第二食堂", "第二食堂", "第二饭堂", "二饭", "学二"],
+    "category": "食堂",
+    "function": "学生食堂。一楼大众伙食500座、二楼风味500座，共1000个餐位；二楼经量化改造升A级。2023年以‘引进合作伙伴’方式经营。",
+    "floors": "2层",
+    "built_year": "未查到",
+    "appearance": "官方未描述外墙颜色；2025年1—3月完成洗手间改造（拆除原铝扣板天花、墙面砖重做）。",
+    "location_hint": "下沉式广场南侧、C-15栋北侧，1号门东南方向。平面图标注‘博雅园（第二饭堂）’。",
+    "opening_hours": "未查到（官方《饮食服务》只列文采园、风采园与学术中心教工餐厅时间，未列博雅园）",
+    "sources": [
+      "https://hqc.gdufs.edu.cn/info/1002/1444.htm",
+      "https://yx.gdufs.edu.cn/n.jpg",
+      "https://zcc.gdufs.edu.cn/info/1049/6370.htm",
+      "https://jbjszx.gdufs.edu.cn/info/1012/1193.htm"
+    ],
+    "confidence": "高"
+  },
+  {
+    "name": "风采园（学生第三食堂）",
+    "aliases": ["风采园", "学生第三食堂", "第三食堂", "第三饭堂", "三饭", "学三"],
+    "category": "食堂",
+    "function": "学生食堂。一楼大众伙食700座、二楼风味500座，共1200个餐位；另有三楼，曾作‘第三食堂三楼引进合作伙伴’及厨艺培训、商店用途。",
+    "floors": "3层（官方文件出现‘第三食堂三楼’；一二楼座位数为官方数据）",
+    "built_year": "未查到",
+    "appearance": "官方未描述外墙颜色；2025年完成首层洗手间与公用洗手间改造。",
+    "location_hint": "校园西南角，4号门内侧；南苑13栋西侧、南苑11栋南侧。平面图标注‘风采园（第三饭堂）’。",
+    "opening_hours": "早餐7:00—9:00；午餐11:00—13:00；晚餐17:00—19:00",
+    "sources": [
+      "https://hqc.gdufs.edu.cn/info/1002/1444.htm",
+      "https://yx.gdufs.edu.cn/n.jpg",
+      "https://zcc.gdufs.edu.cn/info/1049/6269.htm",
+      "https://jbjszx.gdufs.edu.cn/info/1012/1192.htm"
+    ],
+    "confidence": "高"
+  },
+  {
+    "name": "学术交流中心教工餐厅",
+    "aliases": ["学术中心餐厅", "学术中心教工餐厅", "学术交流中心饭堂"],
+    "category": "食堂",
+    "function": "教工日常就餐并承担大学城校区就餐接待任务；大厅186座、包房5个，另有八角楼就餐大厅1个（可摆15桌筵席）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到",
+    "location_hint": "行政出入口西南侧、外环东路内侧；属学术交流中心建筑群。",
+    "opening_hours": "午餐11:00—12:40；晚餐17:00—18:30（订餐须提前1天，电话39328651）",
+    "sources": [
+      "https://hqc.gdufs.edu.cn/info/1002/1444.htm",
+      "https://yx.gdufs.edu.cn/n.jpg"
+    ],
+    "confidence": "高"
+  },
+  {
+    "name": "北苑1栋",
+    "aliases": ["北苑1栋", "北苑一栋", "1栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配、学院分配官方未查到）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "生活区西北部，外环西路东侧；文采园（第一饭堂）西侧，北苑2栋北侧。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg", "https://zcc.gdufs.edu.cn/info/1049/8708.htm"],
+    "confidence": "高"
+  },
+  {
+    "name": "北苑2栋",
+    "aliases": ["北苑2栋", "北苑二栋", "2栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配官方未查到）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "外环西路东侧，北苑1栋南侧、北苑3栋北侧。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg", "https://zcc.gdufs.edu.cn/info/1049/8708.htm"],
+    "confidence": "高"
+  },
+  {
+    "name": "北苑3栋",
+    "aliases": ["北苑3栋", "北苑三栋", "3栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配官方未查到）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "北苑2栋南侧、学生活动中心北侧，外环西路东侧。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg", "https://zcc.gdufs.edu.cn/info/1049/8708.htm"],
+    "confidence": "高"
+  },
+  {
+    "name": "北苑4栋",
+    "aliases": ["北苑4栋", "北苑四栋", "4栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配官方未查到）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "北苑3栋南侧、学生活动中心东北侧。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg", "https://zcc.gdufs.edu.cn/info/1049/8708.htm"],
+    "confidence": "高"
+  },
+  {
+    "name": "北苑5栋",
+    "aliases": ["北苑5栋", "北苑五栋", "5栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配官方未查到）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "‘通往北苑宿舍区’道路东侧，友苑西侧，学生活动中心东侧。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg", "https://zcc.gdufs.edu.cn/info/1049/8708.htm"],
+    "confidence": "高"
+  },
+  {
+    "name": "北苑6栋",
+    "aliases": ["北苑6栋", "北苑六栋", "6栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配官方未查到）。2026年实施智能电表采购。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "北苑5栋南侧、2号门西北侧。",
+    "opening_hours": "未查到",
+    "sources": [
+      "https://yx.gdufs.edu.cn/n.jpg",
+      "https://hqc.gdufs.edu.cn/info/1006/3078.htm",
+      "https://zcc.gdufs.edu.cn/info/1049/8708.htm"
+    ],
+    "confidence": "高"
+  },
+  {
+    "name": "南苑7栋",
+    "aliases": ["南苑7栋", "南苑七栋", "7栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配官方未查到）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "学生活动中心南侧，‘通往南苑宿舍区’道路西侧。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg", "https://zcc.gdufs.edu.cn/info/1049/8708.htm"],
+    "confidence": "高"
+  },
+  {
+    "name": "南苑8栋",
+    "aliases": ["南苑8栋", "南苑八栋", "8栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配官方未查到）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "南苑7栋南侧，外环西路东侧。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg", "https://zcc.gdufs.edu.cn/info/1049/8708.htm"],
+    "confidence": "高"
+  },
+  {
+    "name": "南苑9栋",
+    "aliases": ["南苑9栋", "南苑九栋", "9栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配官方未查到）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "‘通往南苑宿舍区’道路东侧，南苑7栋东南、南苑10栋西侧。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg", "https://zcc.gdufs.edu.cn/info/1049/8708.htm"],
+    "confidence": "高"
+  },
+  {
+    "name": "南苑10栋",
+    "aliases": ["南苑10栋", "南苑十栋", "10栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配官方未查到）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "南苑9栋东侧、友苑西南。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg", "https://zcc.gdufs.edu.cn/info/1049/8708.htm"],
+    "confidence": "高"
+  },
+  {
+    "name": "南苑11栋",
+    "aliases": ["南苑11栋", "南苑十一栋", "11栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配官方未查到）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "南苑9栋南侧，风采园（第三饭堂）东侧。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg", "https://zcc.gdufs.edu.cn/info/1049/8708.htm"],
+    "confidence": "高"
+  },
+  {
+    "name": "南苑12栋",
+    "aliases": ["南苑12栋", "南苑十二栋", "12栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配官方未查到）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "南苑11栋东侧。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg", "https://zcc.gdufs.edu.cn/info/1049/8708.htm"],
+    "confidence": "高"
+  },
+  {
+    "name": "南苑13栋",
+    "aliases": ["南苑13栋", "南苑十三栋", "13栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍（房型、男女分配官方未查到）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘工’字形体量）",
+    "location_hint": "校园最南端，4号门内侧，风采园（第三饭堂）南侧。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg", "https://zcc.gdufs.edu.cn/info/1049/8708.htm"],
+    "confidence": "高"
+  },
+  {
+    "name": "师苑（C16、C18）",
+    "aliases": ["师苑", "师苑C16", "师苑C18", "C16栋", "C18栋"],
+    "category": "学生宿舍",
+    "function": "教职工休息房，同时承担学生床位：2025年C16、C18改造32间宿舍、新增180个床位，并安装96套新家具。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（2025年对C16栋2号梯、6号梯和C18栋14号梯进行装修改造）",
+    "location_hint": "生活区中部C系列编号区（C-15栋／教工公寓一带）；官方明确为‘大学城校区生活区师苑’。具体落位为推断。",
+    "opening_hours": "未查到",
+    "sources": [
+      "https://jbjszx.gdufs.edu.cn/info/1012/1270.htm",
+      "https://zcc.gdufs.edu.cn/info/1049/6325.htm",
+      "https://www.gdufs.edu.cn/info/1106/65416.htm"
+    ],
+    "confidence": "中"
+  },
+  {
+    "name": "友苑A",
+    "aliases": ["友苑A", "友苑A栋"],
+    "category": "学生宿舍",
+    "function": "学生公寓/宿舍（2025年与学术交流中心一并采购家具）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到",
+    "location_hint": "平面图‘友苑’东侧长条形建筑；北苑5栋以东、南苑10栋东北、2号门西北。",
+    "opening_hours": "未查到",
+    "sources": [
+      "https://zcc.gdufs.edu.cn/info/1049/7384.htm",
+      "https://yx.gdufs.edu.cn/n.jpg"
+    ],
+    "confidence": "中"
+  },
+  {
+    "name": "友苑B",
+    "aliases": ["友苑B", "友苑B栋", "友苑B留学生院宿舍"],
+    "category": "学生宿舍",
+    "function": "学生公寓；历史上作留学生院宿舍使用（2021年‘友苑B留学生院宿舍修缮’与‘友苑B学生公寓修缮’同期招标）。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到",
+    "location_hint": "平面图‘友苑’西侧L形建筑；北苑5栋东侧、南苑10栋北侧。",
+    "opening_hours": "未查到",
+    "sources": [
+      "https://zcc.gdufs.edu.cn/info/1049/6342.htm",
+      "https://zcc.gdufs.edu.cn/info/1049/5777.htm",
+      "https://zcc.gdufs.edu.cn/info/1049/6428.htm",
+      "https://yx.gdufs.edu.cn/n.jpg"
+    ],
+    "confidence": "中"
+  },
+  {
+    "name": "C15栋",
+    "aliases": ["C15栋", "C-15栋"],
+    "category": "学生宿舍",
+    "function": "学生宿舍，整栋110间；2025年从入户大堂到房间内部、墙面、灯具、家具全面升级。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "2025年翻新后‘更加温馨明亮’，设阳台；具体外墙颜色官方未描述。",
+    "location_hint": "博雅园（第二饭堂）南侧，教工公寓之间。",
+    "opening_hours": "未查到",
+    "sources": [
+      "https://www.gdufs.edu.cn/info/1106/65416.htm",
+      "https://yx.gdufs.edu.cn/n.jpg"
+    ],
+    "confidence": "中"
+  },
+  {
+    "name": "学术交流中心（学生宿舍部分）",
+    "aliases": ["学术交流中心", "学术交流中心学生宿舍"],
+    "category": "学生宿舍",
+    "function": "含20间学生宿舍，2025年品质升级；由公寓中心管理（电话39328328）；另设教工餐厅。",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到",
+    "location_hint": "行政出入口西南侧、外环东路内侧。",
+    "opening_hours": "未查到",
+    "sources": [
+      "https://www.gdufs.edu.cn/info/1106/65416.htm",
+      "https://hqc.gdufs.edu.cn/info/1002/1435.htm",
+      "https://yx.gdufs.edu.cn/n.jpg"
+    ],
+    "confidence": "高"
+  },
+  {
+    "name": "学生活动中心（“一站式”学生社区发展中心）",
+    "aliases": ["学生活动中心", "一站式学生社区发展中心", "大学城校区学生活动中心"],
+    "category": "学生活动",
+    "function": "学生活动与‘一站式’学生社区服务空间；2025年完成改造并交付使用：拆除地下一层原钢结构坡道、修复渗水楼板墙面、二层卫生间修缮、地面防潮防水、中庭新增室外楼梯。",
+    "floors": "地下一层＋地上二层（官方文件明确提到‘地下一层’‘二层’‘中庭’）；总层数未查到",
+    "built_year": "未查到（2025年8月11日改造竣工）",
+    "appearance": "有中庭与室外楼梯；地下一层原为钢结构坡道；外墙颜色官方未描述。",
+    "location_hint": "3号门内侧（东侧），北苑3、4栋南侧，北苑5栋西侧。",
+    "opening_hours": "未查到",
+    "sources": [
+      "https://zcc.gdufs.edu.cn/info/1049/7038.htm",
+      "https://jbjszx.gdufs.edu.cn/info/1012/1264.htm",
+      "https://yx.gdufs.edu.cn/n.jpg"
+    ],
+    "confidence": "高"
+  },
+  {
+    "name": "门诊部（校医院大学城校区）",
+    "aliases": ["门诊部", "校医院", "大学城校区门诊部", "南校区门诊部"],
+    "category": "医疗",
+    "function": "设内科、急诊科；承担常见病多发病诊治、传染病防控消杀、24小时值班院前救护、公费医疗与医保服务。急诊39328120（校内8120）、办公室39328055（8055）、医保办39328991（8991）。",
+    "floors": "未查到（平面图呈单层楔形体量，官方无文字说明）",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为三角形/楔形轮廓）",
+    "location_hint": "外环西路东侧、中环路北侧楔形地块；北邻图书馆方向，南侧为后勤楼，东南为文采园。",
+    "opening_hours": "门诊开诊时间未查到；公费医疗报销为每月第二、四个星期三上午9:00—12:00（仅半天）",
+    "sources": [
+      "https://hqc.gdufs.edu.cn/info/1002/1442.htm",
+      "https://hqc.gdufs.edu.cn/jgsz/hqst.htm",
+      "https://gwmzb.gdufs.edu.cn/",
+      "https://yx.gdufs.edu.cn/n.jpg"
+    ],
+    "confidence": "高"
+  },
+  {
+    "name": "后勤楼",
+    "aliases": ["后勤楼"],
+    "category": "后勤",
+    "function": "未查到（官方仅在地图标名，未说明具体入驻单位）",
+    "floors": "未查到",
+    "built_year": "未查到",
+    "appearance": "未查到（平面图为‘山’字形/多翼体量）",
+    "location_hint": "门诊部南侧、北苑1栋北侧，中环路与外环西路夹角处。",
+    "opening_hours": "未查到",
+    "sources": ["https://yx.gdufs.edu.cn/n.jpg"],
+    "confidence": "中"
+  },
+  {
+    "name": "生活区校园超市",
+    "aliases": ["校园超市", "生活区校园超市", "南校区生活区校园超市"],
+    "category": "商业",
+    "function": "校园超市：经营生活日用品、服装鞋帽、文教用品、家用电器、水暖器材、五金、体育用品、食品等；场地约732㎡，配套地下室仓库，紧靠学生住宿生活区。",
+    "floors": "首层（另有地下室仓库）",
+    "built_year": "未查到",
+    "appearance": "未查到",
+    "location_hint": "官方地址原文：‘广州市番禺区广州大学城广东外语外贸大学生活区32号路8号之二首层’。",
+    "opening_hours": "未查到",
+    "sources": ["https://zcc.gdufs.edu.cn/info/1049/6435.htm"],
+    "confidence": "中"
+  },
+  {
+    "name": "快递服务中心／快递服务柜",
+    "aliases": ["快递服务中心", "大学城校区快递服务中心", "快递服务站", "快递柜"],
+    "category": "快递",
+    "function": "校园快递收寄；两校区共建30组快递服务柜、8000个柜口，另设14个智能外卖取餐柜；由物业中心负责‘校园快递管理’。",
+    "floors": "未查到",
+    "built_year": "未查到（2025年完成两校区快递服务站建设）",
+    "appearance": "未查到",
+    "location_hint": "未查到具体点位（官方仅以‘大学城校区快递服务中心’作为图片题注）",
+    "opening_hours": "未查到",
+    "sources": [
+      "https://www.gdufs.edu.cn/info/1106/246436.htm",
+      "https://hqc.gdufs.edu.cn/jgsz/hqst.htm"
+    ],
+    "confidence": "中"
+  },
+  {
+    "name": "下沉式广场与隧道（生活区—教学区通道）",
+    "aliases": ["下沉式广场", "下沉广场", "隧道广场", "地下广场", "隧道"],
+    "category": "公共空间",
+    "function": "连接教学区与生活区（北苑）的步行通道：教学区一侧下沉式广场—隧道—生活区一侧下沉式广场；含地下广场行车坡道（2025年加宽改造）。",
+    "floors": "地下（下沉广场＋隧道），上方为中环路",
+    "built_year": "未查到",
+    "appearance": "2025年在隧道广场安装30盏氛围灯改善台阶照明；地下广场设行车坡道；台阶区域为夜间通行风险点。",
+    "location_hint": "1号门两侧；东侧广场图注‘下沉式广场（通往宿舍区）’，西侧广场紧邻博雅园。",
+    "opening_hours": "未查到",
+    "sources": [
+      "https://yx.gdufs.edu.cn/n.jpg",
+      "https://www.gdufs.edu.cn/info/1106/65417.htm",
+      "https://jbjszx.gdufs.edu.cn/info/1012/1192.htm"    ],
+    "confidence": "高"
+  }
+]

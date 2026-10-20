@@ -1,0 +1,17 @@
+# CDP 浏览器临时配置（每次运行都会变）
+.browser-profile/
+.chrome-profile/
+
+# Blender 安装包（380 MB，重装时可再下）
+tools/dist/
+
+# 已解压的第三方技能包
+artifacts/mattpocock/
+
+# 依赖与临时产物
+node_modules/
+__pycache__/
+*.pyc
+*.log
+tmp/
+temp/
