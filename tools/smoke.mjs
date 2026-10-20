@@ -40,7 +40,7 @@ try {
 
   const exceptions = browser.events.filter((e) => e.method === 'Runtime.exceptionThrown');
   check('无未捕获异常', exceptions.length === 0,
-    exceptions.length ? String(exceptions[0].params?.exceptionDetails?.text).slice(0, 80) : '');
+    exceptions.length ? String(exceptions[0].params?.exceptionDetails?.exception?.description || exceptions[0].params?.exceptionDetails?.text).slice(0, 200) : '');
 
   // 2. 场景与模型
   const mode = await browser.eval('window.__navDebug && window.__navDebug.mode');

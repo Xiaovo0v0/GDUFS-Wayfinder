@@ -122,8 +122,8 @@
   // ============================================================
   // 3. 光照
   // ============================================================
-  scene.add(new THREE.HemisphereLight(0xdfefff, 0x26332a, 0.46));
-  scene.add(new THREE.AmbientLight(0xffffff, 0.20));
+  scene.add(new THREE.HemisphereLight(0xdfefff, 0x26332a, 0.34));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.12));
   var sun = new THREE.DirectionalLight(0xfff1d8, 1.05);
   // 东南向 45°：坐标里 x=西为正、z=北为正，所以东南是 -x / -z
   var sunDist = Math.max(spanX, spanZ) * 1.15;
@@ -339,6 +339,36 @@
   })();
 
 
+  // 屋顶绿化（B5）：大屋顶铺一块绿，让俯视有层次，不做细节建模
+  function addRoofGreenery() {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshLambertMaterial({ color: col(0x4a6639), side: THREE.DoubleSide });
+    D.buildings.forEach(function (b) {
+      if (b.type === "sports" || b.type === "dorm" || b.type === "gate") return;
+      if ((b.area || 0) < 4500) return;
+      var ring = b.rings && b.rings[0];
+      if (!ring || ring.length < 3) return;
+      var minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      ring.forEach(function (p) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minZ) minZ = p[1];
+        if (p[1] > maxZ) maxZ = p[1];
+      });
+      var bw = maxX - minX, bd = maxZ - minZ;
+      var aspect = Math.max(bw, bd) / Math.max(1, Math.min(bw, bd));
+      if (aspect > 3.2) return;              // 细长条形楼不做，避免像"绿条"
+      var w = bw * 0.26, d = bd * 0.26;
+      if (w < 5 || d < 5) return;
+      var geo = new THREE.PlaneGeometry(w, d);
+      geo.rotateX(-Math.PI / 2);
+      geo.translate((minX + maxX) / 2, (b.height || 0) + 0.14, (minZ + maxZ) / 2);
+      g.add(new THREE.Mesh(geo, mat));
+    });
+    scene.add(g);
+    return g;
+  }
+
   // 运动场地按 OSM sport 标签着色（篮球/网球/羽毛球/足球/排球）
   var PITCH_COLOR = {
     basketball: 0x3f6fa8, tennis: 0x4a8358, badminton: 0x4f7f72,
@@ -448,6 +478,8 @@
   var roadMatCache = {};
   var sidewalkMat = new THREE.MeshLambertMaterial({ color: col(0xb2b6ab), side: THREE.DoubleSide });
 
+  var MAIN_ROAD = { primary: 1, primary_link: 1, secondary: 1, secondary_link: 1, tertiary: 1 };
+
   D.roads.forEach(function (r) {
     if (r.tunnel) return;
     var level = r.highway || "service";
@@ -459,7 +491,7 @@
     }
     r.lines.forEach(function (pts) {
       // 主/次干道两侧加人行道，先在下面铺一条更宽的浅色带
-      if (level === "primary" || level === "secondary") {
+      if (MAIN_ROAD[level]) {
         var sw = new THREE.Mesh(ribbonGeometry(pts, w + 2.8, 0.56, 12), sidewalkMat);
         sw.name = "sidewalk:" + level;
         roadGroup.add(sw);
@@ -470,6 +502,51 @@
     });
   });
   scene.add(roadGroup);
+
+  // 路灯（B6）：沿主干道每约 60 m 一盏，实例化，不增加 draw call 压力
+  var lampCount = 0;
+  (function streetLamps() {
+    var positions = [];
+    D.roads.forEach(function (r) {
+      if (r.tunnel || !MAIN_ROAD[r.highway]) return;
+      r.lines.forEach(function (pts) {
+        var acc = 0;
+        for (var i = 1; i < pts.length; i++) {
+          var dx = pts[i][0] - pts[i - 1][0], dz = pts[i][1] - pts[i - 1][1];
+          var L = Math.hypot(dx, dz);
+          if (L < 1e-6) continue;
+          acc += L;
+          if (acc >= 60) {
+            acc = 0;
+            var nx = -dz / L, nz = dx / L;
+            positions.push([pts[i][0] + nx * 5.4, pts[i][1] + nz * 5.4]);
+          }
+        }
+      });
+    });
+    if (!positions.length) return;
+
+    var postGeo = new THREE.CylinderGeometry(0.11, 0.15, 6.2, 6);
+    postGeo.translate(0, 3.1, 0);
+    var headGeo = new THREE.BoxGeometry(1.0, 0.26, 0.4);
+    headGeo.translate(0.4, 6.25, 0);
+
+    var postMat = new THREE.MeshLambertMaterial({ color: col(0x4a4f52) });
+    var headMat = new THREE.MeshLambertMaterial({ color: col(0xd6dad8) });
+    var posts = new THREE.InstancedMesh(postGeo, postMat, positions.length);
+    var heads = new THREE.InstancedMesh(headGeo, headMat, positions.length);
+
+    var mtx = new THREE.Matrix4();
+    for (var k = 0; k < positions.length; k++) {
+      mtx.makeTranslation(positions[k][0], 0.2, positions[k][1]);
+      posts.setMatrixAt(k, mtx);
+      heads.setMatrixAt(k, mtx);
+    }
+    posts.castShadow = true;
+    scene.add(posts);
+    scene.add(heads);
+    lampCount = positions.length;
+  })();
 
   // 地下隧道（青色）：跨南北校区的唯一通道
   var tunnelGroup = new THREE.Group();
@@ -502,6 +579,7 @@
   });
   scene.add(tunnelGroup);
   window.__navDebug = { camera: camera, controls: controls, tunnelBox: tunnelBox, scene: scene, renderer: renderer };
+  window.__navDebug.lampCount = lampCount;
 
   // ============================================================
   // 5.5 植被（行道树 / 绿地乔木）
@@ -963,9 +1041,19 @@
         var b = mm ? byId[mm[0]] : null;
         if (b) { o.userData.building = b; tagged++; }
         if (o.material && o.material.map) { o.material.map.anisotropy = 4; }
+        // B5：屋面偏冷灰，屋顶设备提亮，形成层次
+        if (o.material && o.material.name === "roof") {
+          o.material.color = new THREE.Color(0x8a9096);
+          o.material.roughness = 0.95;
+        }
+        if (o.material && o.material.name === "metal") {
+          o.material.color = new THREE.Color(0xc2c7ca);
+          o.material.roughness = 0.8;
+        }
       });
       scene.remove(procedural);
       scene.add(gltf.scene);
+      addRoofGreenery();
       buildingMeshes.length = 0;
       gltf.scene.traverse(function (o) { if (o.isMesh) { buildingMeshes.push(o); } });
       window.__navDebug.mode = "glb";
