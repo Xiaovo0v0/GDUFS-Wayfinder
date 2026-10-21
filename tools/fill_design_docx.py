@@ -39,7 +39,11 @@ SCENES = ("① 报到季：从正门到宿舍、到报到点；② 考试周：�
           "③ 日常办事：成绩单、校园卡补办、医保报销、图书借阅、宿舍报修；"
           "④ 访客与考生：入校、找会场；⑤ 留学生首次到校：用英文问路。")
 
-PLATFORM = ("Dify 1.17.1 社区版（学校部署于 172.17.1.46）。对话模型 DeepSeek-V4-Flash-0731，"
+# 对话模型名：周五（2026-10-24）V4-Flash 下线后，用环境变量覆盖并重跑本脚本：
+#   GDUFS_MODEL_DOC="DeepSeek-V4.1-Flash-1017-w8a8" python tools/fill_design_docx.py
+MODEL_NAME = os.environ.get("GDUFS_MODEL_DOC") or "DeepSeek-V4-Flash-0731"
+
+PLATFORM = ("Dify 1.17.1 社区版（学校部署于 172.17.1.46）。对话模型 " + MODEL_NAME + "，"
             "向量模型 bge-m3，重排模型 bge-reranker-v2-m3。前端为自研 Three.js 静态页面，"
             "通过 Dify Service API 调用智能体。")
 
