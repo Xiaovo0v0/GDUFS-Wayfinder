@@ -88,7 +88,11 @@ if (SEG === 'main') {
   await js(`(function(){var i=document.querySelector('#ai-input'); i.value='成绩单在哪办'; i.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('#ai-send').click();})()`);
   await at(50000);
   await js(`(function(){var b=document.querySelector('#ai-body .act'); if(b) b.click();})()`);
-  await at(58000);
+  await at(55000);
+} else if (SEG === 'north') {
+  // 北校区：缓慢环绕，展示 42 栋 LOD2
+  await js(`(function(){var c=window.__navDebug; if(c&&c.controls){c.controls.autoRotate=true; c.controls.autoRotateSpeed=0.55;}})()`);
+  await at(7000);
 } else if (SEG === 'en') {
   await at(3000);
   await js(`(function(){var i=document.querySelector('#ai-input'); i.value='How do I get to the library from Wencaiyuan?'; i.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('#ai-send').click();})()`);

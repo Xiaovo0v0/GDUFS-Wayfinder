@@ -22,7 +22,7 @@ W, H = 1440, 810
 
 items = []
 items.append((os.path.join(VID, "cards", "title.png"), 5.0))
-for seg in ("seg_main", "seg_en"):
+for seg in ("seg_main", "seg_north", "seg_en"):
     timing = json.load(open(os.path.join(VID, seg, "timing.json"), encoding="utf-8"))
     for f in timing:
         items.append((os.path.join(VID, seg, "frames", f["file"]), f["dur"]))
