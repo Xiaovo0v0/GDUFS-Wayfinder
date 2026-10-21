@@ -150,6 +150,17 @@
         cls = "badge warn";
       } else { tag = "⚪ 官网未公布地点"; cls = "badge mute"; }
       head.appendChild(el("span", cls, tag));
+      if (cls === "badge warn") {
+        var toCampus = campusNow === "north" ? "south" : "north";
+        var sw = el("button", "act switch",
+          "🔄 去" + (toCampus === "north" ? "白云山" : "大学城") + "校区看");
+        sw.addEventListener("click", function () {
+          var qs = "?campus=" + toCampus;
+          if (lastQuery) qs += "&q=" + encodeURIComponent(lastQuery);
+          location.href = location.pathname + qs;
+        });
+        head.appendChild(sw);
+      }
     }
     c.appendChild(head);
 
@@ -224,6 +235,8 @@
     if (acts.children.length) c.appendChild(acts);
     return c;
   }
+
+  var lastQuery = "";
 
   function addMsg(role, text, card) {
     var m = el("div", "msg " + role, text);
@@ -441,6 +454,7 @@
   function send(text) {
     var q = (text != null ? text : input.value).trim();
     if (!q || busy) return;
+    lastQuery = q;
     addMsg("user", q);
     input.value = "";
     busy = true;
@@ -492,13 +506,28 @@
     document.getElementById("ai-toggle").textContent = panel.classList.contains("collapsed") ? "▸" : "▾";
   });
 
-  var SUGGEST = ["从文采园怎么去图书馆？", "成绩单在哪办？", "图书馆几层？", "一共有几个校门？"];
+  var SUGGEST = currentCampus() === "north"
+    ? ["从正门怎么去图书馆？", "成绩单在哪办？", "相思河在哪？", "一共有几个校门？"]
+    : ["从文采园怎么去图书馆？", "成绩单在哪办？", "图书馆几层？", "一共有几个校门？"];
   SUGGEST.forEach(function (s) {
     var c = el("div", "chip", s);
     c.addEventListener("click", function () { send(s); });
     chips.appendChild(c);
   });
 
-  addMsg("bot", "你好，我是广外校园向导 🧭\n可以问我校园导航（会直接在地图上画路线）、办事流程、楼栋信息。");
+  addMsg("bot", currentCampus() === "north"
+    ? "你好，我是语心 🧭 这里是白云山校区。\n可以问我校园导航、办事流程、楼栋信息。"
+    : "你好，我是语心 🧭 这里是大学城校区。\n可以问我校园导航、办事流程、楼栋信息。");
   setBadge();
+
+  // 深链 ?q=… ：从卡片或外链带问题进来时自动问一次
+  var q0 = /[?&]q=([^&]+)/.exec(location.search);
+  if (q0) {
+    var text0 = decodeURIComponent(q0[1].replace(/\+/g, " "));
+    setTimeout(function () {
+      var inp = document.querySelector("#ai-input");
+      if (inp) inp.value = text0;
+      send(text0);
+    }, 700);
+  }
 })();
