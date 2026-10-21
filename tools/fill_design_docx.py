@@ -22,7 +22,7 @@ SHOT2 = os.path.join(REPO, "artifacts", "3d", "v27_card2.png")
 INK = RGBColor(0x1A, 0x24, 0x30)
 
 # ---------------- 正文内容 ----------------
-TEAM = "＿＿＿＿＿＿"
+TEAM = "（待填写）"
 THEME = "生活服务（校园导航与办事指南）"
 SECTION = "生活服务"
 WORK = "尚行 · GDUFS Wayfinder（广外校园向导）"
