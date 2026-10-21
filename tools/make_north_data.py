@@ -67,8 +67,8 @@ data = {
             "z": [round(min(p[1] for r in [boundary_ring] for p in r), 1),
                   round(max(p[1] for r in [boundary_ring] for p in r), 1)],
         },
-        "note": "轮廓来自学校官方《北校区平面图》矢量化（跑道标定 0.4178 m/px）；"
-                "层数为按建筑类型推定，非官方数据；道路/水系/校门待补",
+        "note": "轮廓/道路/水系/校门均来自学校官方《北校区平面图》矢量化（跑道标定 0.4178 m/px）；"
+                "层数为按建筑类型推定，非官方数据；路网为 20 m 网格近似",
         "sources": ["https://yx.gdufs.edu.cn/n.jpg (官方北校区平面图)"],
     },
     "buildings": buildings,
@@ -80,6 +80,46 @@ data = {
     "gates": [],
     "places": places,
 }
+
+# ---------- 合并道路 / 水系 / 校门 / 路网 ----------
+ROADS_JSON = r"data\official\north_roads.json"
+if os.path.exists(ROADS_JSON):
+    with open(ROADS_JSON, encoding="utf-8") as f:
+        rj = json.load(f)
+
+    data["graph"] = rj["graph"]
+    data["layers"] = {
+        "roads": {"file": "assets/north-roads.png", "extent": rj["meta"]["layer_extent_m"]},
+        "river": {"file": "assets/north-river.png", "extent": rj["meta"]["layer_extent_m"]},
+    }
+
+    nodes = rj["graph"]["nodes"]
+    gates_m = rj["gates_m"]
+    # 按位置定名：z 最大 = 北门，x 最大（最西）= 正门，z 最小 = 南门
+    named = []
+    if len(gates_m) >= 3:
+        by_z = sorted(range(len(gates_m)), key=lambda i: -gates_m[i][1])
+        north_i = by_z[0]
+        south_i = by_z[-1]
+        rest = [i for i in range(len(gates_m)) if i not in (north_i, south_i)]
+        west_i = max(rest, key=lambda i: gates_m[i][0])
+        named = [(north_i, "北门"), (west_i, "正门"), (south_i, "南门")]
+
+    for gi, gname in named:
+        gx, gz = gates_m[gi]
+        data["gates"].append({"name": gname, "x": gx, "z": gz})
+
+    # 每个地名挂到最近的路网节点，供算路使用
+    if nodes:
+        for p in places:
+            best, bestd = 0, 1e18
+            for ni, nd in enumerate(nodes):
+                d2 = (nd[0] - p["x"]) ** 2 + (nd[1] - p["z"]) ** 2
+                if d2 < bestd:
+                    best, bestd = ni, d2
+            p["node"] = best
+            p["access"] = [p["x"], p["z"]]
+
 
 js = "window.GDUFS_NORTH = " + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n"
 os.makedirs(os.path.dirname(DST), exist_ok=True)

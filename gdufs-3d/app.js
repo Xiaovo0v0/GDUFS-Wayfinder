@@ -391,6 +391,33 @@
     return g;
   }
 
+  // ---- 北校区：道路与相思河来自官方平面图栅格化的透明图层 ----
+  if (D.layers) {
+    var addRasterLayer = function (cfg, y, order) {
+      var ext = cfg.extent;
+      var w = Math.abs(ext.x[0] - ext.x[1]);
+      var h = Math.abs(ext.z[0] - ext.z[1]);
+      var cxL = (ext.x[0] + ext.x[1]) / 2;
+      var czL = (ext.z[0] + ext.z[1]) / 2;
+      var tex = new THREE.TextureLoader().load(cfg.file);
+      tex.encoding = THREE.sRGBEncoding;
+      tex.anisotropy = 8;
+      tex.center.set(0.5, 0.5);
+      tex.rotation = Math.PI;      // 图像的列/行方向与局部坐标相反，旋转 180° 对齐
+      var geo = new THREE.PlaneGeometry(w, h);
+      geo.rotateX(-Math.PI / 2);
+      var mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+        map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide
+      }));
+      mesh.position.set(cxL, y, czL);
+      mesh.renderOrder = order;
+      scene.add(mesh);
+      return mesh;
+    };
+    if (D.layers.river) { addRasterLayer(D.layers.river, 0.08, 2); }
+    if (D.layers.roads) { addRasterLayer(D.layers.roads, 0.12, 3); }
+  }
+
   // 运动场地按 OSM sport 标签着色（篮球/网球/羽毛球/足球/排球）
   var PITCH_COLOR = {
     basketball: 0x3f6fa8, tennis: 0x4a8358, badminton: 0x4f7f72,
@@ -1380,7 +1407,11 @@
     var pts = [[startPlace.x, startPlace.z]];
     for (var i = 0; i < res.seq.length; i++) {
       var e = G.edges[res.seq[i].ei];
-      var poly = e.pts;
+      // 南校的边自带折线 pts；北校是 20 m 网格图，只有两个端点
+      var poly = e.pts || [
+        [G.nodes[e.a][0], G.nodes[e.a][1]],
+        [G.nodes[e.b][0], G.nodes[e.b][1]]
+      ];
       if (res.seq[i].rev) poly = poly.slice().reverse();
       for (var k = 0; k < poly.length; k++) {
         var p = poly[k];
