@@ -45,26 +45,190 @@
     return e;
   }
 
+  // ---------------- 办事卡片（C3） ----------------
+  var WD = { "周一": 1, "周二": 2, "周三": 3, "周四": 4, "周五": 5, "周六": 6, "周日": 0, "周天": 0 };
+
+  function currentCampus() {
+    return /[?&]campus=north/.test(location.search) ? "north" : "south";
+  }
+
+  // 解析"周一、周二 8:30-12:00、14:00-17:10（北校区）"这类时段，判断此刻能不能办
+  function parseHours(text, campus) {
+    if (!text) return { state: "unknown", text: "" };
+    // 注意：不能因为出现"另行通知"就整体判为未知——多数条目仍带着常规时段
+    var segs = String(text).split(/[；;]/);
+    var picked = segs.filter(function (s) {
+      if (campus === "north") return /北校区|北校/.test(s);
+      if (campus === "south") return /南校区|南校|大学城/.test(s);
+      return true;
+    });
+    var src = (picked.length ? picked : segs).join("；");
+
+    var days = [], m, re = /周[一二三四五六日天]/g;
+    while ((m = re.exec(src))) {
+      var d = WD[m[0]];
+      if (d != null && days.indexOf(d) < 0) days.push(d);
+    }
+    var ranges = [], rre = /(\d{1,2})[:：](\d{2})\s*[-–~至]\s*(\d{1,2})[:：](\d{2})/g;
+    while ((m = rre.exec(src))) {
+      ranges.push([(+m[1]) * 60 + (+m[2]), (+m[3]) * 60 + (+m[4])]);
+    }
+    if (!days.length && !ranges.length) return { state: "unknown", text: src };
+
+    var now = new Date();
+    var dow = now.getDay();
+    var mins = now.getHours() * 60 + now.getMinutes();
+    var dayOk = days.length ? days.indexOf(dow) >= 0 : true;
+    var openNow = false, closeAt = null;
+    for (var i = 0; i < ranges.length; i++) {
+      if (mins >= ranges[i][0] && mins <= ranges[i][1]) {
+        openNow = true;
+        closeAt = ranges[i][1];
+        break;
+      }
+    }
+    var state = (dayOk && openNow) ? "open" : "closed";
+    var hhmm = function (v) {
+      return ("0" + Math.floor(v / 60)).slice(-2) + ":" + ("0" + (v % 60)).slice(-2);
+    };
+    return {
+      state: state,
+      text: src,
+      closeAt: closeAt != null ? hhmm(closeAt) : null,
+      openAt: ranges.length ? hhmm(ranges[0][0]) : null
+    };
+  }
+
+  // 按标题做粗匹配，把本地办事数据挂到卡片上
+  function findService(title) {
+    var list = window.GDUFS_SERVICE || [];
+    var g = bigrams(title || "");
+    if (!g.length) return null;
+    var best = null, bestScore = 0;
+    list.forEach(function (it) {
+      var text = (it.title || "").replace(/[（）()\s]/g, "");
+      var score = 0;
+      g.forEach(function (x) { if (text.indexOf(x) >= 0) score += 1; });
+      if (score > bestScore) { bestScore = score; best = it; }
+    });
+    return bestScore >= Math.max(3, Math.floor(g.length * 0.45)) ? best : null;
+  }
+
+  // 电话按当前校区挑（原文常写成"020-xxx（北校区）、020-yyy（南校区）"）
+  function pickPhone(phone) {
+    var parts = String(phone).split(/[、,，;；\s]+/).filter(Boolean);
+    if (!parts.length) return "";
+    var want = currentCampus() === "north" ? /北校区|北校/ : /南校区|南校|大学城/;
+    for (var i = 0; i < parts.length; i++) {
+      if (want.test(parts[i])) return parts[i].replace(/[（(].*?[）)]/g, "").trim();
+    }
+    return parts[0].replace(/[（(].*?[）)]/g, "").trim();
+  }
+
+  function placeFor(svc) {
+    if (!svc) return null;
+    var c = currentCampus();
+    var list = svc[c] || [];
+    return list.length ? list[0] : (svc.south[0] || svc.north[0] || null);
+  }
+
+  function buildCard(card) {
+    var svc = card.service || findService(card.title || "");
+    var c = el("div", "card");
+
+    var head = el("div", "card-head");
+    head.appendChild(el("b", null, card.title || (svc && svc.title) || "详情"));
+    if (svc) {
+      var campusNow = currentCampus();
+      var has = (svc[campusNow] || []).length > 0;
+      var other = campusNow === "north" ? svc.south : svc.north;
+      var tag, cls;
+      if (svc.online && !has) { tag = "💻 线上办理"; cls = "badge online"; }
+      else if (has) { tag = "✅ 本校可办"; cls = "badge ok"; }
+      else if ((other || []).length) {
+        tag = "⚠️ 需到" + (campusNow === "north" ? "大学城" : "白云山") + "校区";
+        cls = "badge warn";
+      } else { tag = "⚪ 官网未公布地点"; cls = "badge mute"; }
+      head.appendChild(el("span", cls, tag));
+    }
+    c.appendChild(head);
+
+    if (card.desc) c.appendChild(el("div", "meta", card.desc));
+    if (svc && svc.dept) c.appendChild(el("div", "meta", "部门：" + svc.dept));
+
+    var p = placeFor(svc);
+    if (p && p.name) {
+      var loc = "地点：" + (p.building_id && p.building_id.charAt(0) === "N" ? "白云山 · " : "大学城 · ") +
+        p.name + (p.room ? " " + p.room + " 室" : "");
+      c.appendChild(el("div", "meta", loc));
+    } else if (svc && svc.online) {
+      c.appendChild(el("div", "meta", "地点：线上办理"));
+    }
+
+    if (svc && svc.hours) {
+      var h = parseHours(svc.hours, currentCampus());
+      var line = el("div", "hours " + h.state);
+      if (h.state === "open") line.textContent = "🟢 现在可办" + (h.closeAt ? " · " + h.closeAt + " 下班" : "");
+      else if (h.state === "closed") line.textContent = "🔴 今日已下班" + (h.openAt ? " · 开放时间 " + h.openAt : "");
+      else line.textContent = "⚪ 办公时间：官网未公布";
+      c.appendChild(line);
+      if (h.state !== "unknown") c.appendChild(el("div", "meta sub", h.text));
+    }
+
+    if (svc && svc.materials && svc.materials.length) {
+      var mw = el("div", "mats");
+      mw.appendChild(el("div", "meta", "材料（" + svc.materials.length + " 项）"));
+      svc.materials.slice(0, 3).forEach(function (m) {
+        mw.appendChild(el("div", "mat-item", "· " + m));
+      });
+      if (svc.materials.length > 3) mw.appendChild(el("div", "meta", "……共 " + svc.materials.length + " 项"));
+      c.appendChild(mw);
+    }
+
+    var acts = el("div", "acts");
+    if (p && p.name) {
+      var b1 = el("button", "act", "🗺 导航到这里");
+      b1.addEventListener("click", function () {
+        var r = nav.setPlaces("", p.name);
+        var t = nav.findPlace(p.name);
+        if (t) nav.flyTo(t.x, t.z, 150, 320);
+        addSys(r && r.to ? "已在地图上定位到「" + r.to + "」，选个起点就能画路线" : "未找到该地点");
+      });
+      acts.appendChild(b1);
+    }
+    if (svc && svc.phone) {
+      var phone = pickPhone(svc.phone);
+      if (phone) {
+        var b2 = el("button", "act", "📞 " + phone);
+        b2.addEventListener("click", function () { location.href = "tel:" + phone; });
+        acts.appendChild(b2);
+      }
+    }
+    if (svc && svc.materials && svc.materials.length) {
+      var b3 = el("button", "act", "📋 复制材料");
+      b3.addEventListener("click", function () {
+        var txt = svc.materials.join("\n");
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(txt).then(function () { addSys("材料清单已复制"); },
+            function () { addSys("复制失败，请手动选择"); });
+        } else { addSys("当前环境不支持剪贴板"); }
+      });
+      acts.appendChild(b3);
+    }
+    var srcUrl = (svc && (svc.url || svc.src)) || card.url;
+    if (srcUrl) {
+      var b4 = el("button", "act", "🔗 官方原文");
+      b4.addEventListener("click", function () { window.open(srcUrl, "_blank", "noopener"); });
+      acts.appendChild(b4);
+    }
+    if (acts.children.length) c.appendChild(acts);
+    return c;
+  }
+
   function addMsg(role, text, card) {
     var m = el("div", "msg " + role, text);
-    if (card && (card.title || card.desc)) {
-      var c = el("div", "card");
-      var t = el("div");
-      t.appendChild(el("b", null, card.title || "详情"));
-      c.appendChild(t);
-      if (card.desc) c.appendChild(el("div", "meta", card.desc));
-      if (card.url) {
-        var a = document.createElement("a");
-        a.href = card.url;
-        a.target = "_blank";
-        a.rel = "noopener";
-        a.textContent = "查看官方页面 ↗";
-        a.style.display = "inline-block";
-        a.style.marginTop = "4px";
-        a.style.fontSize = "11.5px";
-        c.appendChild(a);
-      }
-      m.appendChild(c);
+    if (card && (card.title || card.desc || card.service)) {
+      m.appendChild(buildCard(card));
     }
     body.appendChild(m);
     body.scrollTop = body.scrollHeight;
@@ -227,7 +391,7 @@
       if (it.p) parts.push("电话：" + it.p);
       return {
         text: parts.join("\n"),
-        card: { title: it.t, desc: it.d || "", url: it.u || it.src || "" },
+        card: { title: it.t, desc: it.d || "", url: it.u || it.src || "", service: null },
       };
     }
     return { text: "离线模式下我只能处理校园地点与常见办事事项。试试问我「从文采园怎么去图书馆」或「成绩单在哪办」。" };
@@ -287,7 +451,12 @@
       busy = false;
       sendBtn.disabled = false;
       if (pending) pending.remove();
-      addMsg("bot", payload.answer || payload.text, payload.card);
+      // 卡片统一补上本地办事数据（校区/楼栋/时段/材料），在线离线都走这一条
+      var card = payload.card;
+      if (card && !card.service) {
+        card.service = findService(card.title || "");
+      }
+      addMsg("bot", payload.answer || payload.text, card);
       applyAction(payload);
     };
 

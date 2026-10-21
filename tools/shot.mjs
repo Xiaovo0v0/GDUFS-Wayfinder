@@ -49,7 +49,7 @@ try {
 
   if (jsBefore) {
     await b.eval(jsBefore, { awaitPromise: false });
-    await sleep(1200);
+    await sleep(Number(argOf('--after', '1200')));
   }
 
   fs.mkdirSync(path.dirname(out), { recursive: true });

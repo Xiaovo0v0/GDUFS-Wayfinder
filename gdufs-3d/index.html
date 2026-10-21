@@ -283,6 +283,30 @@
     #bcard { width: calc(100vw - 32px); bottom: 12px; }
     #topbar { right: 16px; }
   }
+  /* ---------- 办事卡片（C3） ---------- */
+  .card-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card-head b { font-size: 13px; }
+  .badge {
+    font-size: 10px; padding: 1px 7px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-500);
+  }
+  .badge.ok { background: #e8f5ec; color: #1c7d45; border-color: #c6e6d3; }
+  .badge.warn { background: var(--gw-red-soft); color: #a30d1b; border-color: #f4c7cc; }
+  .badge.online { background: var(--gw-blue-100); color: var(--gw-blue-700); border-color: #cfe0f5; }
+  .badge.mute { background: var(--surface-2); color: var(--ink-300); }
+  .card .hours { margin-top: 5px; font-size: 12px; font-weight: 600; }
+  .card .hours.open { color: #1c7d45; }
+  .card .hours.closed { color: #a30d1b; }
+  .card .hours.unknown { color: var(--ink-300); font-weight: 400; }
+  .card .meta.sub { font-size: 11px; color: var(--ink-300); }
+  .card .mats { margin-top: 6px; border-top: 1px dashed var(--line); padding-top: 5px; }
+  .mat-item { font-size: 11.5px; color: var(--ink-700); line-height: 1.55; }
+  .card .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .card .act {
+    border: 1px solid var(--line); background: var(--surface-2); color: var(--gw-blue-700);
+    font-size: 11.5px; padding: 4px 9px; border-radius: 999px; cursor: pointer;
+  }
+  .card .act:hover { background: var(--gw-blue-100); border-color: var(--gw-blue-500); }
 </style>
 </head>
 <body>
@@ -379,6 +403,7 @@
 <script src="vendor/GLTFLoader.js"></script>
 <script src="gdufs-data.js"></script>
 <script src="north-data.js"></script>
+<script src="service-data.js"></script>
 <script src="faq-data.js"></script>
 <script src="info-data.js"></script>
 <script src="app.js"></script>
