@@ -78,8 +78,10 @@ def main(query: str) -> str:
 
 const SERVICE_DS = 'oAg72XjWiBUWdxd3b15jMZMNPv5OuVzAMcSJBcczuSfURfyxQTFS/mpYoRThFpcE';
 const WIKI_DS = 'jcEiWCnYSMTT/UtRIH1riaYYcyfAQtahp7Cjj98ofJEAYVF17RM3M39XAjff47Fh';
+// 模型名可用环境变量覆盖：GDUFS_MODEL=Qwen3.8-27B node tools/make_main_dsl.mjs
+const MODEL_NAME = process.env.GDUFS_MODEL || 'Qwen3.8-27B';
 const MODEL = `mode: chat
-          name: DeepSeek-V4-Flash-0731
+          name: ${MODEL_NAME}
           provider: langgenius/openai_api_compatible/openai_api_compatible`;
 
 const indent = (s, n) => s.split('\n').map((l) => (l ? ' '.repeat(n) + l : l)).join('\n');

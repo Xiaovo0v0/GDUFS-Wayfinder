@@ -7583,6 +7583,9 @@ window.GDUFS_AI = {
   function parseJson(text) {
     if (!text) return null;
     var s = String(text).trim();
+    // 推理型模型（Qwen / R1 等）会带 <think>…</think>，先整段剥掉再找 JSON
+    s = s.replace(/<think[^>]*>[\s\S]*?<\/think>/gi, "").trim();
+    s = s.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
     var m = s.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (m) s = m[1].trim();
     var i = s.indexOf("{"), j = s.lastIndexOf("}");
@@ -7749,7 +7752,10 @@ window.GDUFS_AI = {
         setBadge();
         var obj = parseJson(raw);
         if (!obj) {
-          finish({ answer: raw });
+          // 模型没按契约回 JSON（例如推理模型把答案写在 <think> 里），
+          // 至少把思考块剥掉再展示，别让用户看到一堆推理过程
+          var plain = String(raw).replace(/<think[^>]*>[\s\S]*?<\/think>/gi, "").trim();
+          finish({ answer: plain || raw });
           return;
         }
         finish({ ...obj, text: obj.answer, answer: obj.answer });

@@ -278,7 +278,7 @@ workflow:
           completion_params:
             temperature: 0
           mode: chat
-          name: DeepSeek-V4-Flash-0731
+          name: Qwen3.8-27B
           provider: langgenius/openai_api_compatible/openai_api_compatible
         query_variable_selector:
         - start
@@ -457,7 +457,7 @@ workflow:
             max_tokens: 900
             temperature: 0.2
           mode: chat
-          name: DeepSeek-V4-Flash-0731
+          name: Qwen3.8-27B
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: nav_llm-sys
@@ -715,7 +715,7 @@ workflow:
             max_tokens: 900
             temperature: 0.3
           mode: chat
-          name: DeepSeek-V4-Flash-0731
+          name: Qwen3.8-27B
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: svc_llm-sys
@@ -818,7 +818,7 @@ workflow:
             max_tokens: 900
             temperature: 0.3
           mode: chat
-          name: DeepSeek-V4-Flash-0731
+          name: Qwen3.8-27B
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: wiki_llm-sys
@@ -873,7 +873,7 @@ workflow:
             max_tokens: 300
             temperature: 0.6
           mode: chat
-          name: DeepSeek-V4-Flash-0731
+          name: Qwen3.8-27B
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: chat_llm-sys
