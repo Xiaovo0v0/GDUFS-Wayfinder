@@ -1,3 +1,5 @@
+> 证据截图（rtifacts/ 下）已在 2026-10-22 清理中删除，需要时用 	ools/shot.mjs 重新生成。当前状态见 [HANDOFF.md](HANDOFF.md)。
+
 # Dify 平台能力探查报告
 
 > 探查对象：http://172.17.1.46 （大赛组委会部署的 Dify）
