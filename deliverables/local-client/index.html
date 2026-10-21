@@ -7246,13 +7246,15 @@ window.GDUFS_INFO = {"B001":{"name":"大会堂（教工活动中心）","type":"
 <!-- ai-config.js -->
 <script>
 // Dify 应用接入配置
-// 应用：尚行 · 广外校园向导（Chatflow，路由 + 导航/办事/百科 三专家）
+// 应用：尚行 · 广外校园向导（Chatflow：路由 + 导航/办事/百科 三专家）
 // 控制台：http://172.17.1.46/app/80f06e29-0a32-40c1-971d-a91ab198af12/workflow
-// 密钥：Dify 控制台 → 访问点 → 后端服务 API → API 密钥
-// 说明：这是 WebApp 级别的密钥，仅能调用本应用；如更换，在控制台新建后覆盖这里
+// 密钥：Dify 控制台 → 访问 API → 后端服务 API → API 密钥
+// 说明：这是 WebApp 级密钥，只能调用本应用。换模型可跑
+//       node tools/dify_switch_model.mjs <模型名>，脚本会自动改写本文件并重打单文件。
 window.GDUFS_AI = {
   base: "http://172.17.1.46/v1",
   key: "app-bNUA0eExnRsNEj2sS8b7EDFf",
+  model: "DeepSeek-V4-Flash-0731",
   appId: "80f06e29-0a32-40c1-971d-a91ab198af12",
   timeout: 45000,
 };
@@ -7285,6 +7287,8 @@ window.GDUFS_AI = {
   var head = document.getElementById("ai-head");
 
   var online = null; // null=未知 true=在线 false=离线
+  // ?ai=off 强制走本地规则（现场网络不通时用来稳定演示，README 里有说明）
+  var FORCE_OFFLINE = /[?&]ai=off/.test(location.search);
   var conversationId = "";  // 多轮会话 id
   var busy = false;
 
@@ -7661,10 +7665,25 @@ window.GDUFS_AI = {
     }
     var it = localFaq(q);
     if (it) {
+      // 有本地办事数据时，用与卡片同源的字段组织答案，
+      // 避免"文字说白云山、卡片说大学城"这种自相矛盾
+      var svc = findService(it.t || "");
+      var p = svc ? placeFor(svc) : null;
       var parts = [];
       if (it.d) parts.push("部门：" + it.d);
-      if (it.l) parts.push("地点：" + it.l);
-      if (it.h) parts.push("时间：" + it.h);
+      if (p && p.name) {
+        parts.push("地点：" + p.name + (p.room ? " " + p.room + " 室" : ""));
+      } else if (it.l) {
+        parts.push("地点：" + it.l);
+      }
+      if (svc && svc.hours) {
+        var hh = parseHours(svc.hours, currentCampus());
+        if (hh.state === "open") parts.push("时间：" + hh.text + "（现在可以办理）");
+        else if (hh.state === "closed") parts.push("时间：" + hh.text + "（今日已下班）");
+        else parts.push("时间：" + hh.text);
+      } else if (it.h) {
+        parts.push("时间：" + it.h);
+      }
       if (it.m) parts.push("材料：" + it.m);
       if (it.s) parts.push("流程：" + it.s);
       if (it.p) parts.push("电话：" + it.p);
@@ -7740,7 +7759,8 @@ window.GDUFS_AI = {
       applyAction(payload);
     };
 
-    if (online === false || !CFG.key) {
+    if (FORCE_OFFLINE || online === false || !CFG.key) {
+      if (FORCE_OFFLINE) { online = false; setBadge(); }
       var local = localAnswer(q);
       setTimeout(function () { finish(local, false); }, 200);
       return;
@@ -7791,6 +7811,7 @@ window.GDUFS_AI = {
   if (av) av.textContent = (window.GDUFS_LANG && window.GDUFS_LANG.get() === "en") ? "Y" : "语";
 
   addMsg("bot", NORTH ? T("ai.greet.north") : T("ai.greet"));
+  if (FORCE_OFFLINE) online = false;
   setBadge();
 
   // 深链 ?q=… ：从卡片或外链带问题进来时自动问一次
