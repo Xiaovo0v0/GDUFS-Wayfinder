@@ -21,18 +21,18 @@ OUT = os.path.join(REPO, "deliverables", "演示视频.mp4")
 W, H = 1440, 810
 
 items = []
-items.append((os.path.join(VID, "cards", "title.png"), 5.0))
+items.append((os.path.join(VID, "cards", "title.png"), 4.5))
 for seg in ("seg_main", "seg_north", "seg_en"):
     timing = json.load(open(os.path.join(VID, seg, "timing.json"), encoding="utf-8"))
     for f in timing:
         items.append((os.path.join(VID, seg, "frames", f["file"]), f["dur"]))
-items.append((os.path.join(VID, "cards", "end.png"), 4.5))
+items.append((os.path.join(VID, "cards", "end.png"), 3.5))
 
 if os.path.isdir(NORM):
     shutil.rmtree(NORM)
 os.makedirs(NORM, exist_ok=True)
 
-lines = []
+lines = []  # 保留变量以免影响其它引用
 for i, (src, dur) in enumerate(items):
     im = Image.open(src).convert("RGB")
     if im.size != (W, H):
@@ -44,19 +44,33 @@ for i, (src, dur) in enumerate(items):
         im = im.crop((left, top, left + W, top + H))
     dst = os.path.join(NORM, "%05d.jpg" % (i + 1))
     im.save(dst, quality=93)
-    lines.append("file '%s'" % dst.replace("\\", "/"))
-    lines.append("duration %.3f" % dur)
+    items[i] = (dst, dur)
 
-lines.append("file '%s'" % os.path.join(NORM, "%05d.jpg" % len(items)).replace("\\", "/"))
-listfile = os.path.join(VID, "concat.txt")
-open(listfile, "w", encoding="utf-8").write("\n".join(lines) + "\n")
+# 用固定帧率铺帧：每张按它的时长重复 N 次，比 concat 的 duration 可靠得多
+# （concat 的最后一个 duration 会被 ffmpeg 忽略，导致片尾要么丢要么重复）
+FPS = 25
+seqdir = os.path.join(VID, "seq")
+if os.path.isdir(seqdir):
+    shutil.rmtree(seqdir)
+os.makedirs(seqdir, exist_ok=True)
 
-total = sum(d for _, d in items)
-print("片段 %d 个，总时长 %.1f s" % (len(items), total))
+k = 0
+for src, dur in items:
+    n = max(1, int(round(dur * FPS)))
+    for _ in range(n):
+        k += 1
+        dstf = os.path.join(seqdir, "%05d.jpg" % k)
+        try:
+            os.link(src, dstf)          # 同盘硬链接，不占空间
+        except OSError:
+            shutil.copyfile(src, dstf)
+
+total = k / float(FPS)
+print("片段 %d 个，铺成 %d 帧 @%dfps，时长 %.1f s" % (len(items), k, FPS, total))
 
 cmd = [
-    FF, "-y", "-f", "concat", "-safe", "0", "-i", listfile,
-    "-vf", "fps=30,format=yuv420p",
+    FF, "-y", "-framerate", str(FPS), "-i", os.path.join(seqdir, "%05d.jpg"),
+    "-vf", "format=yuv420p", "-r", "30",
     "-c:v", "libx264", "-preset", "medium", "-crf", "20",
     "-movflags", "+faststart",
     OUT,
