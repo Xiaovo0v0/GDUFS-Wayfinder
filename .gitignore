@@ -27,3 +27,20 @@ deliverables/team.json
 # 审计时解压的副本，不需要进仓库
 artifacts/audit/
 artifacts/video/seq/
+
+# ============ 协作仓库策略（2026-10-22）============
+# 1) 密钥：真实 Dify 密钥只放本地，不进仓库
+gdufs-3d/ai-config.local.js
+
+# 2) 构建产物：dist 由 tools/build_single_file.mjs 生成
+gdufs-3d/dist/
+
+# 3) 大体积成品：视频与打包 zip 走 GitHub Release，不进仓库
+deliverables/*.mp4
+deliverables/*.zip
+
+# 4) 早期整理版资料包（已被 data/ 与 gdufs-3d/ 取代）
+gdufs-south-campus/
+
+# 5) 打包生成、且内嵌了密钥的单文件网页（由 tools/build_single_file.mjs 生成）
+deliverables/local-client/*.html

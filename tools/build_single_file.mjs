@@ -15,6 +15,12 @@ console.log('scripts:', scripts);
 
 let inline = '';
 for (const src of scripts) {
+  const p = path.join(ROOT, src);
+  if (!fs.existsSync(p)) {
+    // 例如 ai-config.local.js（存密钥，不进仓库）：没有就跳过，前端自动降级
+    console.warn('跳过缺失的脚本：', src);
+    continue;
+  }
   const code = read(src);
   inline += `\n<!-- ${src} -->\n<script>\n${code.replace(/<\/script>/g, '<\\/script>')}\n</script>\n`;
 }
