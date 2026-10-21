@@ -1,4 +1,4 @@
-// 验证本地客户端安装包：解压到临时目录，用 file:// 打开，检查南校 / 北校 / 离线问答。
+// 本地客户端验收：解压安装包 → 用 file:// 打开 → 逐条跑「评委 3 分钟验收」的每一项。
 //   node tools/verify_local_client.mjs
 import fs from 'node:fs';
 import os from 'node:os';
@@ -22,60 +22,92 @@ const entry = ['index.html', '尚行-广外校园向导.html'].find((f) => files
 if (!entry) { console.error('找不到入口 HTML'); process.exit(1); }
 const base = 'file:///' + path.join(DIR, entry).replace(/\\/g, '/');
 
-let portSeq = 9394;
-async function open(url, waitMs) {
-  const b = new Browser({ port: portSeq++, visible: false });
+let port = 9400;
+let ok = true;
+const fail = (m) => { console.error('   ❌ ' + m); ok = false; };
+const pass = (m) => console.log('   ✅ ' + m);
+
+async function withPage(url, waitMs, fn) {
+  const b = new Browser({ port: port++, visible: false });
   await b.launch(url);
   await sleep(waitMs);
-  return b;
+  try { await fn(b); } finally { await b.close(); await sleep(1200); }
 }
 
-let ok = true;
-const fail = (m) => { console.error('❌', m); ok = false; };
+const ev = (b, expr, awaitPromise = false) => b.eval(expr, { awaitPromise }).then((s) => JSON.parse(s));
 
-// 南校
-{
-  const b = await open(base, 7000);
-  const s = JSON.parse(await b.eval(`JSON.stringify({
+console.log('\n【1】南校首页');
+await withPage(base + '?lang=zh', 7000, async (b) => {
+  const s = await ev(b, `JSON.stringify({
     mode:(window.__navDebug||{}).mode, buildings:(window.GDUFS_DATA||{buildings:[]}).buildings.length,
-    services:(window.GDUFS_SERVICE||[]).length, glb: typeof window.GDUFS_GLB_URL
-  })`, { awaitPromise: false }));
-  console.log('南校：', JSON.stringify(s));
-  if (s.mode !== 'glb') fail('南校没有加载 GLB 模型');
-  if (s.buildings !== 51) fail('南校建筑数不是 51');
-  if (s.services !== 40) fail('办事数据不是 40 条');
+    trees:(window.__navDebug||{}).treeCount, services:(window.GDUFS_SERVICE||[]).length,
+    glb: typeof window.GDUFS_GLB_URL, three: typeof window.THREE
+  })`);
+  console.log('   ', JSON.stringify(s));
+  s.mode === 'glb' ? pass('GLB 模型已加载（file:// 下）') : fail('模型未加载，mode=' + s.mode);
+  s.buildings === 51 ? pass('南校 51 栋建筑') : fail('建筑数 ' + s.buildings);
+  s.services === 40 ? pass('办事数据 40 条') : fail('办事数据 ' + s.services);
+  s.trees > 500 ? pass('行道树 ' + s.trees + ' 棵') : fail('树太少');
   await b.shot(path.join(REPO, 'artifacts/3d/local_verify_south.png'));
-  await b.close();
-  await sleep(1500);
-}
+});
 
-// 北校 + 强制离线问答
-{
-  const b = await open(base + '?campus=north&ai=off', 7000);
-  const s = JSON.parse(await b.eval(`JSON.stringify({
+console.log('\n【2】路线规划');
+await withPage(base + '?lang=zh', 7000, async (b) => {
+  const s = await ev(b, `(() => {
+    window.__navDebug.setPlaces('文采园（第一饭堂）','图书馆');
+    return JSON.stringify({ dist: Math.round(window.__lastRouteDist||0), pts:(window.__lastRoute||[]).length,
+      status: document.querySelector('#status').innerText.replace(/\\s+/g,' ').slice(0,50) });
+  })()`);
+  console.log('   ', JSON.stringify(s));
+  Math.abs(s.dist - 820) < 30 ? pass('算路 ' + s.dist + ' 米') : fail('算路距离异常 ' + s.dist);
+  s.pts > 15 ? pass('折线 ' + s.pts + ' 个点') : fail('折线点太少');
+});
+
+console.log('\n【3】第一人称漫游');
+await withPage(base + '?lang=zh', 7000, async (b) => {
+  const s = await ev(b, `(async () => {
+    window.__navDebug.setPlaces('文采园（第一饭堂）','图书馆');
+    await new Promise(r => setTimeout(r, 500));
+    window.__walk.start();
+    await new Promise(r => setTimeout(r, 1500));
+    const on = window.__walk.isOn();
+    const bar = !!document.querySelector('#walkbar');
+    window.__walk.stop();
+    return JSON.stringify({ on, bar });
+  })()`, true);
+  console.log('   ', JSON.stringify(s));
+  s.on ? pass('漫游可启动') : fail('漫游没启动');
+});
+
+console.log('\n【4】英文界面');
+await withPage(base + '?lang=en', 7000, async (b) => {
+  const s = await ev(b, `JSON.stringify({ title:(document.querySelector('#panel h1')||{}).innerText,
+    from:(document.querySelector('.row label')||{}).innerText, lang: document.documentElement.lang })`);
+  console.log('   ', JSON.stringify(s));
+  s.title === 'GDUFS Campus Guide' ? pass('面板标题英文') : fail('标题仍是 ' + s.title);
+  s.from === 'From' ? pass('表单标签英文') : fail('标签仍是 ' + s.from);
+});
+
+console.log('\n【5】北校 + 强制离线');
+await withPage(base + '?campus=north&ai=off', 7000, async (b) => {
+  const s = await ev(b, `JSON.stringify({
     buildings:(window.GDUFS_NORTH||{buildings:[]}).buildings.length,
-    layers:Object.keys((window.GDUFS_NORTH||{}).layers||{}),
-    title:(document.querySelector('#panel h1')||{}).innerText
-  })`, { awaitPromise: false }));
-  console.log('北校：', JSON.stringify(s));
-  if (s.buildings !== 42) fail('北校建筑数不是 42');
-  if (!s.layers.includes('roads')) fail('北校道路图层缺失');
+    layers:Object.keys((window.GDUFS_NORTH||{}).layers||{}) })`);
+  console.log('   ', JSON.stringify(s));
+  s.buildings === 42 ? pass('北校 42 栋') : fail('北校建筑数 ' + s.buildings);
+  s.layers.includes('roads') ? pass('道路图层（data URI）') : fail('道路图层缺失');
 
-  await b.eval(`(() => {
-    const i=document.querySelector('#ai-input'); i.value='成绩单在哪办';
-    i.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('#ai-send').click();
-  })()`, { awaitPromise: false });
+  await b.eval(`(() => { const i=document.querySelector('#ai-input'); i.value='成绩单在哪办';
+    i.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('#ai-send').click(); })()`, { awaitPromise: false });
   await sleep(2500);
-  const r = JSON.parse(await b.eval(`JSON.stringify({
-    badge:(document.querySelector('#ai-badge')||{}).innerText,
-    msg:(document.querySelectorAll('#ai-body .msg.bot')[1]||{}).innerText?.slice(0,80)
-  })`, { awaitPromise: false }));
-  console.log('离线问答：', JSON.stringify(r));
-  if (!/离线/.test(r.badge || '')) fail('?ai=off 没有生效');
+  const r = await ev(b, `JSON.stringify({ badge:(document.querySelector('#ai-badge')||{}).innerText,
+    msg:(document.querySelectorAll('#ai-body .msg.bot')[1]||{}).innerText?.slice(0,70) })`);
+  console.log('   ', JSON.stringify(r));
+  /离线/.test(r.badge) ? pass('?ai=off 生效') : fail('离线徽章没出现');
+  /行政楼/.test(r.msg || '') ? pass('离线问答按北校给地点') : fail('离线回答不对：' + r.msg);
   await b.shot(path.join(REPO, 'artifacts/3d/local_verify_north.png'));
-  await b.close();
-}
+});
 
 fs.rmSync(DIR, { recursive: true, force: true });
-console.log(ok ? '✅ 本地客户端可用（南校 / 北校 / 离线问答）' : '❌ 本地客户端异常');
+console.log('\n' + (ok ? '✅ 全部通过：本地客户端可以直接交给评委' : '❌ 有项目未通过，见上面'));
 process.exit(ok ? 0 : 1);

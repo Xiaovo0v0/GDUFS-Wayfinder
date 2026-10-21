@@ -5304,6 +5304,16 @@ window.GDUFS_NAME_EN = {"1号门（中环路·隧道旁）": "Gate 1 (Zhonghuan 
   window.GDUFS_LANG = { get: function () { return lang; }, t: t, tName: tName, apply: applyLang };
   window.t = t;
   window.tName = tName;
+
+  // 自己负责首次铺文案：单文件版里 i18n.js 被内联到 body 末尾，
+  // 页面底部的切换脚本在它之前执行，那时 GDUFS_LANG 还不存在，
+  // 靠页面脚本调用 apply 会静默失效（?lang=en 打开仍是中文）。
+  function boot() { applyLang(lang); }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 })();
 
 </script>
