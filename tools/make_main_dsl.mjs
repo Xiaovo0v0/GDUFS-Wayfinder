@@ -4,16 +4,32 @@
 //
 // 结构：
 //   开始 → 意图路由(question-classifier)
-//      ├ 导航 → 算路代码节点 → 导航专家 LLM ┐
-//      ├ 办事 → 检索办事库    → 办事专家 LLM ┤
-//      ├ 百科 → 检索百科库    → 百科专家 LLM ┼→ 汇总 → 回答
-//      └ 闲聊 → 直接 LLM                    ┘
+//      ├ 导航 → 算路代码节点（Skill: route-calc）    → 导航专家 LLM ┐
+//      ├ 办事 → 检索办事库 → 事项结构化节点（Skill:   ├→ 汇总 → 回答
+//      │                    materials-check + office-hours）→ 办事专家 LLM ┤
+//      ├ 百科 → 检索百科库                            → 百科专家 LLM ┤
+//      └ 闲聊 → 直接 LLM                                            ┘
 
 import fs from 'node:fs';
 import path from 'node:path';
 
 const REPO = 'C:/Users/86134/Desktop/gdufs';
 const OUT = path.join(REPO, 'skills/dsl/main-app.yml');
+
+// 办事事项数据（给 materials-check / office-hours 两个技能用）
+const svcJs = fs.readFileSync(path.join(REPO, 'gdufs-3d/service-data.js'), 'utf8');
+const SERVICES = JSON.parse(svcJs.slice(svcJs.indexOf('['), svcJs.lastIndexOf(';'))).map((s) => ({
+  title: s.title,
+  dept: s.dept,
+  hours: s.hours,
+  materials: s.materials,
+  phone: s.phone,
+  url: s.url,
+  south: s.south,
+  north: s.north,
+  online: s.online,
+}));
+
 
 // 复用 route-calc 的 Python 代码，避免两份实现漂移
 const routeYml = fs.readFileSync(path.join(REPO, 'skills/dsl/route-calc.yml'), 'utf8');
@@ -169,16 +185,160 @@ const NAV_PROMPT = `你是「导航专家」，负责校园步行导航。
 
 const SVC_PROMPT = `你是「办事专家」，负责广外的办事指南。
 
-检索到的资料：
+【结构化事实】（由 materials-check + office-hours 两个技能算出来的，最可信，优先使用）：
+{{#svc_code.result#}}
+
+【检索到的资料】（用于补充说明与原文细节）：
 {{#svc_kr.result#}}
 
 用户原话：{{#sys.query#}}
 
-严格依据检索资料，只输出一个 JSON 对象，不要代码块、不要任何解释：
-{"intent":"service","answer":"面向用户的完整回答：部门、地点（校区+楼栋+房间）、办理时间、所需材料、电话","card":{"title":"事项名称","desc":"一句话说明"}}
+要求：
+- 地点、材料、电话、办公时段一律以【结构化事实】为准；资料里与它冲突时以结构化事实为准
+- answer 必须以 status_text 的原句开头（例如"现在可以办理（17:10 下班）"或"今日已下班（下次开放 08:30）"），不要自己改写状态
+- place_here 为空而 place_other 有值，要明确说"这件事只能去另一个校区办"
+- 只输出一个 JSON 对象，不要代码块、不要任何解释：
+{"intent":"service","answer":"面向用户的完整回答：状态 + 部门、地点（校区+楼栋+房间）、办理时间、所需材料、电话","card":{"title":"事项名称","desc":"一句话说明"}}
 
-资料里没有的信息就写"官网未公布"，绝不编造。
+两条来源都没有的信息就写"官网未公布"，绝不编造。
 ${LANGFOLLOW}`;
+
+// 办事分支的结构化节点：把 materials-check 与 office-hours 两个技能的逻辑合起来跑，
+// 直接给出材料、电话、双校区办理点、此刻是否可办，再交给 LLM 组织语言。
+const SVC_PY = `
+import json
+import re
+from datetime import datetime, timezone, timedelta
+
+CST = timezone(timedelta(hours=8))
+
+
+def _now():
+    # Dify 代码沙箱跑在 UTC，这里强制按北京时间判断"现在能不能办"
+    return datetime.now(CST).replace(tzinfo=None)
+
+
+SERVICES = json.loads(r"""__SERVICE__""")
+
+WD = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "日": 0, "天": 0}
+
+
+def _out(obj, **kw):
+    return {"result": json.dumps(obj, ensure_ascii=False)}
+
+
+def _lcs(a, b):
+    if not a or not b:
+        return 0
+    best = 0
+    prev = [0] * (len(b) + 1)
+    for i in range(1, len(a) + 1):
+        cur = [0] * (len(b) + 1)
+        ai = a[i - 1]
+        for j in range(1, len(b) + 1):
+            if ai == b[j - 1]:
+                cur[j] = prev[j - 1] + 1
+                if cur[j] > best:
+                    best = cur[j]
+        prev = cur
+    return best
+
+
+def _match(query):
+    q = re.sub(r"[\\s，。？?、,.]", "", query or "")
+    best, bs = None, 0
+    for s in SERVICES:
+        t = re.sub(r"[（(].*?[）)]", "", s.get("title") or "")
+        t = re.sub(r"[\\s、/]", "", t)
+        if not t:
+            continue
+        sc = _lcs(q, t)
+        if sc > bs:
+            bs, best = sc, s
+    return (best, bs)
+
+
+def _hours(text, campus):
+    segs = [x for x in re.split(r"[；;]", text or "") if x.strip()]
+    key = ["北校区", "北校"] if campus == "north" else ["南校区", "南校", "大学城"]
+    hit = [x for x in segs if any(k in x for k in key)]
+    src = "；".join(hit if hit else segs)
+
+    # 先看是不是"日期区间"（报名窗口），别把 9 月 15 日～9 月 28 日 当成每天的 12:00-17:00
+    md = re.search(r"(\\d{1,2})\\s*月\\s*(\\d{1,2})\\s*日[^至到]*?(\\d{1,2})[:：](\\d{2})\\s*[至到\\-–~]+\\s*(\\d{1,2})\\s*月\\s*(\\d{1,2})\\s*日[^至到]*?(\\d{1,2})[:：](\\d{2})", src)
+    if md:
+        now = _now()
+        y = now.year
+        try:
+            start = datetime(y, int(md.group(1)), int(md.group(2)), int(md.group(3)), int(md.group(4)))
+            end = datetime(y, int(md.group(5)), int(md.group(6)), int(md.group(7)), int(md.group(8)))
+        except ValueError:
+            start = end = None
+        if start and end:
+            if end < start:
+                end = end.replace(year=y + 1)
+            return {"known": True, "open": start <= now <= end, "mode": "date_range",
+                    "open_at": start.strftime("%m-%d %H:%M"), "close_at": end.strftime("%m-%d %H:%M"),
+                    "note": src}
+
+    days = []
+    for m in re.finditer(r"周([一二三四五六日天])", src):
+        d = WD.get(m.group(1))
+        if d is not None and d not in days:
+            days.append(d)
+    ranges = []
+    for m in re.finditer(r"(\\d{1,2})[:：](\\d{2})\\s*[-–~至]\\s*(\\d{1,2})[:：](\\d{2})", src):
+        ranges.append([int(m.group(1)) * 60 + int(m.group(2)), int(m.group(3)) * 60 + int(m.group(4))])
+    if not ranges:
+        return {"known": False, "note": src or "官网未公布"}
+    now = _now()
+    dow = now.isoweekday() % 7
+    mins = now.hour * 60 + now.minute
+
+    def hhmm(v):
+        return "%02d:%02d" % (v // 60, v % 60)
+
+    open_now = bool((dow in days if days else True) and any(a <= mins <= b for a, b in ranges))
+    return {"known": True, "open": open_now, "mode": "weekly", "days": days,
+            "open_at": hhmm(ranges[0][0]), "close_at": hhmm(ranges[-1][1]), "note": src}
+
+
+def main(query: str) -> str:
+    campus = "north" if re.search(r"北校|白云山", query or "") else "south"
+    svc, score = _match(query)
+    if svc is None or score < 3:
+        return _out({"ok": False, "error": "未匹配到具体事项", "score": score})
+    here = svc.get(campus) or []
+    other_key = "north" if campus == "south" else "south"
+    other = svc.get(other_key) or []
+    h = _hours(svc.get("hours") or "", campus)
+
+    # 给 LLM 一句可直接引用的状态语，避免它自己发挥
+    if not h.get("known"):
+        status = "官网未公布办公时间"
+    elif h.get("mode") == "date_range":
+        status = ("当前处于受理窗口内（截止 %s）" % h["close_at"]) if h.get("open") \
+            else ("受理窗口已结束（%s 至 %s）" % (h["open_at"], h["close_at"]))
+    else:
+        status = ("现在可以办理（%s 下班）" % h["close_at"]) if h.get("open") \
+            else ("今日已下班（下次开放 %s）" % h["open_at"])
+
+    return _out({
+        "ok": True,
+        "item": svc.get("title"),
+        "department": svc.get("dept"),
+        "materials": svc.get("materials"),
+        "phone": svc.get("phone"),
+        "online": svc.get("online"),
+        "campus": campus,
+        "hours": h,
+        "status_text": status,
+        "place_here": here[0] if here else None,
+        "place_other": other[0] if other else None,
+        "url": svc.get("url"),
+        "match_score": score,
+    })
+`.trim();
 
 const WIKI_PROMPT = `你是「校园百科专家」。
 
@@ -214,7 +374,8 @@ const edges = [
   edge('qc', 'chat_llm', 'question-classifier', 'llm', '4'),
   edge('nav_code', 'nav_llm', 'code', 'llm'),
   edge('nav_llm', 'agg', 'llm', 'variable-aggregator'),
-  edge('svc_kr', 'svc_llm', 'knowledge-retrieval', 'llm'),
+  edge('svc_kr', 'svc_code', 'knowledge-retrieval', 'code'),
+  edge('svc_code', 'svc_llm', 'code', 'llm'),
   edge('svc_llm', 'agg', 'llm', 'variable-aggregator'),
   edge('wiki_kr', 'wiki_llm', 'knowledge-retrieval', 'llm'),
   edge('wiki_llm', 'agg', 'llm', 'variable-aggregator'),
@@ -349,8 +510,25 @@ ${indent(ROUTE_PY, 10)}
             children: null
 ${nodeTail('nav_code', 600, 140)}
 ${llmNode('nav_llm', '导航专家', 900, 140, NAV_PROMPT + LANGFOLLOW, { context: 'nav_code', temperature: 0.2, memory: false })}
-${krNode('svc_kr', '检索办事指南', 600, 300, SERVICE_DS)}
-${llmNode('svc_llm', '办事专家', 900, 300, SVC_PROMPT + LANGFOLLOW, { context: 'svc_kr' })}
+${krNode('svc_kr', '检索办事指南', 560, 300, SERVICE_DS)}
+    - data:
+        selected: false
+        title: '事项结构化（Skill: materials-check + office-hours）'
+        type: code
+        code_language: python3
+        variables:
+        - value_selector:
+          - start
+          - sys.query
+          variable: query
+        code: |-
+${indent(SVC_PY.replace('__SERVICE__', JSON.stringify(SERVICES)), 10)}
+        outputs:
+          result:
+            type: string
+            children: null
+${nodeTail('svc_code', 860, 300)}
+${llmNode('svc_llm', '办事专家', 1160, 300, SVC_PROMPT + LANGFOLLOW, { context: 'svc_kr' })}
 ${krNode('wiki_kr', '检索校园百科', 600, 460, WIKI_DS)}
 ${llmNode('wiki_llm', '百科专家', 900, 460, WIKI_PROMPT + LANGFOLLOW, { context: 'wiki_kr' })}
 ${llmNode('chat_llm', '闲聊', 900, 620, CHAT_PROMPT + LANGFOLLOW, { temperature: 0.6, maxTokens: 300 })}

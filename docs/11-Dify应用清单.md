@@ -7,17 +7,17 @@
 
 | # | 应用 | ID | WebApp | 形态 |
 |---|---|---|---|---|
-| 1 | **尚行 · 广外校园向导** | `b8d5c8c2-1c39-48bd-a6f8-284e81a108c5` | http://172.17.1.46/chat/5hscg6AuOajmRTtj | Chatflow（advanced-chat） |
+| 1 | **尚行 · 广外校园向导** | `80f06e29-0a32-40c1-971d-a91ab198af12` | http://172.17.1.46/chat/uxPRYFtTfUgAnDCR | Chatflow（advanced-chat） |
 | 2 | route-calc · 校园算路 | `9ae8f3f0-2cc0-4025-8177-1ef5dd708bde` | http://172.17.1.46/chat/5neKXV6umSXMfEyN | Workflow |
 | 3 | place-lookup · 地名解析 | `cfa4b844-ea57-45de-add2-29a47d15b8dd` | http://172.17.1.46/chat/48MhcrE6InUcJxRN | Workflow |
-| 4 | office-hours · 办公时间 | `7e6a8f58-32ab-4788-8229-f40bb0d25b23` | http://172.17.1.46/chat/YEcfhw7mvCqJOWOo | Workflow |
+| 4 | office-hours · 办公时间 | `6615e6a3-1013-49e1-94b8-a7acece03013` | http://172.17.1.46/chat/M2ildNC5YSwKIlva | Workflow |
 | 5 | materials-check · 材料清单 | `4b1bccfe-3437-474f-acba-24ae9fef478d` | http://172.17.1.46/chat/SExUf698gdq8seP7 | Workflow |
 
-主应用密钥（写在前端 `gdufs-3d/ai-config.js`）：`app-hNQasFeUioMKDtEwRJb9pDEb`
+主应用密钥（写在前端 `gdufs-3d/ai-config.js`）：`app-bNUA0eExnRsNEj2sS8b7EDFf`
 
 ## 主应用内部结构
 
-11 个节点 / 13 条边：
+12 个节点 / 14 条边：
 
 ```
 开始 → 意图路由（question-classifier：导航 / 办事 / 百科 / 闲聊）

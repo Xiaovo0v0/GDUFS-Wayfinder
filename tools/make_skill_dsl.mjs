@@ -186,7 +186,9 @@ def main(query: str) -> str:
 
 const PY_HOURS = `
 import json, re
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+CST = timezone(timedelta(hours=8))
 
 SERVICES = json.loads(r"""__SERVICE__""")
 
@@ -225,7 +227,8 @@ def main(item_title: str, campus: str = "south", now: str = "") -> str:
     if not ranges:
         return json.dumps({"ok": True, "item": svc["title"], "known": False,
                            "note": "官网未公布具体时段", "raw": text}, ensure_ascii=False)
-    dt = datetime.strptime(now, "%Y-%m-%d %H:%M") if now else datetime.now()
+    # 沙箱是 UTC，默认按北京时间
+    dt = datetime.strptime(now, "%Y-%m-%d %H:%M") if now else datetime.now(CST).replace(tzinfo=None)
     dow = dt.isoweekday() % 7          # python: Mon=0..Sun=6 -> 周日=0
     mins = dt.hour * 60 + dt.minute
     day_ok = (dow in days) if days else True
