@@ -48,3 +48,8 @@ deliverables/local-client/*.html
 # 6) 截图与验证产物（tools/shot.mjs、verify_local_client 生成）
 artifacts/3d/
 artifacts/*.png
+
+# 7) artifacts 涓嬪彧淇濈暀 blender 杈撳叆锛堥噸寤烘ā鍨嬬敤锛夛紝鍏朵綑閮芥槸璺戣剼鏈敓鎴愮殑
+artifacts/*
+!artifacts/blender/
+!artifacts/blender/**
