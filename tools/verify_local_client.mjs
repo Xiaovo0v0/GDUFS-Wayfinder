@@ -28,10 +28,20 @@ const fail = (m) => { console.error('   ❌ ' + m); ok = false; };
 const pass = (m) => console.log('   ✅ ' + m);
 
 async function withPage(url, waitMs, fn) {
-  const b = new Browser({ port: port++, visible: false });
-  await b.launch(url);
+  let b = null;
+  for (let attempt = 0; attempt < 4 && !b; attempt++) {
+    const portNow = port++;
+    try {
+      b = new Browser({ port: portNow, visible: false });
+      await b.launch(url);
+    } catch (e) {
+      b = null;
+      await sleep(2000);
+    }
+  }
+  if (!b) { fail('浏览器起不来：' + url); return; }
   await sleep(waitMs);
-  try { await fn(b); } finally { await b.close(); await sleep(1200); }
+  try { await fn(b); } finally { await b.close(); await sleep(2000); }
 }
 
 const ev = (b, expr, awaitPromise = false) => b.eval(expr, { awaitPromise }).then((s) => JSON.parse(s));
@@ -91,8 +101,10 @@ await withPage(base + '?lang=en', 7000, async (b) => {
 console.log('\n【5】北校 + 强制离线');
 await withPage(base + '?campus=north&ai=off', 7000, async (b) => {
   const s = await ev(b, `JSON.stringify({
+    mode:(window.__navDebug||{}).mode,
     buildings:(window.GDUFS_NORTH||{buildings:[]}).buildings.length,
     layers:Object.keys((window.GDUFS_NORTH||{}).layers||{}) })`);
+  s.mode === 'glb' ? pass('北校 LOD2 模型已加载') : fail('北校仍是程序化体块 mode=' + s.mode);
   console.log('   ', JSON.stringify(s));
   s.buildings === 42 ? pass('北校 42 栋') : fail('北校建筑数 ' + s.buildings);
   s.layers.includes('roads') ? pass('道路图层（data URI）') : fail('道路图层缺失');

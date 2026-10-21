@@ -16,9 +16,10 @@ import os
 import random
 
 ROOT = r"C:\Users\86134\Desktop\gdufs"
-SRC = os.path.join(ROOT, "artifacts", "blender", "buildings.json")
+# 可用环境变量指定输入与输出，方便同一套脚本生成北校区
+SRC = os.environ.get("GDUFS_SRC") or os.path.join(ROOT, "artifacts", "blender", "buildings.json")
 TEX = os.path.join(ROOT, "artifacts", "blender", "tex")
-OUT = os.path.join(ROOT, "gdufs-3d", "assets")
+OUT = os.environ.get("GDUFS_OUT") or os.path.join(ROOT, "gdufs-3d", "assets")
 os.makedirs(OUT, exist_ok=True)
 
 BAY = 3.6
@@ -312,7 +313,7 @@ for b in DATA["buildings"]:
 
 print("built", count, "failed", len(failed))
 
-glb = os.path.join(OUT, "gdufs_buildings.glb")
+glb = os.path.join(OUT, os.environ.get("GDUFS_NAME") or "gdufs_buildings.glb")
 bpy.ops.export_scene.gltf(
     filepath=glb,
     export_format="GLB",

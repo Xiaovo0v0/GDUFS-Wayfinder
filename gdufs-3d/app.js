@@ -1100,14 +1100,13 @@
   // 6.5 优先加载 Blender 导出的 LOD2 模型；失败则保留程序化几何
   // ============================================================
   (function loadDetailedModel() {
-    // 北校区暂时没有 GLB（模型文件是南校专属），直接用程序化体块
-    if (CAMPUS === "north") {
-      window.__navDebug.mode = "procedural";
-      return;
-    }
     if (!THREE.GLTFLoader) { return; }
+    // 南北两个校区各有自己的 GLB；加载失败就保留程序化体块
+    var glbUrl = (CAMPUS === "north")
+      ? (window.GDUFS_NORTH_GLB_URL || "assets/north_buildings.glb")
+      : (window.GDUFS_GLB_URL || "assets/gdufs_buildings.glb");
     var loader = new THREE.GLTFLoader();
-    loader.load(window.GDUFS_GLB_URL || "assets/gdufs_buildings.glb", function (gltf) {
+    loader.load(glbUrl, function (gltf) {
       var byId = {};
       D.buildings.forEach(function (b) { byId[b.id] = b; });
       var tagged = 0;
@@ -1116,7 +1115,7 @@
         o.castShadow = true;
         o.receiveShadow = true;
         var tag = (o.name || "") + "|" + (o.parent ? o.parent.name : "");
-        var mm = tag.match(/B\d{3}[A-Z]?/);
+        var mm = tag.match(/[BN]\d{3}/);
         var b = mm ? byId[mm[0]] : null;
         if (b) { o.userData.building = b; tagged++; }
         if (o.material && o.material.map) { o.material.map.anisotropy = 4; }

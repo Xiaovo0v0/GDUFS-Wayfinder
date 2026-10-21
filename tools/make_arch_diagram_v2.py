@@ -107,7 +107,7 @@ chip(210, y2 + 20, 560, y2 + 62, "Three.js 3D 校园地图", GREEN,
 chip(580, y2 + 20, 900, y2 + 62, "第一人称漫游 · 1.4 m/s", GREEN, GREEN_L)
 chip(920, y2 + 20, 1240, y2 + 62, "路线绘制 · 100 m 距离牌", GREEN, GREEN_L)
 chip(1260, y2 + 20, 1600, y2 + 62, "办事卡片 · 四按钮联动", GREEN, GREEN_L)
-d.text((212, y2 + 82), "南校区 51 栋 LOD2（Blender 导出 GLB）　·　北校区 42 栋（官方平面图矢量化）　·　"
+d.text((212, y2 + 82), "南校区 51 栋 + 北校区 42 栋，同一套 Blender 管线导出 LOD2　·　"
                        "路网 220 节点 / 239 边　·　断网自动降级本地规则",
        font=font(18), fill=MUTED)
 

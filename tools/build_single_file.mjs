@@ -20,10 +20,18 @@ for (const src of scripts) {
 }
 html = html.replace(/\s*<script src="[^"]+"><\/script>/g, '');
 
-// 2) GLB → data URI
+// 2) GLB → data URI（南校、北校各一份）
 const glb = fs.readFileSync(path.join(ROOT, 'assets/gdufs_buildings.glb'));
 const glbUri = 'data:model/gltf-binary;base64,' + glb.toString('base64');
-const glbScript = `<script>window.GDUFS_GLB_URL = ${JSON.stringify(glbUri)};</script>`;
+let glbScript = `<script>window.GDUFS_GLB_URL = ${JSON.stringify(glbUri)};</script>`;
+
+const northGlbPath = path.join(ROOT, 'assets/north_buildings.glb');
+if (fs.existsSync(northGlbPath)) {
+  const nglb = fs.readFileSync(northGlbPath);
+  const nUri = 'data:model/gltf-binary;base64,' + nglb.toString('base64');
+  glbScript += `\n<script>window.GDUFS_NORTH_GLB_URL = ${JSON.stringify(nUri)};</script>`;
+  console.log('north glb', (nglb.length / 1024).toFixed(0) + ' KB');
+}
 
 // 3) 插到 </body> 前
 html = html.replace('</body>', `${glbScript}\n${inline}\n</body>`);
