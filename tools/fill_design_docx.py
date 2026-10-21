@@ -170,6 +170,10 @@ set_cell(t.cell(30, 3), FUTURE)
 # ---------------- 附图（表格之后） ----------------
 doc.add_page_break()
 h = doc.add_paragraph()
+LOGO = os.path.join(REPO, "deliverables", "logo.png")
+if os.path.exists(LOGO):
+    lp = doc.add_paragraph()
+    lp.add_run().add_picture(LOGO, width=Cm(1.6))
 hr = h.add_run("附：作品界面实拍")
 hr.font.size = Pt(12)
 hr.font.bold = True
