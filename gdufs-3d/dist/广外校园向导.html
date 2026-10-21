@@ -7754,11 +7754,20 @@ window.GDUFS_AI = {
     input.value = "";
     busy = true;
     sendBtn.disabled = true;
-    var pending = addSys(online === false ? "本地规则检索中…" : "正在查询校园知识库…");
+    var waitLabel = online === false ? "本地规则检索中" : "正在查询校园知识库";
+    var pending = addSys(waitLabel + "…");
+    // 模型有时要 10 秒以上，把秒数显示出来，别让人以为卡死了
+    var waitT0 = Date.now();
+    var waitTick = setInterval(function () {
+      if (pending && pending.parentNode) {
+        pending.textContent = waitLabel + "… " + Math.round((Date.now() - waitT0) / 1000) + "s";
+      }
+    }, 1000);
 
     var finish = function (payload, isOnline) {
       busy = false;
       sendBtn.disabled = false;
+      clearInterval(waitTick);
       if (pending) pending.remove();
       // 卡片统一补上本地办事数据（校区/楼栋/时段/材料），在线离线都走这一条
       var card = payload.card;
