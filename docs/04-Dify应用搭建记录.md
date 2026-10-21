@@ -13,7 +13,7 @@
 | 知识库 1 | 广外办事指南 | `1b06dcd0-5739-4f5a-8d4f-09653d7f7879` | 40 条办事事项，约 12,550 字 |
 | 知识库 2 | 广外校园百科 | `be70e66b-8b9f-4429-8a73-1db3081abd59` | 61 条建筑/场馆/校门/食堂档案，约 16,858 字 |
 | 应用 | 广外校园向导（Chatflow） | `cd9d369f-214d-44e3-a4a3-2e21b39f1e8f` | 6 个节点 |
-| Web 应用 | — | <http://172.17.1.46/chat/uxPRYFtTfUgAnDCR> | 可直接分享的公开链接 |
+| Web 应用 | — | <http://172.17.1.46/chat/uJIqVGKRsnkz7GY8> | 可直接分享的公开链接 |
 | 服务 API | — | `http://172.17.1.46/v1` + `app-EA4kH6NM3LtuIUNvkAaruaaF` | 前端调用用 |
 
 两个知识库都用：**高质量索引 + bge-m3 向量 + 混合检索 + bge-reranker-v2-m3 重排，TopK=4**。

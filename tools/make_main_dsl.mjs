@@ -79,7 +79,8 @@ def main(query: str) -> str:
 const SERVICE_DS = 'oAg72XjWiBUWdxd3b15jMZMNPv5OuVzAMcSJBcczuSfURfyxQTFS/mpYoRThFpcE';
 const WIKI_DS = 'jcEiWCnYSMTT/UtRIH1riaYYcyfAQtahp7Cjj98ofJEAYVF17RM3M39XAjff47Fh';
 // 模型名可用环境变量覆盖：GDUFS_MODEL=Qwen3.8-27B node tools/make_main_dsl.mjs
-const MODEL_NAME = process.env.GDUFS_MODEL || 'Qwen3.8-27B';
+// 默认值 = 当前线上在用的模型（周五 DeepSeek-V4-Flash 下线后再改这里，或用环境变量）
+const MODEL_NAME = process.env.GDUFS_MODEL || 'DeepSeek-V4-Flash-0731';
 const MODEL = `mode: chat
           name: ${MODEL_NAME}
           provider: langgenius/openai_api_compatible/openai_api_compatible`;
