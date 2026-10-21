@@ -20,3 +20,6 @@ temp/
 artifacts/video/**/frames/
 artifacts/video/norm/
 tools/bin/
+
+# 团队个人信息，不进仓库
+deliverables/team.json

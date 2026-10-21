@@ -5,6 +5,7 @@
 输入：deliverables/官方模板-初赛设计方案.docx（官方原件）
 输出：deliverables/广外校园向导-初赛设计方案.docx
 """
+import json
 import os
 
 import docx
@@ -139,10 +140,32 @@ def set_cell(cell, text, size=10.5, bold=False, align=None):
 doc = docx.Document(TPL)
 t = doc.tables[0]
 
-set_cell(t.cell(0, 1), TEAM)
+# 团队信息：有 deliverables/team.json 就用它，没有则留占位（tools/fill_team.py 负责生成）
+TEAM_JSON = os.path.join(REPO, "deliverables", "team.json")
+TEAM_INFO = {}
+if os.path.exists(TEAM_JSON):
+    try:
+        with open(TEAM_JSON, encoding="utf-8") as f:
+            TEAM_INFO = json.load(f)
+        print("读到团队信息：", TEAM_INFO.get("team", ""), "，成员", len(TEAM_INFO.get("members") or []), "人")
+    except Exception as e:  # noqa: BLE001
+        print("team.json 解析失败，忽略：", e)
+
+FIELDS = ["name", "dept", "sid", "phone", "mail"]
+
+set_cell(t.cell(0, 1), TEAM_INFO.get("team") or TEAM)
 set_cell(t.cell(1, 1), THEME)
-for c in range(1, 6):
-    set_cell(t.cell(3, c), "")
+
+leader = TEAM_INFO.get("leader") or {}
+for i, k in enumerate(FIELDS):
+    set_cell(t.cell(3, 1 + i), leader.get(k, ""))
+
+members = TEAM_INFO.get("members") or []
+for r in range(5, 9):
+    idx = r - 5
+    m = members[idx] if idx < len(members) else {}
+    for i, k in enumerate(FIELDS):
+        set_cell(t.cell(r, 1 + i), m.get(k, ""))
 
 set_cell(t.cell(10, 0), SECTION)
 set_cell(t.cell(10, 2), WORK)
