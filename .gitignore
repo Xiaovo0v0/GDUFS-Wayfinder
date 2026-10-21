@@ -23,3 +23,7 @@ tools/bin/
 
 # 团队个人信息，不进仓库
 deliverables/team.json
+
+# 审计时解压的副本，不需要进仓库
+artifacts/audit/
+artifacts/video/seq/
