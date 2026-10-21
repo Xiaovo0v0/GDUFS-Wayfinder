@@ -1282,6 +1282,56 @@
     document.getElementById("status").innerHTML = html;
   }
 
+  // 距离牌：白底蓝字小胶囊，始终朝向相机
+  function distanceSprite(x, z, meters) {
+    var c = document.createElement("canvas");
+    c.width = 192; c.height = 64;
+    var g = c.getContext("2d");
+    g.fillStyle = "rgba(0,70,148,0.92)";
+    var r = 26, w = 192, h = 64;
+    g.beginPath();
+    g.moveTo(6 + r, 6);
+    g.lineTo(w - 6 - r, 6);
+    g.quadraticCurveTo(w - 6, 6, w - 6, 6 + r);
+    g.lineTo(w - 6, h - 6 - r);
+    g.quadraticCurveTo(w - 6, h - 6, w - 6 - r, h - 6);
+    g.lineTo(6 + r, h - 6);
+    g.quadraticCurveTo(6, h - 6, 6, h - 6 - r);
+    g.lineTo(6, 6 + r);
+    g.quadraticCurveTo(6, 6, 6 + r, 6);
+    g.closePath();
+    g.fill();
+    g.fillStyle = "#ffffff";
+    g.font = "600 34px 'PingFang SC','Microsoft YaHei',sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText(meters + " m", w / 2, h / 2 + 1);
+
+    var tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding;
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: tex, transparent: true, depthTest: false, depthWrite: false
+    }));
+    sp.scale.set(17, 5.7, 1);
+    sp.position.set(x, 7.5, z);
+    sp.renderOrder = 5;
+    return sp;
+  }
+
+  // 起终点地标：细杆 + 顶环
+  function routePin(x, z, colorHex) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshBasicMaterial({ color: colorHex });
+    var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 7, 8), mat);
+    pole.position.set(x, 3.6, z);
+    g.add(pole);
+    var ring = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.34, 8, 20), mat);
+    ring.position.set(x, 7.6, z);
+    ring.rotation.x = -Math.PI / 2;
+    g.add(ring);
+    return g;
+  }
+
   function route() {
     clearGroup(pathGroup);
     drawMarkers();
@@ -1320,8 +1370,29 @@
     window.__lastRoute = pts;
     window.__lastRouteDist = res.dist;
 
-    var geo = ribbonGeometry(pts, 4.6, 0.42);
-    pathGroup.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff5a00, side: THREE.DoubleSide })));
+    // 路线：下层深橙描边 + 上层亮橙，读起来像一条"带"而不是一片"色块"
+    var geoOuter = ribbonGeometry(pts, 5.4, 0.40, 12);
+    pathGroup.add(new THREE.Mesh(geoOuter, new THREE.MeshBasicMaterial({
+      color: 0xb8430c, side: THREE.DoubleSide, transparent: true, opacity: 0.92
+    })));
+    var geoInner = ribbonGeometry(pts, 3.4, 0.47, 12);
+    pathGroup.add(new THREE.Mesh(geoInner, new THREE.MeshBasicMaterial({
+      color: 0xffa02e, side: THREE.DoubleSide
+    })));
+
+    // 每 100 米一个距离牌
+    var accM = 0, nextMark = 100;
+    for (var mi = 1; mi < pts.length; mi++) {
+      accM += Math.hypot(pts[mi][0] - pts[mi - 1][0], pts[mi][1] - pts[mi - 1][1]);
+      if (accM >= nextMark && nextMark <= res.dist) {
+        pathGroup.add(distanceSprite(pts[mi][0], pts[mi][1], nextMark));
+        nextMark += 100;
+      }
+    }
+
+    // 起终点地标
+    pathGroup.add(routePin(startPlace.x, startPlace.z, 0x1c7d45));
+    pathGroup.add(routePin(endPlace.x, endPlace.z, 0xd11f2b));
 
     // 只在明显转折处画小圆点
     for (var t = 1; t < pts.length - 1; t++) {
