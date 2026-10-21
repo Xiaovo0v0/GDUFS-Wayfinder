@@ -1485,10 +1485,12 @@
       var cosang = (ax * bx + az * bz) / (la * lb);
       if (cosang > 0.94) continue;
       var dot = new THREE.Mesh(
-        new THREE.SphereGeometry(1.8, 8, 8),
+        new THREE.SphereGeometry(0.6, 10, 8),
         new THREE.MeshBasicMaterial({ color: 0xffe08a })
       );
-      dot.position.set(pts[t][0], 1.6, pts[t][1]);
+      // 贴地放：原来半径 1.8、离地 1.6 m，正好在漫游时的眼高上，
+      // 相机会从球里穿过去，近裁剪面切出一个白色锯齿（第一人称下极明显）
+      dot.position.set(pts[t][0], 0.62, pts[t][1]);
       pathGroup.add(dot);
     }
 

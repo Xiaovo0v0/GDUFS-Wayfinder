@@ -78,11 +78,13 @@ if (SEG === 'main') {
   await js(`(function(){ var r=window.__lastRoute||[]; var n=window.__navDebug; if(n&&n.flyTo&&r.length){ var a=r[0], z=r[r.length-1]; n.flyTo((a[0]+z[0])/2, (a[1]+z[1])/2, 200, 520); } })()`);
   await at(25000);
 
-  // 25–38s：沿路线缓慢飞近（替代漫游，避开已知的 GLB 瑕疵）
-  await js(`(function(){ var r=window.__lastRoute||[]; var n=window.__navDebug; if(n&&n.flyTo&&r.length){ var a=r[Math.floor(r.length*0.35)]; n.flyTo(a[0], a[1], 120, 700); } })()`);
-  await at(38000);
+  // 25–37s：第一人称漫游（伪影已修，可以放心展示）
+  await js(`(function(){ if(window.__walk && !window.__walk.isOn()) window.__walk.start(); })()`);
+  await at(37000);
+  await js(`(function(){ if(window.__walk && window.__walk.isOn()) window.__walk.stop(); })()`);
+  await at(39500);
 
-  // 38–56s：办事提问 + 卡片 + 点导航
+  // 39–58s：办事提问 + 卡片 + 点导航
   await js(`(function(){var i=document.querySelector('#ai-input'); i.value='成绩单在哪办'; i.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('#ai-send').click();})()`);
   await at(50000);
   await js(`(function(){var b=document.querySelector('#ai-body .act'); if(b) b.click();})()`);
