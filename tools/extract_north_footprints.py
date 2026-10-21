@@ -145,6 +145,68 @@ items.sort(key=lambda d: -d["area"])
 for i, it in enumerate(items):
     it["index"] = i + 1
 
+# ---------- 楼名（按四个象限的放大图逐一核对官方平面图上的印刷标签） ----------
+# None = 图上没有标注 / 无法确认，前端按"附属用房"处理并在信息卡标 estimated
+NAMES = {
+    1: "第六教学楼", 2: "第二教学楼", 3: None, 4: "云山十九栋", 5: "云山十八栋",
+    6: "逸林酒店", 7: "云山十七栋", 8: "图书馆", 9: "云山十二栋", 10: "云山一栋",
+    11: "第一学生食堂", 12: "学生服务大厅", 13: "云山四栋", 14: "云山会堂",
+    15: "云山十五栋", 16: "第三教学楼", 17: "云山十六栋", 18: "第二学生食堂",
+    19: "云山十四栋", 20: "云山十三栋", 21: "第四教学楼", 22: "第七教学楼",
+    23: "云山二栋", 24: None, 25: "云山五栋", 26: "干训楼", 27: "BBA教育中心",
+    28: None, 29: "云山八栋", 30: "云山九栋", 31: "云山三栋", 32: "云山十一栋",
+    33: "云山七栋", 34: None, 35: "门诊部", 36: "云山十栋", 37: None,
+    38: "保卫处", 39: None, 40: None, 41: None,
+}
+
+# 推定层数（图中未标注层数，按同类建筑经验给值，前端标 estimated）
+LEVELS = {
+    "教学楼": 6, "图书馆": 4, "学生食堂": 2, "会堂": 2, "酒店": 8,
+    "服务大厅": 2, "教育中心": 3, "干训楼": 5, "门诊部": 2, "保卫处": 2,
+    "宿舍": 7, "附属": 2,
+}
+
+
+def classify(name):
+    if not name:
+        return "misc", LEVELS["附属"]
+    if "教学楼" in name:
+        return "teaching", LEVELS["教学楼"]
+    if "图书馆" in name:
+        return "library", LEVELS["图书馆"]
+    if "食堂" in name:
+        return "canteen", LEVELS["学生食堂"]
+    if "会堂" in name:
+        return "culture", LEVELS["会堂"]
+    if "酒店" in name:
+        return "hotel", LEVELS["酒店"]
+    if "服务大厅" in name:
+        return "service", LEVELS["服务大厅"]
+    if "教育中心" in name:
+        return "teaching", LEVELS["教育中心"]
+    if "干训楼" in name:
+        return "teaching", LEVELS["干训楼"]
+    if "门诊" in name:
+        return "clinic", LEVELS["门诊部"]
+    if "保卫" in name:
+        return "admin", LEVELS["保卫处"]
+    if "栋" in name:
+        return "dorm", LEVELS["宿舍"]
+    return "misc", LEVELS["附属"]
+
+
+for it in items:
+    nm = NAMES.get(it["index"])
+    typ, lv = classify(nm)
+    it["name"] = nm
+    it["type"] = typ
+    it["levels"] = lv
+    it["height"] = round(lv * 3.5, 1)
+    it["name_confidence"] = "high" if nm else "unknown"
+
+named = sum(1 for it in items if it["name"])
+print("命名 %d / %d 栋" % (named, len(items)))
+
 print("保留建筑", len(items))
 total = sum(it["area"] for it in items)
 print("总基底面积 %.0f m2" % total)

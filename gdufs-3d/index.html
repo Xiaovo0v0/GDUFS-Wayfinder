@@ -378,11 +378,30 @@
 <script src="vendor/OrbitControls.js"></script>
 <script src="vendor/GLTFLoader.js"></script>
 <script src="gdufs-data.js"></script>
+<script src="north-data.js"></script>
 <script src="faq-data.js"></script>
 <script src="info-data.js"></script>
 <script src="app.js"></script>
 <script src="walk.js"></script>
 <script src="ai-config.js"></script>
 <script src="navigator-ui.js"></script>
+<script>
+/* 校区切换：北校区数据独立成页（?campus=north），切换即重新加载 */
+(function () {
+  var m = /[?&]campus=(north|south)/.exec(location.search);
+  var cur = m ? m[1] : "south";
+  var btns = document.querySelectorAll("#campusSwitch button");
+  for (var i = 0; i < btns.length; i++) {
+    (function (b) {
+      b.classList.toggle("on", b.dataset.campus === cur);
+      b.addEventListener("click", function () {
+        var c = b.dataset.campus;
+        if (c === cur) return;
+        location.href = location.pathname + (c === "north" ? "?campus=north" : "");
+      });
+    })(btns[i]);
+  }
+})();
+</script>
 </body>
 </html>

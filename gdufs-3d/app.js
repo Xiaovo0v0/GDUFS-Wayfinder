@@ -6,7 +6,27 @@
 (function () {
   "use strict";
 
-  var D = window.GDUFS_DATA;
+  var CAMPUS = (function () {
+    var m = /[?&]campus=(north|south)/.exec(location.search);
+    return m ? m[1] : "south";
+  })();
+  var D = (CAMPUS === "north" && window.GDUFS_NORTH) ? window.GDUFS_NORTH : window.GDUFS_DATA;
+
+  if (CAMPUS === "north") {
+    document.title = "尚行 · 广外校园向导（白云山校区）";
+    var _h1 = document.querySelector("#panel h1");
+    var _sub = document.querySelector("#panel .sub");
+    if (_h1) { _h1.textContent = "北校区 · 广外校园向导"; }
+    if (_sub) {
+      _sub.innerHTML = "广东外语外贸大学 · 白云山校区<br>41 栋建筑 · 官方平面图矢量化 · 路网待补";
+    }
+    var _hint = document.querySelector("#panel .hint");
+    if (_hint) {
+      _hint.innerHTML = "左键拖动旋转 · 滚轮缩放 · 右键平移<br>" +
+        "可直接点击建筑查看信息。<br>" +
+        "轮廓来自学校《北校区平面图》矢量化；层数为按类型推定，非官方数据。";
+    }
+  }
   if (!D) {
     document.body.innerHTML = "<p style='font:16px sans-serif;padding:40px'>缺少 gdufs-data.js，请先运行 build_nav_data.py。</p>";
     return;
@@ -1028,6 +1048,11 @@
   // 6.5 优先加载 Blender 导出的 LOD2 模型；失败则保留程序化几何
   // ============================================================
   (function loadDetailedModel() {
+    // 北校区暂时没有 GLB（模型文件是南校专属），直接用程序化体块
+    if (CAMPUS === "north") {
+      window.__navDebug.mode = "procedural";
+      return;
+    }
     if (!THREE.GLTFLoader) { return; }
     var loader = new THREE.GLTFLoader();
     loader.load(window.GDUFS_GLB_URL || "assets/gdufs_buildings.glb", function (gltf) {
@@ -1148,7 +1173,8 @@
   // ============================================================
   // 8. 道路拓扑图
   // ============================================================
-  var G = D.graph;
+  // 北校区路网尚未数字化，D.graph 可能为空——此时算路会返回 null，界面给"暂不可用"提示
+  var G = D.graph || { nodes: [], edges: [] };
   var adj = [];
   for (var ni = 0; ni < G.nodes.length; ni++) adj.push([]);
   G.edges.forEach(function (e, ei) {
