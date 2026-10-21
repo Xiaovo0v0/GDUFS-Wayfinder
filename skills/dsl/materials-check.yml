@@ -1,0 +1,181 @@
+app:
+  description: '返回办事材料、部门、电话与两校区办理点'
+  icon: '📋'
+  icon_background: '#E8F5EC'
+  icon_type: emoji
+  mode: workflow
+  name: 'materials-check · 材料清单'
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload: {}
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: 1700000000009-source-1700000000010-target
+      source: '1700000000009'
+      sourceHandle: source
+      target: '1700000000010'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: 1700000000010-source-1700000000011-target
+      source: '1700000000010'
+      sourceHandle: source
+      target: '1700000000011'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - default: ''
+          hint: ''
+          label: '事项名称'
+          max_length: 256
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: item_title
+        - default: ''
+          hint: ''
+          label: '校区(south/north)'
+          max_length: 256
+          options: []
+          placeholder: ''
+          required: false
+          type: text-input
+          variable: campus
+      height: 120
+      id: '1700000000009'
+      position:
+        x: 120
+        y: 300
+      positionAbsolute:
+        x: 120
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        selected: false
+        title: '清单查询'
+        type: code
+        code_language: python3
+        variables:
+        - value_selector:
+          - '1700000000009'
+          - item_title
+          variable: item_title
+        - value_selector:
+          - '1700000000009'
+          - campus
+          variable: campus
+        code: |-
+          import json
+
+          def _out(obj, **kw):
+              return {"result": json.dumps(obj, ensure_ascii=False)}
+
+          import json, re
+
+          SERVICES = json.loads(r"""[{"sid":"S01","title":"本科生成绩单、加权均分证明办理（中英文/密封邮寄）","dept":"教务部 考务科","hours":"周一、周二 8:30-12:00、14:00-17:10（北校区）；周三、周四、周五 8:30-12:00、14:00-17:10（南校区）；节假日、寒暑假受理时间另行通知","materials":["在校生自助打印：校园卡 / 身份证 / 学号+数字广外密码（三者任选其一）","2003 年及以前入学：毕业证、学位证原件（备查）+复印件各 1 份、身份证","代办：本人亲笔签名委托书 + 本人及代办人身份证复印件各 1 份","2003 年及以前入学：提前 1 天向档案馆预约（020-36207005）领取的“成绩登记表”"],"phone":"020-36317667（北校区）、020-39328013（南校区）","url":"https://etr.gdufs.edu.cn/info/1302/5505.htm","south":[{"building_id":"B004","name":"行政办公楼","room":"224"}],"north":[{"building_id":"N042","name":"行政楼","room":"121"}],"online":false},{"sid":"S02","title":"本科生网上选课（预选/正选/补退选）","dept":"教务部 教务科","hours":"未查到固定窗口时段；按学期选课通知分批开放，首轮预选期间每天 8:30-11:30 为系统维护时间","materials":["智慧广外/教务系统账号与密码","《本科生网上选课指南》（通知附件，含选课须知与操作流程）"],"phone":"36207053（白云山校区）、39328012（大学城校区）","url":"https://jxgl.gdufs.edu.cn/jsxsd/","south":[{"building_id":null,"name":null,"room":null}],"north":[{"building_id":null,"name":null,"room":null}],"online":true},{"sid":"S03","title":"本科生课程缓考申请","dept":"教务部 考务科","hours":"每学期第 15 周开始受理，期末考试结束 1 周后停止受理并关闭系统","materials":["未查到（页面仅说明申请条件与受理时间，未列材料清单；按线上表单提示提交）"],"phone":"36207052（白云山校区考务科）、39328013（大学城校区考务科）","url":"https://ehall2.gdufs.edu.cn/","south":[],"north":[],"online":true},{"sid":"S04","title":"休学、复学、退学办理","dept":"教务部 学籍科","hours":"未查到（官网未公布受理时段，建议按学校行政办公时间并先电话确认）","materials":["《广东外语外贸大学本科生复学申请表》（复学用，可在教务处网页下载）","因病休学复学：校门诊部审核意见","休学/退学：官网仅提供流程 docx（下载需验证码），材料清单未公开"],"phone":"86319391（白云山校区）、39328870（大学城校区）","url":"https://ehall2.gdufs.edu.cn/","south":[{"building_id":"B004","name":"行政办公楼","room":"228"}],"north":[{"building_id":"N042","name":"行政楼","room":"120"}],"online":false},{"sid":"S05","title":"课程成绩更正（成绩复核/更正申请）","dept":"教务部 考务科","hours":"周一、周二 8:30-12:00、14:00-17:10（北）；周三、周四、周五 8:30-12:00、14:00-17:10（南）","materials":["《课程成绩更正申请表》（教务部“文档下载—表格下载”提供模板）"],"phone":"020-36317667（北校区）、020-39328013（南校区）","url":"https://jwb.gdufs.edu.cn/content.jsp?urltype=news.NewsContentUrl&wbtreeid=1048&wbnewsid=3558","south":[{"building_id":"B004","name":"行政办公楼","room":"224"}],"north":[{"building_id":"N042","name":"行政楼","room":"121"}],"online":false},{"sid":"S06","title":"转专业（专业大类分流）","dept":"教务部 学籍科","hours":"未查到","materials":["未查到"],"phone":"86319391（白云山校区）、39328870（大学城校区）","url":"","south":[{"building_id":"B004","name":"行政办公楼","room":"228"}],"north":[{"building_id":"N042","name":"行政楼","room":"120"}],"online":false},{"sid":"S07","title":"辅修专业、双学位、双专业","dept":"教务部（学籍科/教务科）","hours":"未查到","materials":["未查到"],"phone":"86319391（白云山校区）、39328870（大学城校区）","url":"https://jwb.gdufs.edu.cn/content.jsp?urltype=news.NewsContentUrl&wbtreeid=1033&wbnewsid=1042","south":[{"building_id":"B004","name":"行政办公楼","room":"228"}],"north":[{"building_id":"N042","name":"行政楼","room":"120"}],"online":false},{"sid":"S08","title":"国家助学贷款（生源地信用助学贷款）申请","dept":"学生工作部 学生资助管理中心","hours":"未查到日常窗口时段；按学年通知集中受理（如 2026-2027 学年要求 9 月 16 日前提交）","materials":["生源地助学贷款受理证明（国家开发银行生源地助学贷款学生在线系统“合同已盖章”栏下载，或纸质受理证明）","《广东外语外贸大学申请国家开发银行生源地助学贷款学生信息表》（学院汇总，不接受个人申请）","首次办理贷款的毕业年级学生：需先完成家庭经济困难认定"],"phone":"39328388、36207027（联系人：官超）","url":"","south":[{"building_id":null,"name":null,"room":"116"}],"north":[{"building_id":"N012","name":"学生服务大厅","room":null}],"online":false},{"sid":"S09","title":"国家奖学金、国家励志奖学金及校内奖学金评选","dept":"学生工作部 学生管理科","hours":"未查到","materials":["未查到（依据《本科学生国家奖学金管理办法》《国家励志奖学金管理办法》《本科学生奖学金管理规定》执行）"],"phone":"36204409（白云山校区）、39328009（大学城校区）","url":"https://nstu.gdufs.edu.cn/xszz/pjpy/bks.htm","south":[{"building_id":null,"name":null,"room":"116"}],"north":[{"building_id":null,"name":null,"room":"109"}],"online":false},{"sid":"S10","title":"学生档案查阅、转递与学籍异动档案办理","dept":"学生工作部 学生信息中心","hours":"未查到","materials":["《广东外语外贸大学学生档案业务介绍信》（学工部“常用下载”提供模板）"],"phone":"36207022 / 39328680（学生信息中心）；36209474（本科档案室）；36206953（研究生档案室）","url":"https://nstu.gdufs.edu.cn/cyxz.htm","south":[{"building_id":null,"name":null,"room":"206"},{"building_id":null,"name":null,"room":"106"},{"building_id":null,"name":null,"room":"113"}],"north":[{"building_id":null,"name":null,"room":"107"},{"building_id":null,"name":null,"room":"204"}],"online":false},{"sid":"S11","title":"心理健康咨询预约","dept":"学生工作部 心理健康教育与咨询中心","hours":"未查到具体时段；需先电话预约","materials":["未查到（“来访者须知”页面显示“尚无资料”）"],"phone":"36641055 / 36207024（白云山）、39328545 / 39328077（大学城）","url":"http://psyheart.gdufs.edu.cn/","south":[{"building_id":"B012","name":"学生活动中心","room":"313"},{"building_id":null,"name":null,"room":"312"}],"north":[{"building_id":null,"name":null,"room":"121"},{"building_id":null,"name":null,"room":"128"}],"online":false},{"sid":"S12","title":"校内勤工助学岗位申请","dept":"学生工作部 学生资助管理中心","hours":"未查到","materials":["未查到"],"phone":"36207027（白云山校区）、39328388（大学城校区）","url":"","south":[{"building_id":null,"name":null,"room":"116"}],"north":[{"building_id":"N012","name":"学生服务大厅","room":null}],"online":false},{"sid":"S13","title":"大学城校区预付费水电冷充值","dept":"总务后勤部 节能中心","hours":"周一至周五 9:00-13:00、15:00-18:00（周四下午内部对账不开放）；周六 9:00-13:00","materials":["未查到（现场充值，建议携带校园卡）"],"phone":"39337011（7311，充值点）；36317052、23883982（节能中心）","url":"","south":[{"building_id":null,"name":null,"room":"316"}],"north":[],"online":false},{"sid":"S14","title":"学生宿舍水电门窗故障报修","dept":"总务后勤部（公寓中心 / 工程服务中心）","hours":"未查到（线上报修全天可提交）","materials":["学生：无需材料，在线填写报修单","各单位维修项目：《广东外语外贸大学日常零星维修项目申请表》（签字、盖章）"],"phone":"36206602（教工报修）、36206842（工程服务中心210室）","url":"https://ehall2.gdufs.edu.cn/infoplus/form/GZBXSQ/start","south":[],"north":[],"online":true},{"sid":"S15","title":"跨校区交通车（校车）乘坐与时刻查询","dept":"总务后勤部 交通服务中心","hours":"周一至周五：白云山→大学城 7:10、8:20、12:50；大学城→白云山 12:50、17:20。周一至周四加开：白云山→大学城 17:20；大学城→白云山 21:50（据时刻表图片 OCR，需核对）","materials":["未查到（时刻表未说明乘车凭证/验票要求）"],"phone":"020-36206181（交通服务中心）","url":"https://hqc.gdufs.edu.cn/info/1002/1445.htm","south":[{"building_id":"B004","name":"行政办公楼","room":null}],"north":[{"building_id":null,"name":null,"room":null},{"building_id":null,"name":null,"room":null},{"building_id":null,"name":null,"room":null},{"building_id":"N042","name":"行政楼","room":null}],"online":false},{"sid":"S16","title":"食堂意见与投诉、订餐服务","dept":"总务后勤部 饮食中心","hours":"食堂营业时间：白云山清雅园一楼及学生食堂一楼 早餐7:00-8:50、午餐11:00-12:50、晚餐16:50-18:40；大学城文采园/风采园 早餐7:00-9:00、午餐11:00-13:00、晚餐17:00-19:00","materials":["无（电话或邮件反馈即可）"],"phone":"36207191（白云山校区）、39328188（大学城校区）","url":"","south":[{"building_id":null,"name":null,"room":null}],"north":[{"building_id":null,"name":null,"room":null}],"online":false},{"sid":"S17","title":"学生宿舍调换、入住与退宿申请","dept":"总务后勤部 公寓中心（白云山校区）；大学城校区由物业公司管理","hours":"未查到","materials":["《白云山校区公寓中心学生调宿申请线上流程》（官网提供 docx，标注“征求意见稿”）","《白云山校区公寓中心学生入住申请》","《学生外住申请声明书》《学生转南校居住申请声明书》《出国留学离校居住申请声明书》"],"phone":"36209465（宿舍管理）、36209584（行政办公）、39328657（大学城物业）、36207480（云山公寓）、39328328（学术交流中心宿舍）","url":"https://hqc.gdufs.edu.cn/info/1002/1435.htm","south":[{"building_id":null,"name":null,"room":null},{"building_id":"B041","name":"学术交流中心","room":null},{"building_id":null,"name":null,"room":null}],"north":[{"building_id":null,"name":null,"room":null}],"online":false},{"sid":"S18","title":"办理《无犯罪记录证明》","dept":"保卫部 综合科","hours":"未查到","materials":["身份证 / 教工卡 / 学生证（领取时出示）","线上填写信息：姓名、性别、人员类别、出生日期、所在单位或学院年级专业班级、职务、身份证号码、联系电话、证明领取校区、申请原因、在校起止时间"],"phone":"36317055（北校区）、39326096（南校区）","url":"https://ehall2.gdufs.edu.cn/","south":[],"north":[],"online":false},{"sid":"S19","title":"图书借阅、续借与预约","dept":"图书馆 借阅服务部","hours":"未查到具体开馆时段（开馆时间以图片发布）；借还服务在开馆时间内","materials":["本人借阅证或校园码（不得转让或代借）"],"phone":"36317027（白云山总台）、39328161（大学城总台）","url":"http://opac.gdufs.edu.cn:8991/F/?func=bor-info","south":[{"building_id":null,"name":null,"room":null},{"building_id":null,"name":null,"room":null},{"building_id":null,"name":null,"room":null}],"north":[{"building_id":null,"name":null,"room":null}],"online":false},{"sid":"S20","title":"图书馆学习空间（研习间/讨论室）预约","dept":"图书馆","hours":"未查到（按预约时段使用）","materials":["图书馆账号（空间预约系统登录）"],"phone":"36317027（白云山总台）、39328161（大学城总台）","url":"https://libic.gdufs.edu.cn/","south":[{"building_id":null,"name":null,"room":null},{"building_id":null,"name":null,"room":null},{"building_id":null,"name":null,"room":null}],"north":[{"building_id":null,"name":null,"room":null},{"building_id":null,"name":null,"room":null},{"building_id":null,"name":null,"room":null}],"online":false},{"sid":"S21","title":"图书馆开馆时间查询","dept":"图书馆","hours":"白云山校区：公共阅览区、报刊阅览区、学习空间 7:00-24:00（含周六日）；总服务台（含办证）、中文借阅区（二楼东）、外文借阅区（三楼东）、多媒体阅览室（四楼东）、学习空间（四楼东）、东盟文献中心（三楼西）、海丝中心（二楼西）8:30-22:00；办公室（一楼西侧110）周一至周五 8:30-12:00、14:00-17:10；八教三楼基地/桂诗春图书室 周一至周五 8:30-12:00、14:00-17:10；广外文库（一楼西）周二下午 14:00-17:10。大学城校区：公共阅览区、学习空间（一、二、三楼）7:00-24:00；中文借阅区（三、四、五楼主楼）、外文借阅区（四、五楼侧翼）、期刊阅览区（五楼主楼）8:30-22:00；办公室（二楼办公区）周一至周五 8:30-12:00、14:00-17:10。","materials":["无"],"phone":"36317019、36317020（白云山办公室）；39328160（大学城综合管理部）","url":"https://lib.gdufs.edu.cn/fwzn/fwqykfsj/bysxqtsgkfsj.htm","south":[{"building_id":"B002","name":"图书馆","room":null},{"building_id":"B002","name":"图书馆","room":null},{"building_id":"B002","name":"图书馆","room":null}],"north":[{"building_id":"N008","name":"图书馆","room":null},{"building_id":"N008","name":"图书馆","room":null}],"online":false},{"sid":"S22","title":"馆际互借与文献传递","dept":"图书馆 学科服务部","hours":"周一至周五 8:30-12:00、14:00-17:10","materials":["“我的图书馆”账号密码（CALIS、CASHL 与我的图书馆同账号）","首次使用需账户审核与充值"],"phone":"36317035 转 805（张老师）；邮箱 ill@gdufs.edu.cn","url":"http://ill.calis.edu.cn/reader/index.html?tenant=a001945","south":[],"north":[{"building_id":"N008","name":"图书馆","room":"405"}],"online":false},{"sid":"S23","title":"毕业生离校（还清图书、学位论文提交）","dept":"图书馆 借阅服务部 / 学科服务部","hours":"未查到（按开馆时间）","materials":["借阅证","所借图书"],"phone":"36317027（白云山总台）、39328161（大学城总台）","url":"https://lib.gdufs.edu.cn/fwzn/xwlw.htm","south":[{"building_id":null,"name":null,"room":null}],"north":[{"building_id":null,"name":null,"room":null}],"online":false},{"sid":"S24","title":"WebVPN 校外访问校内系统","dept":"现代教育技术中心","hours":"线上全天","materials":["智慧广外账号"],"phone":"020-86312111（白云山）、020-39328051（大学城）","url":"https://webvpn.gdufs.edu.cn/","south":[],"north":[],"online":true},{"sid":"S25","title":"可信电子成绩单/电子证明（线上申请与验证）","dept":"现代教育技术中心（系统）＋教务部（数据）","hours":"线上 7×24 可申请；人工咨询按用户服务部上班时间","materials":["智慧广外账号（或大学企业微信）","接收邮箱地址（可选）"],"phone":"020-86312111（白云山校区）、020-39328051（大学城校区）","url":"https://dzpz.gdufs.edu.cn/api/engine-system/cas/h5Login","south":[],"north":[],"online":true},{"sid":"S26","title":"校园卡（一卡通）办理、挂失、补办","dept":"现代教育技术中心 校园卡管理办公室","hours":"未查到","materials":["有效身份证件（新办、挂失、补办、解挂、销户均需）","家属临时卡：直系亲属关系证明（户口本或个人证明函），经线上办事大厅审核","单位集体办理临时卡：办理申请与实名信息"],"phone":"020-86312111（白云山校区）、020-39328051（大学城校区）","url":"","south":[],"north":[],"online":false},{"sid":"S27","title":"校园网开户与上网（有线/无线）","dept":"现代教育技术中心 网络运行部","hours":"上班时间（官网未写明具体时段）","materials":["智慧广外账号（上网账号密码与智慧广外一致）","有效身份证件（现场改密码时）"],"phone":"020-36207209（白云山网络运行部）、020-39328049（大学城网络运行部）；用户服务部 86312111 / 39328051","url":"https://info.gdufs.edu.cn","south":[{"building_id":"B045C","name":"实验楼C区","room":"304"}],"north":[{"building_id":null,"name":null,"room":"409"}],"online":false},{"sid":"S28","title":"校园网故障报修","dept":"现代教育技术中心 网络运行部","hours":"未查到","materials":["学号/上网账号","故障描述（掉线、端口损坏、缴费异常等）"],"phone":"020-86312111、020-39328051（用户服务部）；020-36207209、020-39328049（网络运行部）","url":"https://ehall2.gdufs.edu.cn/infoplus/form/GZBXSQ/start","south":[],"north":[],"online":true},{"sid":"S29","title":"校园网缴费（开户费与套餐）","dept":"现代教育技术中心","hours":"线上全天；客服按上班时间","materials":["智慧广外账号","微信/支付宝/银联等在线支付方式"],"phone":"020-86312111（白云山）、020-39328051（大学城）","url":"https://cnup.gdufs.edu.cn/gdwywm/login.do","south":[],"north":[],"online":true},{"sid":"S30","title":"正版软件下载与激活（Windows/Office 等）","dept":"现代教育技术中心","hours":"线上全天（需在校园网或 VPN 环境）","materials":["智慧广外账号","校园网或 VPN 网络环境"],"phone":"020-86312111（白云山）、020-39328051（大学城）","url":"https://software.gdufs.edu.cn/","south":[],"north":[],"online":true},{"sid":"S31","title":"智慧广外账号密码修改与重置","dept":"现代教育技术中心","hours":"线上全天；现场按上班时间","materials":["有效身份证件（现场重置时）"],"phone":"36205988（密码重置）；86312111 / 39328051（用户服务部）","url":"https://info.gdufs.edu.cn","south":[{"building_id":"B045C","name":"实验楼C区","room":"304"}],"north":[{"building_id":null,"name":null,"room":"409"}],"online":true},{"sid":"S32","title":"财务报销与票据（发票）业务","dept":"财务与资产管理部（出纳审核科、结算中心）","hours":"未查到","materials":["合法票据：财政票据（教育收费收据、资金往来结算票据等）或地方税收通用电子发票","报销审批表（柜台报销经费审批表）、财务报销情况说明书等表单（下载中心）","票据按《票据粘贴指引》粘贴"],"phone":"未查到（官网未公布报销咨询电话）","url":"https://cwc.gdufs.edu.cn/wzzw_list.jsp?urltype=tree.TreeTempUrl&wbtreeid=1100","south":[],"north":[{"building_id":null,"name":null,"room":null}],"online":false},{"sid":"S33","title":"学费、住宿费缴纳","dept":"财务与资产管理部","hours":"未查到","materials":["学号","当学年缴费办法（财务部按学年发布 PDF）"],"phone":"未查到（官网未公布财务咨询电话）","url":"https://zfpt.gdufs.edu.cn/","south":[],"north":[],"online":true},{"sid":"S34","title":"电子就业协议书（三方协议）申领","dept":"学生就业创业中心","hours":"未查到","materials":["接收函（按档案去向类型提供；生源地接收不需提前办接收函）","《普通高校应届毕业生接收申请表》（深圳接收时，除 7 个指定单位外均需）","电子就业协议书（线上申请，指引为 docx 附件）"],"phone":"020-36207021、36478384（北）；020-39328007、39328003（南）","url":"https://gwcareer.gdufs.edu.cn/info/1054/2003.htm","south":[{"building_id":null,"name":null,"room":null}],"north":[{"building_id":null,"name":null,"room":null}],"online":false},{"sid":"S35","title":"因公出国（境）手续办理（教职工）","dept":"国际交流合作部 出访科","hours":"未查到","materials":["外方正式书面邀请函（有签名、盖章，PDF 版，邮件格式不受理）","公务普通护照（有效期需距回国时间 6 个月以上）；无护照需到省外办采集指纹（联系出访科预约）","因公出入境照片回执（彩色打印签字，第一联扫描上传）","身份证正反面（上传）","学术性交流日程、经费预算（汇率按当日填写）","男满 60 岁、女满 55 岁：在职证明或返聘证明原件","签证表（“因公个人资料表”材料包）；机构代码证（行政楼二楼校办法规科）、在职证明（人事部）、单位派出证明（出访科）"],"phone":"36207049（出访科）","url":"https://ehall2.gdufs.edu.cn/","south":[],"north":[{"building_id":"N042","name":"行政楼","room":"320"}],"online":false},{"sid":"S36","title":"本科生出国（境）交换生项目申请","dept":"国际交流合作部（港澳台事务工作部）","hours":"未查到（按各项目选拔通知的时间）","materials":["按项目通知要求（示例：承诺书、辅修专业修读保证书、成绩等附件）","拟选读专业需与主修专业对口","派出前需签订《知情同意书》（学工部常用下载）"],"phone":"未查到（官网未公布该业务电话）","url":"https://internationaloffice.gdufs.edu.cn/gjxm/jhsxm.htm","south":[],"north":[{"building_id":null,"name":null,"room":null}],"online":false},{"sid":"S37","title":"学生医保住院/门诊零星报销（线上）","dept":"校医院（学生医保）","hours":"未查到","materials":["按广东政务服务网“门诊费用报销”办事指南要求的材料（可在线下载范本或空表）","医疗费用票据、病历等（以政务网清单为准）"],"phone":"86253914 / 2574（白云山师生医保）、39328991 / 8991（大学城师生医保）","url":"http://www.gdzwfw.gov.cn/","south":[],"north":[],"online":true},{"sid":"S38","title":"校医院门诊、急诊就诊","dept":"校医院","hours":"实行 24 小时值班（急诊）；每周三中医、中药、检验开诊；普通门诊具体时段未查到","materials":["校园卡/身份证","门诊病历（可办理《门诊病历》）"],"phone":"急诊 36206729（北）、39328120（南）；办公室 36640385（北）、39328055（南）；总机 020-86254316","url":"","south":[{"building_id":"B024","name":"门诊部（校医院）","room":null}],"north":[{"building_id":null,"name":null,"room":null}],"online":false},{"sid":"S39","title":"全国大学英语四、六级考试（CET/CET-SET）报名","dept":"考试中心 国内考试部（与教务部联合发文）","hours":"报名时间：9 月 15 日 12:00 至 9 月 28 日 17:00（2026 年下半年）；报名系统客服工作时间 8:30-12:00、13:00-16:30","materials":["ETEST 通行证账号（已有则无需重复注册）","学籍信息（系统自动校验）","支付宝或首信易支付"],"phone":"020-36207580（国内考试部）；报名系统客服 010-62987880","url":"https://cet-bm.neea.edu.cn/","south":[],"north":[{"building_id":null,"name":null,"room":null}],"online":false},{"sid":"S40","title":"雅思（IELTS）考试考点与入场要求","dept":"考试中心 国外考试部","hours":"口试：至少提前 30 分钟到场，口试前 15 分钟截止入场；机考上午场 8:00 进场、8:30 截止，下午场 13:00 进场、13:30 截止；纸笔考试 7:30 进场、8:30 截止","materials":["与报名一致且有效的身份证件原件","纸质版准考证"],"phone":"020-36207153（国外考试部）","url":"https://gwkszx.gdufs.edu.cn/jtzy/jtzn.htm","south":[{"building_id":"B032","name":"艺术楼","room":null},{"building_id":null,"name":null,"room":null},{"building_id":null,"name":null,"room":null},{"building_id":null,"name":null,"room":"178"}],"north":[],"online":false}]""")
+
+          def main(item_title: str, campus: str = "south") -> str:
+              title = (item_title or "").strip()
+              svc = None
+              for s in SERVICES:
+                  if s["title"] and (title in s["title"] or s["title"] in title):
+                      svc = s
+                      break
+              if svc is None:
+                  return _out({"ok": False, "error": "未找到该事项"}, ensure_ascii=False)
+              here = svc.get(campus) or []
+              other = svc.get("north" if campus == "south" else "south") or []
+              return _out({
+                  "ok": True,
+                  "item": svc["title"],
+                  "department": svc["dept"],
+                  "materials": svc["materials"],
+                  "count": len(svc["materials"] or []),
+                  "phone": svc["phone"],
+                  "online": svc["online"],
+                  "places_here": here,
+                  "places_other": other,
+                  "url": svc["url"]
+              }, ensure_ascii=False)
+        outputs:
+          result:
+            type: string
+            children: null
+      height: 120
+      id: '1700000000010'
+      position:
+        x: 460
+        y: 300
+      positionAbsolute:
+        x: 460
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        selected: false
+        title: 输出
+        type: end
+        outputs:
+        - value_selector:
+          - '1700000000010'
+          - result
+          value_type: string
+          variable: result
+      height: 108
+      id: '1700000000011'
+      position:
+        x: 800
+        y: 300
+      positionAbsolute:
+        x: 800
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.9
+  rag_pipeline_variables: []
