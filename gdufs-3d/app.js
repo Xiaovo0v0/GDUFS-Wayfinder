@@ -14,17 +14,18 @@
 
   if (CAMPUS === "north") {
     document.title = "尚行 · 广外校园向导（白云山校区）";
+    var _en = window.GDUFS_LANG && window.GDUFS_LANG.get() === "en";
     var _h1 = document.querySelector("#panel h1");
     var _sub = document.querySelector("#panel .sub");
-    if (_h1) { _h1.textContent = "北校区 · 广外校园向导"; }
-    if (_sub) {
-      _sub.innerHTML = "广东外语外贸大学 · 白云山校区<br>41 栋建筑 · 官方平面图矢量化 · 路网待补";
+    if (_h1) { _h1.textContent = _en ? "Baiyunshan Campus" : "北校区 · 广外校园向导"; }
+    if (_sub && window.t) {
+      _sub.setAttribute("data-i18n", "panel.sub.north");
+      _sub.innerHTML = window.t("panel.sub.north");
     }
     var _hint = document.querySelector("#panel .hint");
-    if (_hint) {
-      _hint.innerHTML = "左键拖动旋转 · 滚轮缩放 · 右键平移<br>" +
-        "可直接点击建筑查看信息。<br>" +
-        "轮廓来自学校《北校区平面图》矢量化；层数为按类型推定，非官方数据。";
+    if (_hint && window.t) {
+      _hint.setAttribute("data-i18n", "hint.body.north");
+      _hint.innerHTML = window.t("hint.body.north");
     }
   }
   if (!D) {
@@ -1134,7 +1135,7 @@
     b.rings[0].forEach(function (p) { cx += p[0]; cz += p[1]; n++; });
     var el = document.createElement("div");
     el.className = "lbl";
-    el.textContent = b.name;
+    el.textContent = (window.tName ? window.tName(b.name) : b.name);
     labelLayer.appendChild(el);
     labelItems.push({
       el: el, x: cx / n, y: b.height + 4, z: cz / n,
@@ -1147,7 +1148,7 @@
     if (!g.name) return;
     var gel = document.createElement("div");
     gel.className = "lbl gate";
-    gel.textContent = g.name;
+    gel.textContent = (window.tName ? window.tName(g.name) : g.name);
     labelLayer.appendChild(gel);
     // 校门是关键导航点，优先于建筑标注占位
     labelItems.unshift({
@@ -1159,7 +1160,7 @@
   if (tunnelBox) {
     var tel = document.createElement("div");
     tel.className = "lbl";
-    tel.textContent = "地下隧道";
+    tel.textContent = window.GDUFS_LANG && window.GDUFS_LANG.get() === "en" ? "Underground Tunnel" : "地下隧道";
     labelLayer.appendChild(tel);
     labelItems.unshift({
       el: tel,
@@ -1389,7 +1390,7 @@
     clearGroup(pathGroup);
     drawMarkers();
     if (!startPlace || !endPlace) {
-        setStatus("请选择起点和终点（可直接点击画面中的建筑）。");
+        setStatus(window.t ? window.t("status.pick") : "请选择起点和终点（可直接点击画面中的建筑）。");
       return;
     }
     if (startPlace === endPlace) {
@@ -1478,10 +1479,15 @@
       }
     }
 
+    var _e = window.GDUFS_LANG && window.GDUFS_LANG.get() === "en";
+    var _n = window.tName || function (x) { return x; };
     setStatus(
-      '<b>' + startPlace.label + '</b> → <b>' + endPlace.label + '</b><br>' +
-      '沿道路步行约 <span class="ok">' + Math.round(res.dist) + ' 米</span> · 途经 ' + pts.length + ' 个路点' +
-      (viaTunnel ? '<br><span class="ok">经地下隧道穿行</span>' : '')
+      '<b>' + _n(startPlace.label) + '</b> → <b>' + _n(endPlace.label) + '</b><br>' +
+      (_e
+        ? 'Walk about <span class="ok">' + Math.round(res.dist) + ' m</span> · ' + pts.length + ' waypoints' +
+          (viaTunnel ? '<br><span class="ok">via the underground tunnel</span>' : '')
+        : '沿道路步行约 <span class="ok">' + Math.round(res.dist) + ' 米</span> · 途经 ' + pts.length + ' 个路点' +
+          (viaTunnel ? '<br><span class="ok">经地下隧道穿行</span>' : ''))
     );
   }
 
@@ -1489,9 +1495,10 @@
   // 10. 交互
   // ============================================================
   function fillSelect(sel) {
-    var html = '<option value="-1">请选择…</option>';
+    var html = '<option value="-1">' + (window.t ? window.t("form.select") : "请选择…") + '</option>';
     places.forEach(function (p, i) {
-      html += '<option value="' + i + '">' + p.label + "</option>";
+      var lb = window.tName ? window.tName(p.label) : p.label;
+      html += '<option value="' + i + '">' + lb + "</option>";
     });
     sel.innerHTML = html;
   }
@@ -1683,6 +1690,6 @@
     if (k >= 1) { flyState = null; }
   }
 
-  setStatus("请选择起点和终点（可直接点击画面中的建筑）。");
+  setStatus(window.t ? window.t("status.pick") : "请选择起点和终点（可直接点击画面中的建筑）。");
   animate();
 })();

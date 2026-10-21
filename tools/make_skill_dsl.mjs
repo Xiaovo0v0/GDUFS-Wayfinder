@@ -23,9 +23,23 @@ const graph = {
   n: DATA.graph.nodes.map((p) => [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]),
   e: DATA.graph.edges.map((e) => [e.a, e.b, Math.round(e.len * 10) / 10]),
   p: {},
+  en: {},
 };
 for (const pl of DATA.places || []) {
   if (pl.node != null && pl.label) graph.p[pl.label] = pl.node;
+}
+
+// 英文地名 → 中文标准名（英文提问时反查）
+try {
+  const nameEnJs = fs.readFileSync(path.join(REPO, 'gdufs-3d/name-en.js'), 'utf8');
+  const NAME_EN = JSON.parse(nameEnJs.slice(nameEnJs.indexOf('{'), nameEnJs.lastIndexOf(';')));
+  for (const [zh, en] of Object.entries(NAME_EN)) {
+    if (!graph.p[zh]) continue;
+    const core = String(en).split(' (')[0].trim().toLowerCase();
+    if (core) graph.en[core] = zh;
+  }
+} catch (e) {
+  console.warn('name-en.js 读取失败，英文反查不可用');
 }
 
 const places = (DATA.places || []).map((p) => ({
@@ -66,6 +80,10 @@ def _find(name):
     name = (name or "").strip()
     if name in G["p"]:
         return G["p"][name]
+    low = name.lower()
+    for en, zh in G.get("en", {}).items():
+        if en and en in low and zh in G["p"]:
+            return G["p"][zh]
     for k, v in G["p"].items():
         if name and (name in k or k in name):
             return v

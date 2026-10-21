@@ -506,18 +506,22 @@
     document.getElementById("ai-toggle").textContent = panel.classList.contains("collapsed") ? "▸" : "▾";
   });
 
-  var SUGGEST = currentCampus() === "north"
-    ? ["从正门怎么去图书馆？", "成绩单在哪办？", "相思河在哪？", "一共有几个校门？"]
-    : ["从文采园怎么去图书馆？", "成绩单在哪办？", "图书馆几层？", "一共有几个校门？"];
+  var T = window.t || function (k) { return k; };
+  var NORTH = currentCampus() === "north";
+  var SUGGEST = NORTH
+    ? [T("chip.north.1"), T("chip.north.2"), T("chip.north.3"), T("chip.north.4")]
+    : [T("chip.1"), T("chip.2"), T("chip.3"), T("chip.4")];
   SUGGEST.forEach(function (s) {
     var c = el("div", "chip", s);
     c.addEventListener("click", function () { send(s); });
     chips.appendChild(c);
   });
 
-  addMsg("bot", currentCampus() === "north"
-    ? "你好，我是语心 🧭 这里是白云山校区。\n可以问我校园导航、办事流程、楼栋信息。"
-    : "你好，我是语心 🧭 这里是大学城校区。\n可以问我校园导航、办事流程、楼栋信息。");
+  // 头像与名字跟随语言
+  var av = document.querySelector("#ai-head .avatar");
+  if (av) av.textContent = (window.GDUFS_LANG && window.GDUFS_LANG.get() === "en") ? "Y" : "语";
+
+  addMsg("bot", NORTH ? T("ai.greet.north") : T("ai.greet"));
   setBadge();
 
   // 深链 ?q=… ：从卡片或外链带问题进来时自动问一次

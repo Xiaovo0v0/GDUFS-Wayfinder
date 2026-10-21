@@ -312,7 +312,7 @@
 <body>
 <div id="app"></div>
 <div id="labels"></div>
-<div id="compass"><div id="needle">▲</div><div class="n">北</div></div>
+<div id="compass"><div id="needle">▲</div><div class="n" id="compassN">北</div></div>
 
 <div id="topbar">
   <div id="logo">行</div>
@@ -322,8 +322,8 @@
   </div>
   <div class="sep"></div>
   <div class="pill" id="campusSwitch">
-    <button data-campus="south" class="on">南校</button>
-    <button data-campus="north">北校</button>
+    <button data-campus="south" class="on" data-i18n="campus.south">南校</button>
+    <button data-campus="north" data-i18n="campus.north">北校</button>
   </div>
   <div class="pill" id="langSwitch">
     <button data-lang="zh" class="on">中</button>
@@ -341,55 +341,55 @@
 
 <div id="ai">
   <div id="ai-head">
-    <span class="avatar">语</span><b>语心</b>
+    <span class="avatar">语</span><b data-i18n="ai.name">语心</b>
     <span id="ai-badge">连接中…</span>
     <span id="ai-toggle">▾</span>
   </div>
   <div id="ai-body"></div>
   <div class="chips" id="ai-chips"></div>
   <div class="ai-input">
-    <input id="ai-input" placeholder="问：从文采园怎么去图书馆？" autocomplete="off" />
-    <button id="ai-send">发送</button>
+    <input id="ai-input" data-i18n-ph="ai.input" placeholder="问：从文采园怎么去图书馆？" autocomplete="off" />
+    <button id="ai-send" data-i18n="ai.send">发送</button>
   </div>
 </div>
 
 <div id="panel">
-  <h1>广外校园向导</h1>
-  <p class="sub">
+  <h1 data-i18n="panel.title">广外校园向导</h1>
+  <p class="sub" id="panelSub" data-i18n="panel.sub">
     广东外语外贸大学 · 大学城校区<br>
     51 栋建筑 · LOD2 模型 · 步行路径规划
   </p>
 
   <div class="row">
-    <label>起点</label>
+    <label data-i18n="form.from">起点</label>
     <select id="startSelect"></select>
   </div>
   <div class="row">
-    <label>终点</label>
+    <label data-i18n="form.to">终点</label>
     <select id="endSelect"></select>
   </div>
 
   <div id="status"></div>
 
   <div class="btns">
-    <button id="btnLabels" class="on">建筑标注</button>
-    <button id="btnRoads" class="on">道路</button>
-    <button id="btnReset">重置视角</button>
-    <button id="btnWalk">走过去看看</button>
+    <button id="btnLabels" class="on" data-i18n="btn.labels">建筑标注</button>
+    <button id="btnRoads" class="on" data-i18n="btn.roads">道路</button>
+    <button id="btnReset" data-i18n="btn.reset">重置视角</button>
+    <button id="btnWalk" data-i18n="btn.walk">走过去看看</button>
   </div>
 
   <div class="legend">
-    <div class="lg"><span class="sw" style="background:#c4bba8"></span>教学 / 实验</div>
-    <div class="lg"><span class="sw" style="background:#cbbd9f"></span>学生宿舍</div>
-    <div class="lg"><span class="sw" style="background:#854b39"></span>图书馆</div>
-    <div class="lg"><span class="sw" style="background:#a4644c"></span>食堂</div>
-    <div class="lg"><span class="sw" style="background:#b3bfc7"></span>体育场馆</div>
-    <div class="lg"><span class="sw" style="background:#b9a684"></span>文化 / 会堂</div>
-    <div class="lg"><span class="sw" style="background:#cfd6da"></span>门诊</div>
-    <div class="lg"><span class="sw" style="background:#b6b1a5"></span>其他</div>
+    <div class="lg"><span class="sw" style="background:#c4bba8"></span><span data-i18n="legend.teaching">教学 / 实验</span></div>
+    <div class="lg"><span class="sw" style="background:#cbbd9f"></span><span data-i18n="legend.dorm">学生宿舍</span></div>
+    <div class="lg"><span class="sw" style="background:#854b39"></span><span data-i18n="legend.library">图书馆</span></div>
+    <div class="lg"><span class="sw" style="background:#a4644c"></span><span data-i18n="legend.canteen">食堂</span></div>
+    <div class="lg"><span class="sw" style="background:#b3bfc7"></span><span data-i18n="legend.sports">体育场馆</span></div>
+    <div class="lg"><span class="sw" style="background:#b9a684"></span><span data-i18n="legend.culture">文化 / 会堂</span></div>
+    <div class="lg"><span class="sw" style="background:#cfd6da"></span><span data-i18n="legend.clinic">门诊</span></div>
+    <div class="lg"><span class="sw" style="background:#b6b1a5"></span><span data-i18n="legend.misc">其他</span></div>
   </div>
 
-  <div class="hint">
+  <div class="hint" id="panelHint" data-i18n="hint.body">
     左键拖动旋转 · 滚轮缩放 · 右键平移<br>
     可直接点击建筑设置起点 / 终点。<br>
     生活区和教学区经 <b>地下隧道</b> 穿行（图中青色）。<br>
@@ -404,6 +404,8 @@
 <script src="gdufs-data.js"></script>
 <script src="north-data.js"></script>
 <script src="service-data.js"></script>
+<script src="name-en.js"></script>
+<script src="i18n.js"></script>
 <script src="faq-data.js"></script>
 <script src="info-data.js"></script>
 <script src="app.js"></script>
@@ -411,21 +413,48 @@
 <script src="ai-config.js"></script>
 <script src="navigator-ui.js"></script>
 <script>
-/* 校区切换：北校区数据独立成页（?campus=north），切换即重新加载 */
+/* 校区 / 语言切换：都写进 URL，切换即重新加载（保留另一个维度） */
 (function () {
-  var m = /[?&]campus=(north|south)/.exec(location.search);
-  var cur = m ? m[1] : "south";
-  var btns = document.querySelectorAll("#campusSwitch button");
-  for (var i = 0; i < btns.length; i++) {
-    (function (b) {
-      b.classList.toggle("on", b.dataset.campus === cur);
-      b.addEventListener("click", function () {
-        var c = b.dataset.campus;
-        if (c === cur) return;
-        location.href = location.pathname + (c === "north" ? "?campus=north" : "");
-      });
-    })(btns[i]);
+  var cm = /[?&]campus=(north|south)/.exec(location.search);
+  var lm = /[?&]lang=(en|zh)/.exec(location.search);
+  var curCampus = cm ? cm[1] : "south";
+  var curLang = lm ? lm[1] : (function () {
+    try { return localStorage.getItem("gdufs_lang") || "zh"; } catch (e) { return "zh"; }
+  })();
+
+  function go(campus, lang) {
+    var qs = [];
+    if (campus === "north") qs.push("campus=north");
+    if (lang === "en") qs.push("lang=en");
+    location.href = location.pathname + (qs.length ? "?" + qs.join("&") : "");
   }
+
+  var cbs = document.querySelectorAll("#campusSwitch button");
+  for (var i = 0; i < cbs.length; i++) {
+    (function (b) {
+      b.classList.toggle("on", b.dataset.campus === curCampus);
+      b.addEventListener("click", function () {
+        if (b.dataset.campus === curCampus) return;
+        go(b.dataset.campus, curLang);
+      });
+    })(cbs[i]);
+  }
+
+  var lbs = document.querySelectorAll("#langSwitch button");
+  for (var j = 0; j < lbs.length; j++) {
+    (function (b) {
+      b.classList.toggle("on", b.dataset.lang === curLang);
+      b.addEventListener("click", function () {
+        if (b.dataset.lang === curLang) return;
+        go(curCampus, b.dataset.lang);
+      });
+    })(lbs[j]);
+  }
+
+  // 首次进入按当前语言铺一遍文案
+  if (window.GDUFS_LANG) window.GDUFS_LANG.apply(curLang);
+  var cn = document.getElementById("compassN");
+  if (cn) cn.textContent = curLang === "en" ? "N" : "北";
 })();
 </script>
 </body>

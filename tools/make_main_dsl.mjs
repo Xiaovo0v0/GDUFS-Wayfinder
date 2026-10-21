@@ -34,6 +34,11 @@ def main(query: str) -> str:
     q = query
     for a, b in ALIAS.items():
         q = q.replace(a, b)
+    # 英文提问：把英文地名对应的中文标准名补到句尾，再走中文匹配
+    low = q.lower()
+    for en, zh in sorted(G.get("en", {}).items(), key=lambda kv: -len(kv[0])):
+        if en and en in low and zh not in q:
+            q = q + " " + zh
     cands = []
     for label in G["p"]:
         core = _re.sub(r"[（(].*?[）)]", "", label)
@@ -143,6 +148,9 @@ ${nodeTail(id, x, y)}`;
 };
 
 // ---------- 提示词 ----------
+const LANGFOLLOW = `
+若用户使用英文提问，请用英文回答；地名写成「中文名 (English name)」。若用中文提问则用中文。`;
+
 const NAV_PROMPT = `你是「导航专家」，负责校园步行导航。
 
 算路工具已返回结果（JSON）：
@@ -169,7 +177,8 @@ const SVC_PROMPT = `你是「办事专家」，负责广外的办事指南。
 严格依据检索资料，只输出一个 JSON 对象，不要代码块、不要任何解释：
 {"intent":"service","answer":"面向用户的完整回答：部门、地点（校区+楼栋+房间）、办理时间、所需材料、电话","card":{"title":"事项名称","desc":"一句话说明"}}
 
-资料里没有的信息就写"官网未公布"，绝不编造。`;
+资料里没有的信息就写"官网未公布"，绝不编造。
+${LANGFOLLOW}`;
 
 const WIKI_PROMPT = `你是「校园百科专家」。
 
@@ -178,14 +187,16 @@ const WIKI_PROMPT = `你是「校园百科专家」。
 
 用户原话：{{#sys.query#}}
 
-依据资料回答，简洁准确。资料没有的就直说不知道。不要编造层数、面积、时间。`;
+依据资料回答，简洁准确。资料没有的就直说不知道。不要编造层数、面积、时间。
+${LANGFOLLOW}`;
 
 const CHAT_PROMPT = `你是「语心」，广东外语外贸大学校园向导。
 
 用户：{{#sys.query#}}
 
 如果是打招呼，简短自我介绍：你能做校园导航（会在地图上画出路线）和办事指南。
-如果是与校园无关的问题，礼貌说明你只负责广外校园相关事务。回答控制在两三句。`;
+如果是与校园无关的问题，礼貌说明你只负责广外校园相关事务。回答控制在两三句。
+${LANGFOLLOW}`;
 
 // ---------- 组装 ----------
 const CLASSES = [
@@ -337,12 +348,12 @@ ${indent(ROUTE_PY, 10)}
             type: string
             children: null
 ${nodeTail('nav_code', 600, 140)}
-${llmNode('nav_llm', '导航专家', 900, 140, NAV_PROMPT, { context: 'nav_code', temperature: 0.2, memory: false })}
+${llmNode('nav_llm', '导航专家', 900, 140, NAV_PROMPT + LANGFOLLOW, { context: 'nav_code', temperature: 0.2, memory: false })}
 ${krNode('svc_kr', '检索办事指南', 600, 300, SERVICE_DS)}
-${llmNode('svc_llm', '办事专家', 900, 300, SVC_PROMPT, { context: 'svc_kr' })}
+${llmNode('svc_llm', '办事专家', 900, 300, SVC_PROMPT + LANGFOLLOW, { context: 'svc_kr' })}
 ${krNode('wiki_kr', '检索校园百科', 600, 460, WIKI_DS)}
-${llmNode('wiki_llm', '百科专家', 900, 460, WIKI_PROMPT, { context: 'wiki_kr' })}
-${llmNode('chat_llm', '闲聊', 900, 620, CHAT_PROMPT, { temperature: 0.6, maxTokens: 300 })}
+${llmNode('wiki_llm', '百科专家', 900, 460, WIKI_PROMPT + LANGFOLLOW, { context: 'wiki_kr' })}
+${llmNode('chat_llm', '闲聊', 900, 620, CHAT_PROMPT + LANGFOLLOW, { temperature: 0.6, maxTokens: 300 })}
     - data:
         desc: ''
         output_type: string

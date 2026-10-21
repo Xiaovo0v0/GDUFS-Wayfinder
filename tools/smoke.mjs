@@ -16,7 +16,8 @@ const argOf = (k, d) => {
 };
 const PORT = argOf('--port', '8080');
 const WITH_AI = args.includes('--ai');
-const BASE = `http://127.0.0.1:${PORT}/`;
+// 固定中文，避免浏览器 localStorage 里的语言偏好影响断言
+const BASE = `http://127.0.0.1:${PORT}/?lang=zh`;
 const SHOT_DIR = 'artifacts/smoke';
 
 const results = [];
