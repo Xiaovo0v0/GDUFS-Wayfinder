@@ -1,0 +1,865 @@
+{
+ "meta": {
+  "source": "data/service_guide/service_items.json",
+  "items": 40,
+  "with_building": 17,
+  "note": "building_id 来自 gdufs-data.js（南校 Bxxx）与 north_buildings.json（北校 Nxxx）；confidence=high 表示定位到具体楼栋，medium 只到校区，low 未识别"
+ },
+ "items": {
+  "S01": {
+   "title": "本科生成绩单、加权均分证明办理（中英文/密封邮寄）",
+   "department": "教务部 考务科",
+   "south": [
+    {
+     "building_id": "B004",
+     "building_name": "行政办公楼",
+     "room": "224",
+     "raw": "大学城校区 办公室224 考务科",
+     "analogy": "按 行政楼 的楼栋名称类推"
+    }
+   ],
+   "north": [
+    {
+     "building_id": "N042",
+     "building_name": "行政楼",
+     "room": "121",
+     "raw": "白云山校区 行政楼121 考务科"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区 行政楼121 考务科；大学城校区 办公室224 考务科"
+  },
+  "S02": {
+   "title": "本科生网上选课（预选/正选/补退选）",
+   "department": "教务部 教务科",
+   "south": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "大学城校区（官网仅公布电话，未公布具体房间号）"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "教务科办公地点在白云山校区"
+    }
+   ],
+   "online": true,
+   "confidence": "medium",
+   "raw_location": "线上办理为主；教务科办公地点在白云山校区、大学城校区（官网仅公布电话，未公布具体房间号）"
+  },
+  "S03": {
+   "title": "本科生课程缓考申请",
+   "department": "教务部 考务科",
+   "south": [],
+   "north": [],
+   "online": true,
+   "confidence": "low",
+   "raw_location": "线上办理（智慧广外—线上办事大厅）"
+  },
+  "S04": {
+   "title": "休学、复学、退学办理",
+   "department": "教务部 学籍科",
+   "south": [
+    {
+     "building_id": "B004",
+     "building_name": "行政办公楼",
+     "room": "228",
+     "raw": "大学城校区 校级行政楼228"
+    }
+   ],
+   "north": [
+    {
+     "building_id": "N042",
+     "building_name": "行政楼",
+     "room": "120",
+     "raw": "白云山校区 行政楼120"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区 行政楼120；大学城校区 校级行政楼228"
+  },
+  "S05": {
+   "title": "课程成绩更正（成绩复核/更正申请）",
+   "department": "教务部 考务科",
+   "south": [
+    {
+     "building_id": "B004",
+     "building_name": "行政办公楼",
+     "room": "224",
+     "raw": "大学城校区 办公室224 考务科",
+     "analogy": "按 行政楼 的楼栋名称类推"
+    }
+   ],
+   "north": [
+    {
+     "building_id": "N042",
+     "building_name": "行政楼",
+     "room": "121",
+     "raw": "白云山校区 行政楼121 考务科"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区 行政楼121 考务科；大学城校区 办公室224 考务科"
+  },
+  "S06": {
+   "title": "转专业（专业大类分流）",
+   "department": "教务部 学籍科",
+   "south": [
+    {
+     "building_id": "B004",
+     "building_name": "行政办公楼",
+     "room": "228",
+     "raw": "大学城校区 校级行政楼228"
+    }
+   ],
+   "north": [
+    {
+     "building_id": "N042",
+     "building_name": "行政楼",
+     "room": "120",
+     "raw": "白云山校区 行政楼120"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区 行政楼120；大学城校区 校级行政楼228"
+  },
+  "S07": {
+   "title": "辅修专业、双学位、双专业",
+   "department": "教务部（学籍科/教务科）",
+   "south": [
+    {
+     "building_id": "B004",
+     "building_name": "行政办公楼",
+     "room": "228",
+     "raw": "大学城校区 校级行政楼228"
+    }
+   ],
+   "north": [
+    {
+     "building_id": "N042",
+     "building_name": "行政楼",
+     "room": "120",
+     "raw": "白云山校区 行政楼120"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区 行政楼120；大学城校区 校级行政楼228"
+  },
+  "S08": {
+   "title": "国家助学贷款（生源地信用助学贷款）申请",
+   "department": "学生工作部 学生资助管理中心",
+   "south": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "116",
+     "raw": "大学城校区 校办公楼116"
+    }
+   ],
+   "north": [
+    {
+     "building_id": "N012",
+     "building_name": "学生服务大厅",
+     "room": null,
+     "raw": "白云山校区 学生服务大厅"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "大学城校区 校办公楼116；白云山校区 学生服务大厅"
+  },
+  "S09": {
+   "title": "国家奖学金、国家励志奖学金及校内奖学金评选",
+   "department": "学生工作部 学生管理科",
+   "south": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "116",
+     "raw": "大学城校区 校办公楼116"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "109",
+     "raw": "白云山校区 六教B109-1"
+    }
+   ],
+   "online": false,
+   "confidence": "medium",
+   "raw_location": "白云山校区 六教B109-1；大学城校区 校办公楼116"
+  },
+  "S10": {
+   "title": "学生档案查阅、转递与学籍异动档案办理",
+   "department": "学生工作部 学生信息中心",
+   "south": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "206",
+     "raw": "研究生档案室 一教北楼206。大学城校区 校办公楼112"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "106",
+     "raw": "本科档案室 校办公楼106"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "113",
+     "raw": "研究生档案室 校办公楼113"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "107",
+     "raw": "白云山校区 六教B107-1"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "204",
+     "raw": "本科生档案室 一教北楼204"
+    }
+   ],
+   "online": false,
+   "confidence": "medium",
+   "raw_location": "白云山校区 六教B107-1；本科生档案室 一教北楼204；研究生档案室 一教北楼206。大学城校区 校办公楼112；本科档案室 校办公楼106；研究生档案室 校办公楼113"
+  },
+  "S11": {
+   "title": "心理健康咨询预约",
+   "department": "学生工作部 心理健康教育与咨询中心",
+   "south": [
+    {
+     "building_id": "B012",
+     "building_name": "学生活动中心",
+     "room": "313",
+     "raw": "大学城校区 学生活动中心313（预约）"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "312",
+     "raw": "312（咨询）"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "121",
+     "raw": "白云山校区 二教121（预约/咨询）"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "128",
+     "raw": "二教128"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区 二教121（预约/咨询）、二教128；大学城校区 学生活动中心313（预约）、312（咨询）"
+  },
+  "S12": {
+   "title": "校内勤工助学岗位申请",
+   "department": "学生工作部 学生资助管理中心",
+   "south": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "116",
+     "raw": "大学城校区 校办公楼116"
+    }
+   ],
+   "north": [
+    {
+     "building_id": "N012",
+     "building_name": "学生服务大厅",
+     "room": null,
+     "raw": "白云山校区 学生服务大厅"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区 学生服务大厅；大学城校区 校办公楼116"
+  },
+  "S13": {
+   "title": "大学城校区预付费水电冷充值",
+   "department": "总务后勤部 节能中心",
+   "south": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "316",
+     "raw": "大学城校区 学生宿舍1栋1楼水电冷充值点（节能中心另在后勤综合楼316办公）"
+    }
+   ],
+   "north": [],
+   "online": false,
+   "confidence": "medium",
+   "raw_location": "大学城校区 学生宿舍1栋1楼水电冷充值点（节能中心另在后勤综合楼316办公）"
+  },
+  "S14": {
+   "title": "学生宿舍水电门窗故障报修",
+   "department": "总务后勤部（公寓中心 / 工程服务中心）",
+   "south": [],
+   "north": [],
+   "online": true,
+   "confidence": "low",
+   "raw_location": "学生宿舍：线上报修；教工报修：工程服务中心；各单位维修项目：工程服务中心210室"
+  },
+  "S15": {
+   "title": "跨校区交通车（校车）乘坐与时刻查询",
+   "department": "总务后勤部 交通服务中心",
+   "south": [
+    {
+     "building_id": "B004",
+     "building_name": "行政办公楼",
+     "room": null,
+     "raw": "大学城校区：教A座",
+     "analogy": "按 行政楼 的楼栋名称类推"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "白云山校区：东门"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "南门"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "白云山西门站（乘车点）"
+    },
+    {
+     "building_id": "N042",
+     "building_name": "行政楼",
+     "room": null,
+     "raw": "行政楼门口（乘车点）。下车点：大学城校区教A座 / 白云山校区东门"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区：东门、南门、白云山西门站（乘车点）；大学城校区：教A座、行政楼门口（乘车点）。下车点：大学城校区教A座 / 白云山校区东门"
+  },
+  "S16": {
+   "title": "食堂意见与投诉、订餐服务",
+   "department": "总务后勤部 饮食中心",
+   "south": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "大学城校区饮食中心（具体办公房间未查到）"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "白云山校区饮食中心"
+    }
+   ],
+   "online": false,
+   "confidence": "medium",
+   "raw_location": "白云山校区饮食中心、大学城校区饮食中心（具体办公房间未查到）"
+  },
+  "S17": {
+   "title": "学生宿舍调换、入住与退宿申请",
+   "department": "总务后勤部 公寓中心（白云山校区）；大学城校区由物业公司管理",
+   "south": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "行政办公 云山学2栋一楼。大学城校区：广电物业"
+    },
+    {
+     "building_id": "B041",
+     "building_name": "学术交流中心",
+     "room": null,
+     "raw": "学术交流中心学生宿舍：公寓中心"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "云山公寓：华宸物业"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "白云山校区：宿舍管理办公 云山学6栋一楼"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区：宿舍管理办公 云山学6栋一楼；行政办公 云山学2栋一楼。大学城校区：广电物业；学术交流中心学生宿舍：公寓中心；云山公寓：华宸物业"
+  },
+  "S18": {
+   "title": "办理《无犯罪记录证明》",
+   "department": "保卫部 综合科",
+   "south": [],
+   "north": [],
+   "online": false,
+   "confidence": "low",
+   "raw_location": "保卫部综合科（官网未公布具体房间号）"
+  },
+  "S19": {
+   "title": "图书借阅、续借与预约",
+   "department": "图书馆 借阅服务部",
+   "south": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "大学城校区 一楼总服务台（自助借还机：北馆一楼"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "南馆一"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "三楼）"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "白云山校区 一楼大厅总服务台"
+    }
+   ],
+   "online": false,
+   "confidence": "medium",
+   "raw_location": "白云山校区 一楼大厅总服务台；大学城校区 一楼总服务台（自助借还机：北馆一楼；南馆一、三楼）"
+  },
+  "S20": {
+   "title": "图书馆学习空间（研习间/讨论室）预约",
+   "department": "图书馆",
+   "south": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "大学城校区 三楼侧翼（群组讨论室"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "研习间"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "研习舱）"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "白云山校区 四楼东（单人研习间"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "六人研习间）"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "二/三楼露台（研习舱）"
+    }
+   ],
+   "online": false,
+   "confidence": "medium",
+   "raw_location": "白云山校区 四楼东（单人研习间、六人研习间）、二/三楼露台（研习舱）；大学城校区 三楼侧翼（群组讨论室、研习间、研习舱）"
+  },
+  "S21": {
+   "title": "图书馆开馆时间查询",
+   "department": "图书馆",
+   "south": [
+    {
+     "building_id": "B002",
+     "building_name": "图书馆",
+     "room": null,
+     "raw": "大学城校区图书馆（一"
+    },
+    {
+     "building_id": "B002",
+     "building_name": "图书馆",
+     "room": null,
+     "raw": "二",
+     "analogy": "按 图书馆 的楼栋名称类推"
+    },
+    {
+     "building_id": "B002",
+     "building_name": "图书馆",
+     "room": null,
+     "raw": "三楼）",
+     "analogy": "按 图书馆 的楼栋名称类推"
+    }
+   ],
+   "north": [
+    {
+     "building_id": "N008",
+     "building_name": "图书馆",
+     "room": null,
+     "raw": "白云山校区图书馆（一至四楼"
+    },
+    {
+     "building_id": "N008",
+     "building_name": "图书馆",
+     "room": null,
+     "raw": "一楼东）",
+     "analogy": "按 图书馆 的楼栋名称类推"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区图书馆（一至四楼、一楼东）；大学城校区图书馆（一、二、三楼）"
+  },
+  "S22": {
+   "title": "馆际互借与文献传递",
+   "department": "图书馆 学科服务部",
+   "south": [],
+   "north": [
+    {
+     "building_id": "N008",
+     "building_name": "图书馆",
+     "room": "405",
+     "raw": "白云山校区 图书馆4楼405室 学科服务部 文献传递处"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区 图书馆4楼405室 学科服务部 文献传递处"
+  },
+  "S23": {
+   "title": "毕业生离校（还清图书、学位论文提交）",
+   "department": "图书馆 借阅服务部 / 学科服务部",
+   "south": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "大学城校区 一楼总服务台"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "白云山校区"
+    }
+   ],
+   "online": false,
+   "confidence": "medium",
+   "raw_location": "白云山校区、大学城校区 一楼总服务台"
+  },
+  "S24": {
+   "title": "WebVPN 校外访问校内系统",
+   "department": "现代教育技术中心",
+   "south": [],
+   "north": [],
+   "online": true,
+   "confidence": "low",
+   "raw_location": "线上办理，无需安装插件"
+  },
+  "S25": {
+   "title": "可信电子成绩单/电子证明（线上申请与验证）",
+   "department": "现代教育技术中心（系统）＋教务部（数据）",
+   "south": [],
+   "north": [],
+   "online": true,
+   "confidence": "low",
+   "raw_location": "线上办理，无需到现场"
+  },
+  "S26": {
+   "title": "校园卡（一卡通）办理、挂失、补办",
+   "department": "现代教育技术中心 校园卡管理办公室",
+   "south": [],
+   "north": [],
+   "online": false,
+   "confidence": "low",
+   "raw_location": "校园卡管理办公室（官网未公布具体房间号）；自助补卡机、一体机等终端"
+  },
+  "S27": {
+   "title": "校园网开户与上网（有线/无线）",
+   "department": "现代教育技术中心 网络运行部",
+   "south": [
+    {
+     "building_id": "B045C",
+     "building_name": "实验楼C区",
+     "room": "304",
+     "raw": "大学城校区 实验楼C区304室"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "409",
+     "raw": "白云山校区 二教409室"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区 二教409室；大学城校区 实验楼C区304室"
+  },
+  "S28": {
+   "title": "校园网故障报修",
+   "department": "现代教育技术中心 网络运行部",
+   "south": [],
+   "north": [],
+   "online": true,
+   "confidence": "low",
+   "raw_location": "线上报修 + 电话报障；各楼栋学生网管"
+  },
+  "S29": {
+   "title": "校园网缴费（开户费与套餐）",
+   "department": "现代教育技术中心",
+   "south": [],
+   "north": [],
+   "online": true,
+   "confidence": "low",
+   "raw_location": "线上缴费"
+  },
+  "S30": {
+   "title": "正版软件下载与激活（Windows/Office 等）",
+   "department": "现代教育技术中心",
+   "south": [],
+   "north": [],
+   "online": true,
+   "confidence": "low",
+   "raw_location": "线上办理"
+  },
+  "S31": {
+   "title": "智慧广外账号密码修改与重置",
+   "department": "现代教育技术中心",
+   "south": [
+    {
+     "building_id": "B045C",
+     "building_name": "实验楼C区",
+     "room": "304",
+     "raw": "大学城实验楼C区304室"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "409",
+     "raw": "现场重置：白云山二教409室"
+    }
+   ],
+   "online": true,
+   "confidence": "high",
+   "raw_location": "线上自助修改；现场重置：白云山二教409室、大学城实验楼C区304室"
+  },
+  "S32": {
+   "title": "财务报销与票据（发票）业务",
+   "department": "财务与资产管理部（出纳审核科、结算中心）",
+   "south": [],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "未查到具体房间号（办公地址：白云山校区）"
+    }
+   ],
+   "online": false,
+   "confidence": "medium",
+   "raw_location": "未查到具体房间号（办公地址：白云山校区）"
+  },
+  "S33": {
+   "title": "学费、住宿费缴纳",
+   "department": "财务与资产管理部",
+   "south": [],
+   "north": [],
+   "online": true,
+   "confidence": "low",
+   "raw_location": "线上缴费（统一支付平台）；财务部办公地点未公布具体房间号"
+  },
+  "S34": {
+   "title": "电子就业协议书（三方协议）申领",
+   "department": "学生就业创业中心",
+   "south": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "大学城校区（官网未公布具体房间号）"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "白云山校区"
+    }
+   ],
+   "online": false,
+   "confidence": "medium",
+   "raw_location": "白云山校区、大学城校区（官网未公布具体房间号）"
+  },
+  "S35": {
+   "title": "因公出国（境）手续办理（教职工）",
+   "department": "国际交流合作部 出访科",
+   "south": [],
+   "north": [
+    {
+     "building_id": "N042",
+     "building_name": "行政楼",
+     "room": "320",
+     "raw": "白云山校区 行政楼320 出访科"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区 行政楼320 出访科"
+  },
+  "S36": {
+   "title": "本科生出国（境）交换生项目申请",
+   "department": "国际交流合作部（港澳台事务工作部）",
+   "south": [],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "未查到具体房间号（办公地点在白云山校区）"
+    }
+   ],
+   "online": false,
+   "confidence": "medium",
+   "raw_location": "未查到具体房间号（办公地点在白云山校区）"
+  },
+  "S37": {
+   "title": "学生医保住院/门诊零星报销（线上）",
+   "department": "校医院（学生医保）",
+   "south": [],
+   "north": [],
+   "online": true,
+   "confidence": "low",
+   "raw_location": "线上办理（广东政务服务网）；校医院医保窗口"
+  },
+  "S38": {
+   "title": "校医院门诊、急诊就诊",
+   "department": "校医院",
+   "south": [
+    {
+     "building_id": "B024",
+     "building_name": "门诊部（校医院）",
+     "room": null,
+     "raw": "大学城校区校医院（官网未列具体楼栋房间）"
+    }
+   ],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "白云山校区校医院"
+    }
+   ],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "白云山校区校医院、大学城校区校医院（官网未列具体楼栋房间）"
+  },
+  "S39": {
+   "title": "全国大学英语四、六级考试（CET/CET-SET）报名",
+   "department": "考试中心 国内考试部（与教务部联合发文）",
+   "south": [],
+   "north": [
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "白云山校区 外语学院南路 云山公寓A区 广外考试中心"
+    }
+   ],
+   "online": false,
+   "confidence": "medium",
+   "raw_location": "白云山校区 外语学院南路 云山公寓A区 广外考试中心"
+  },
+  "S40": {
+   "title": "雅思（IELTS）考试考点与入场要求",
+   "department": "考试中心 国外考试部",
+   "south": [
+    {
+     "building_id": "B032",
+     "building_name": "艺术楼",
+     "room": null,
+     "raw": "大学城校区：纸笔笔试 德馨楼（艺术楼）"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "纸笔口试 教工活动中心"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": null,
+     "raw": "机考笔试与口试 崇实楼（实验楼）E 区"
+    },
+    {
+     "building_id": null,
+     "building_name": null,
+     "room": "178",
+     "raw": "建议经东北门（外环东路178号大门）入校"
+    }
+   ],
+   "north": [],
+   "online": false,
+   "confidence": "high",
+   "raw_location": "大学城校区：纸笔笔试 德馨楼（艺术楼）；纸笔口试 教工活动中心；机考笔试与口试 崇实楼（实验楼）E 区；建议经东北门（外环东路178号大门）入校"
+  }
+ }
+}

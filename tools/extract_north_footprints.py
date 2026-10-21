@@ -145,6 +145,29 @@ items.sort(key=lambda d: -d["area"])
 for i, it in enumerate(items):
     it["index"] = i + 1
 
+# ---------- 手工补录 ----------
+# 自动分割漏掉了行政楼（正门内侧那栋"工"字形，图上标注清晰但白色区域与绿底连通判定异常）。
+# 下面这条是按放大图上的像素范围手绘的近似矩形，标注为手工录入。
+MANUAL = [
+    {
+        "name": "行政楼",
+        "ring": [[436.1, -190.0], [436.1, -242.1], [340.1, -242.1], [340.1, -190.0]],
+        "note": "手工补录（近似矩形）",
+    },
+]
+for m in MANUAL:
+    xs_ = [p[0] for p in m["ring"]]
+    zs_ = [p[1] for p in m["ring"]]
+    items.append({
+        "index": len(items) + 1,
+        "ring": m["ring"],
+        "area": round((max(xs_) - min(xs_)) * (max(zs_) - min(zs_)), 1),
+        "centroid": [round((min(xs_) + max(xs_)) / 2, 1), round((min(zs_) + max(zs_)) / 2, 1)],
+        "bbox": [round(min(xs_), 1), round(min(zs_), 1), round(max(xs_), 1), round(max(zs_), 1)],
+        "px_area": 0,
+        "manual": True,
+    })
+
 # ---------- 楼名（按四个象限的放大图逐一核对官方平面图上的印刷标签） ----------
 # None = 图上没有标注 / 无法确认，前端按"附属用房"处理并在信息卡标 estimated
 NAMES = {
@@ -156,7 +179,7 @@ NAMES = {
     23: "云山二栋", 24: None, 25: "云山五栋", 26: "干训楼", 27: "BBA教育中心",
     28: None, 29: "云山八栋", 30: "云山九栋", 31: "云山三栋", 32: "云山十一栋",
     33: "云山七栋", 34: None, 35: "门诊部", 36: "云山十栋", 37: None,
-    38: "保卫处", 39: None, 40: None, 41: None,
+    38: "保卫处", 39: None, 40: None, 41: None, 42: "行政楼",
 }
 
 # 推定层数（图中未标注层数，按同类建筑经验给值，前端标 estimated）
