@@ -28,7 +28,17 @@ const glbScript = `<script>window.GDUFS_GLB_URL = ${JSON.stringify(glbUri)};</sc
 // 3) 插到 </body> 前
 html = html.replace('</body>', `${glbScript}\n${inline}\n</body>`);
 
+// 4) 北校区栅格图层（道路 / 相思河）→ data URI，保证单文件也能看到
+for (const name of ['north-roads.png', 'north-river.png']) {
+  const p = path.join(ROOT, 'assets', name);
+  if (!fs.existsSync(p)) continue;
+  const uri = 'data:image/png;base64,' + fs.readFileSync(p).toString('base64');
+  html = html.split('assets/' + name).join(uri);
+}
+
+// 5) 输出 index.html 与中文名两份，便于不同托管环境
 const outFile = path.join(OUT, '广外校园向导.html');
 fs.writeFileSync(outFile, html, 'utf8');
+fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
 const kb = (fs.statSync(outFile).size / 1024).toFixed(0);
 console.log('built', outFile, kb + ' KB', '| glb', (glb.length / 1024).toFixed(0) + ' KB');

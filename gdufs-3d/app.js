@@ -695,6 +695,28 @@
     var rand = rng(20261018);
     var pts = [];
 
+    // 到最近道路中心线的距离（米）：树不能长在路面上，否则第一人称漫游会被树干挡死
+    function distToRoad(px, pz) {
+      var best = 1e9;
+      for (var ri = 0; ri < D.roads.length; ri++) {
+        var r = D.roads[ri];
+        if (r.tunnel) continue;
+        for (var li = 0; li < r.lines.length; li++) {
+          var line = r.lines[li];
+          for (var i = 0; i < line.length - 1; i++) {
+            var a = line[i], b = line[i + 1];
+            var dx = b[0] - a[0], dz = b[1] - a[1];
+            var L2 = dx * dx + dz * dz;
+            var t = L2 ? ((px - a[0]) * dx + (pz - a[1]) * dz) / L2 : 0;
+            if (t < 0) t = 0; else if (t > 1) t = 1;
+            var d = Math.hypot(a[0] + dx * t - px, a[1] + dz * t - pz);
+            if (d < best) best = d;
+          }
+        }
+      }
+      return best;
+    }
+
     // 1) 行道树：沿道路两侧交替布置
     D.roads.forEach(function (r) {
       if (r.tunnel) return;
@@ -715,6 +737,7 @@
             if (insideAnyBuilding(px, pz, 1.5)) continue;
             if (insideWater(px, pz)) continue;
             if (insidePitch(px, pz)) continue;
+            if (distToRoad(px, pz) < 4.5) continue;
             var inCampus = false;
             for (var bi = 0; bi < D.boundary.length; bi++) {
               if (pointInRing(px, pz, D.boundary[bi])) { inCampus = true; break; }
@@ -738,6 +761,7 @@
       if (insideAnyBuilding(x, z, 3)) continue;
       if (insideWater(x, z)) continue;
       if (insidePitch(x, z)) continue;
+      if (distToRoad(x, z) < 6) continue;
       pts.push([x, z, 0.75 + rand() * 0.6]);
     }
 

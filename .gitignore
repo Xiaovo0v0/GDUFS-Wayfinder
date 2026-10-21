@@ -15,3 +15,8 @@ __pycache__/
 *.log
 tmp/
 temp/
+
+# 录屏中间帧（体积大，可重新生成）
+artifacts/video/**/frames/
+artifacts/video/norm/
+tools/bin/
