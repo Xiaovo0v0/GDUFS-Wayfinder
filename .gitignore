@@ -44,3 +44,7 @@ gdufs-south-campus/
 
 # 5) 打包生成、且内嵌了密钥的单文件网页（由 tools/build_single_file.mjs 生成）
 deliverables/local-client/*.html
+
+# 6) 截图与验证产物（tools/shot.mjs、verify_local_client 生成）
+artifacts/3d/
+artifacts/*.png
