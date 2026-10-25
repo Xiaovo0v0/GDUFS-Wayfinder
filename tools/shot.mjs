@@ -3,6 +3,7 @@
 //   --out  artifacts/3d/shot.png           输出文件
 //   --wait 3500                            加载后等待毫秒
 //   --w 1576 --h 908                       视口尺寸
+//   --mobile --dpr 3                       手机模拟（触摸 + 高 DPR），配合 --w 390 --h 844
 //   --js  "window.__navDebug.setPlaces('文采园','图书馆')"   截图前执行
 //   --nohud                                隐藏左上/右下 HUD（只看 3D）
 //
@@ -23,6 +24,8 @@ const W = Number(argOf('--w', '1576'));
 const H = Number(argOf('--h', '908'));
 const jsBefore = argOf('--js', '');
 const noHud = has('--nohud');
+const isMobile = has('--mobile');
+const dpr = Number(argOf('--dpr', isMobile ? '3' : '1'));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -31,7 +34,8 @@ try {
   await b.launch('about:blank');
   await b.send('Network.enable');
   await b.send('Network.setCacheDisabled', { cacheDisabled: true });
-  await b.send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
+  await b.send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: dpr, mobile: isMobile });
+  if (isMobile) await b.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
   await b.send('Page.navigate', { url });
   await sleep(400);
   // 硬刷新，确保拿到新脚本
