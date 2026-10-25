@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>广外体育馆 · 双叶曲面屋顶 Demo</title>
+<style>
+  :root{
+    --ink:#0d0f12;
+    --paper:#f4f1ea;
+    --muted:#b9b2a5;
+    --accent:#d8b46a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--ink);
+    font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",system-ui,sans-serif;color:var(--paper)}
+  #app{position:fixed;inset:0}
+  canvas{display:block}
+  #ui{position:fixed;inset:0;pointer-events:none;z-index:2}
+  #ui .card,#ui button,#ui a{pointer-events:auto}
+
+  #title{position:absolute;left:28px;top:24px;max-width:430px;
+    text-shadow:0 2px 18px rgba(0,0,0,.55)}
+  #title .kicker{font-size:11px;letter-spacing:.32em;color:var(--accent);text-transform:uppercase}
+  #title h1{margin:6px 0 2px;font-size:30px;font-weight:600;letter-spacing:.08em}
+  #title p{margin:0;font-size:12.5px;line-height:1.7;color:var(--muted)}
+  #title .rule{width:52px;height:1px;background:var(--accent);margin:12px 0 10px;opacity:.85}
+  #title .ghost{margin:6px 8px 0 0;padding:6px 12px;border-radius:999px;
+    border:1px solid rgba(216,180,106,.45);background:rgba(13,15,18,.42);
+    color:var(--paper);font-size:11px;font-family:inherit;cursor:pointer;letter-spacing:.08em}
+  #title .ghost:hover{border-color:var(--accent)}
+
+  .card{background:rgba(13,15,18,.64);border:1px solid rgba(216,180,106,.26);
+    border-radius:16px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    box-shadow:0 18px 50px rgba(0,0,0,.35)}
+
+  #quiz{position:absolute;right:28px;left:auto;bottom:28px;width:370px;max-width:calc(100vw - 56px);
+    padding:18px 18px 16px;opacity:0;transform:translateY(12px);
+    transition:opacity .6s ease,transform .6s ease}
+  #quiz.show{opacity:1;transform:none}
+  #quiz .q{font-size:15px;line-height:1.45;letter-spacing:.02em}
+  #quiz .opts{display:flex;gap:8px;margin-top:12px}
+  #quiz .opts button{flex:1;padding:9px 4px;border-radius:9px;cursor:pointer;
+    border:1px solid rgba(216,180,106,.35);background:rgba(255,255,255,.05);
+    color:var(--paper);font-size:13px;font-family:inherit;transition:.18s}
+  #quiz .opts button:hover{background:rgba(216,180,106,.18);border-color:var(--accent)}
+  #quiz .fb{min-height:20px;margin-top:10px;font-size:12px;line-height:1.6;color:var(--muted)}
+  #quiz .fb.ok{color:#a8e0b8}
+  #quiz .fb.no{color:#f0b09a}
+
+  #refWrap{position:absolute;right:28px;top:24px;width:340px;max-width:calc(100vw - 56px)}
+  #refBtn{width:100%;padding:10px 14px;border-radius:12px;cursor:pointer;
+    border:1px solid rgba(216,180,106,.35);background:rgba(13,15,18,.62);
+    color:var(--paper);font-size:12.5px;letter-spacing:.12em;font-family:inherit;
+    backdrop-filter:blur(14px)}
+  #refBtn:hover{border-color:var(--accent)}
+  #refBody{margin-top:10px;padding:10px;display:none}
+  #refWrap.open #refBody{display:block}
+  #refBody img{width:100%;height:145px;object-fit:cover;object-position:50% 55%;
+    border-radius:10px;display:block;margin-bottom:7px;background:#222}
+  #refBody p{font-size:11px;line-height:1.65;color:var(--muted);margin:7px 2px 4px}
+  #refBody a{font-size:11px;color:var(--accent);text-decoration:none}
+  #refBody a:hover{text-decoration:underline}
+
+  #hint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);
+    font-size:11.5px;letter-spacing:.12em;color:rgba(244,241,234,.55);
+    text-shadow:0 1px 10px rgba(0,0,0,.7);white-space:nowrap}
+  #badge{position:absolute;left:28px;bottom:28px;font-size:10.5px;letter-spacing:.08em;
+    color:rgba(244,241,234,.42);text-align:left;line-height:1.6}
+  #err{display:none;position:absolute;inset:0;place-items:center;background:#0d0f12;
+    color:#f0b09a;font-size:14px;padding:30px;text-align:center;z-index:9;line-height:1.8}
+
+  @media (max-width:860px){
+    #title{left:18px;top:16px}
+    #title h1{font-size:23px}
+    #quiz{right:18px;left:18px;bottom:16px;width:auto}
+    #refWrap{right:18px;top:16px;width:230px}
+    #refBody img{height:100px}
+    #hint{display:none}
+    #badge{left:18px;bottom:12px}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="ui">
+  <div id="title">
+    <div class="kicker">GDUFS · Gymnasium</div>
+    <h1>广外体育馆</h1>
+    <div class="rule"></div>
+    <p>单叶折面 · 33 m<br>参照高德 3D 的体育馆体量 + 地图 B031 叶形平面</p>
+    <button id="topBtn" class="ghost">俯视 / 透视</button>
+    <button id="spinBtn" class="ghost">暂停旋转</button>
+  </div>
+
+  <div id="quiz" class="card">
+    <div class="q">3 秒内，你能认出这是哪栋楼吗？</div>
+    <div class="opts">
+      <button data-a="gym">体育馆</button>
+      <button data-a="lib">图书馆</button>
+      <button data-a="teach">教学楼</button>
+    </div>
+    <div id="fb" class="fb">拖动模型，看看屋顶的两片叶子。</div>
+  </div>
+
+  <div id="refWrap">
+    <button id="refBtn">参考照片 / REFERENCE</button>
+    <div id="refBody" class="card">
+      <img src="file:///C:/Users/Administrator/.dsh/attachments/v1/objects/ca/cad9ae4660a52019f0198061bbc944afe07398de56acc63da65efb1b242d1f0b"
+           onerror="this.src='https://photocdn.sohu.com/20101017/Img275838618.jpg'" alt="高德 3D 体育馆">
+      <img src="file:///C:/Users/Administrator/.dsh/attachments/v1/objects/bb/bbd2aff6367c226ebf69f59a684ebd81a767f56a6128d2b4ec61aecd7dc15646"
+           onerror="this.style.display='none'" alt="广外体育馆实拍（用户提供）">
+      <p>主参考：高德 3D——单叶折面；实拍——横向遮阳板、白墙黑字、红砖广场。</p>
+      <p>33 m / 4 415 座 / 40×50 m 比赛区 / 2010 亚运排球；非测绘成果。</p>
+    </div>
+  </div>
+
+  <div id="hint">拖动旋转 · 滚轮缩放 · 右键平移</div>
+  <div id="badge">程序化重建 · 非测绘成果<br>Three.js r128</div>
+</div>
+
+<div id="err">Three.js 未加载。请从 <b>gdufs-3d/</b> 目录打开本文件，或检查 <b>vendor/three.min.js</b>。</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/OrbitControls.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  if (!window.THREE || !THREE.OrbitControls) {
+    document.getElementById('err').style.display = 'grid';
+    return;
+  }
+
+  const C = (hex) => new THREE.Color(hex).convertSRGBToLinear();
+  const maxAniso = 8;
+
+  function makeTex(w, h, draw) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const g = cv.getContext('2d');
+    draw(g, w, h);
+    const t = new THREE.CanvasTexture(cv);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.encoding = THREE.sRGBEncoding;
+    t.anisotropy = maxAniso;
+    return t;
+  }
+
+  // ---------------------------------------------------------------- renderer
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  } catch (e) {
+    const err = document.getElementById('err');
+    err.style.display = 'grid';
+    err.textContent = 'WebGL 初始化失败：' + e.message;
+    return;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.02;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.setClearColor(C(0xb8d4e8));
+  document.getElementById('app').appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(C(0xb8d4e8), 280, 900);
+
+  const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 1800);
+  const HERO = new THREE.Vector3(72, 46, -100);
+  camera.position.copy(HERO);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 14, 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.07;
+  controls.minDistance = 55;
+  controls.maxDistance = 360;
+  controls.maxPolarAngle = Math.PI * 0.492;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.3;
+  controls.update();
+
+  // ---------------------------------------------------------------- sky
+  const skyTex = makeTex(1024, 512, (g, w, h) => {
+    const grd = g.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0.00, '#2a6cb0');
+    grd.addColorStop(0.30, '#4a90c8');
+    grd.addColorStop(0.46, '#8ac0e0');
+    grd.addColorStop(0.52, '#c8e4f2');
+    grd.addColorStop(0.56, '#e8f2f6');
+    grd.addColorStop(0.62, '#b8d0dc');
+    grd.addColorStop(1.00, '#8aa8b8');
+    g.fillStyle = grd; g.fillRect(0, 0, w, h);
+
+    const sun = g.createRadialGradient(w * 0.18, h * 0.28, 0, w * 0.18, h * 0.28, 190);
+    sun.addColorStop(0.00, 'rgba(255,255,245,0.95)');
+    sun.addColorStop(0.20, 'rgba(255,250,220,0.55)');
+    sun.addColorStop(0.60, 'rgba(255,245,210,0.12)');
+    sun.addColorStop(1.00, 'rgba(255,245,210,0)');
+    g.fillStyle = sun; g.fillRect(0, 0, w, h);
+
+    for (let i = 0; i < 34; i++) {
+      const x = Math.random() * w;
+      const y = h * (0.22 + Math.random() * 0.30);
+      const rw = 50 + Math.random() * 150;
+      const rh = 12 + Math.random() * 28;
+      const a = 0.10 + Math.random() * 0.16;
+      g.fillStyle = 'rgba(255,255,255,' + a + ')';
+      g.beginPath(); g.ellipse(x, y, rw, rh, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(210,225,235,' + (a * 0.55) + ')';
+      g.beginPath(); g.ellipse(x + rw * 0.15, y + rh * 0.55, rw * 0.7, rh * 0.45, 0, 0, Math.PI * 2); g.fill();
+    }
+  });
+  skyTex.wrapS = THREE.RepeatWrapping;
+  skyTex.wrapT = THREE.ClampToEdgeWrapping;
+
+  const sky = new THREE.Mesh(
+    new THREE.SphereGeometry(650, 40, 20),
+    new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, toneMapped: false })
+  );
+  scene.add(sky);
+
+  // ---------------------------------------------------------------- lights
+  const hemi = new THREE.HemisphereLight(C(0xd8ecf8), C(0x8a7a66), 0.95);
+  scene.add(hemi);
+
+  const sunLight = new THREE.DirectionalLight(C(0xfff2d8), 2.0);
+  sunLight.position.set(-120, 110, -90);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.set(2048, 2048);
+  sunLight.shadow.camera.left = -150;
+  sunLight.shadow.camera.right = 150;
+  sunLight.shadow.camera.top = 150;
+  sunLight.shadow.camera.bottom = -120;
+  sunLight.shadow.camera.near = 1;
+  sunLight.shadow.camera.far = 480;
+  sunLight.shadow.bias = -0.00035;
+  scene.add(sunLight);
+  scene.add(sunLight.target);
+  sunLight.target.position.set(0, 0, 0);
+
+  const fill = new THREE.DirectionalLight(C(0xa8c8e8), 0.4);
+  fill.position.set(120, 70, 90);
+  scene.add(fill);
+
+  // ---------------------------------------------------------------- textures
+  const glassTex = makeTex(256, 320, (g, w, h) => {
+    const grd = g.createLinearGradient(0, 0, w, h);
+    grd.addColorStop(0, '#7aa8b8');
+    grd.addColorStop(0.45, '#4a7a8a');
+    grd.addColorStop(0.8, '#2a5262');
+    grd.addColorStop(1, '#1a3a48');
+    g.fillStyle = grd; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 7; i++) {
+      g.fillStyle = 'rgba(255,235,190,' + (0.06 + Math.random() * 0.08) + ')';
+      g.fillRect(10 + Math.random() * 230, 80 + Math.random() * 180, 12 + Math.random() * 22, 16);
+    }
+    g.fillStyle = 'rgba(255,255,255,0.10)';
+    g.fillRect(36, 10, 14, 260);
+    g.fillRect(170, 20, 8, 240);
+    g.fillStyle = '#e8e8e2';
+    g.fillRect(0, 288, w, 32);
+    g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, 288, w, 4);
+    g.fillStyle = '#d8d8d2';
+    g.fillRect(0, 0, 6, h); g.fillRect(124, 0, 6, h); g.fillRect(250, 0, 6, h);
+  });
+
+  const panelTex = makeTex(256, 320, (g, w, h) => {
+    g.fillStyle = '#d8d8d2'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(120,120,112,0.28)'; g.lineWidth = 1;
+    for (let y = 0; y < h; y += 40) {
+      g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
+    }
+    for (let x = 0; x < w; x += 64) {
+      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
+    }
+    const grd = g.createLinearGradient(0, 236, 0, 300);
+    grd.addColorStop(0, '#6a8a98');
+    grd.addColorStop(1, '#2a4a58');
+    g.fillStyle = grd; g.fillRect(0, 236, w, 64);
+    g.fillStyle = '#8a9aa0';
+    for (let x = 0; x < w; x += 32) g.fillRect(x, 236, 3, 64);
+    g.fillStyle = '#c8c8c0'; g.fillRect(0, 300, w, 8);
+    g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, 236, w, 4);
+  });
+
+  const baseTex = makeTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#d6d2c6'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(120,115,102,0.30)'; g.lineWidth = 1;
+    for (let y = 0; y < h; y += 48) {
+      g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
+      const off = (y / 48) % 2 ? 32 : 0;
+      for (let x = off; x < w; x += 64) {
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 48); g.stroke();
+      }
+    }
+    for (let i = 0; i < 1800; i++) {
+      g.fillStyle = 'rgba(255,255,255,0.03)';
+      g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+  });
+
+  const roofTex = makeTex(512, 512, (g, w, h) => {
+    g.fillStyle = '#ecece8'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(160,160,152,0.25)'; g.lineWidth = 1;
+    for (let x = 0; x < w; x += 64) {
+      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
+    }
+    for (let y = 0; y < h; y += 128) {
+      g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
+    }
+    for (let i = 0; i < 2400; i++) {
+      g.fillStyle = 'rgba(255,255,255,0.03)';
+      g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+  });
+  roofTex.repeat.set(4, 2);
+
+  const paveTex = makeTex(512, 512, (g, w, h) => {
+    g.fillStyle = '#b8b0a4'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(80,72,64,0.24)'; g.lineWidth = 2;
+    for (let y = 0; y < h; y += 64) {
+      g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
+    }
+    for (let x = 0; x < w; x += 64) {
+      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
+    }
+    for (let i = 0; i < 2200; i++) {
+      g.fillStyle = 'rgba(255,255,255,0.03)';
+      g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+  });
+
+  const signTex = makeTex(512, 128, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = 'rgba(10,14,18,0.72)';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#f4f1ea';
+    g.font = 'bold 52px "Microsoft YaHei","SimHei",sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('体育馆', w * 0.32, h * 0.52);
+    g.font = 'bold 30px "Arial",sans-serif';
+    g.fillStyle = '#d8b46a';
+    g.fillText('GYMNASIUM', w * 0.72, h * 0.52);
+    g.strokeStyle = 'rgba(216,180,106,0.7)'; g.lineWidth = 3;
+    g.strokeRect(2, 2, w - 4, h - 4);
+  });
+  signTex.wrapS = signTex.wrapT = THREE.ClampToEdgeWrapping;
+
+  // ---------------------------------------------------------------- materials
+  const glassMat = new THREE.MeshStandardMaterial({
+    map: glassTex, roughness: 0.18, metalness: 0.35,
+    emissive: C(0x0a2028), emissiveIntensity: 0.25, side: THREE.DoubleSide
+  });
+  const baseMat = new THREE.MeshStandardMaterial({
+    map: baseTex, roughness: 0.88, metalness: 0.04, side: THREE.DoubleSide
+  });
+  const panelMat = new THREE.MeshStandardMaterial({
+    map: panelTex, roughness: 0.72, metalness: 0.12, side: THREE.DoubleSide
+  });
+  const whiteMat = new THREE.MeshStandardMaterial({
+    color: C(0xecece6), roughness: 0.5, metalness: 0.18, side: THREE.DoubleSide
+  });
+  const roofMat = new THREE.MeshStandardMaterial({
+    map: roofTex, color: C(0xffffff), roughness: 0.42, metalness: 0.28, side: THREE.DoubleSide
+  });
+  const ridgeMat = new THREE.MeshStandardMaterial({
+    color: C(0xcfcfc8), roughness: 0.45, metalness: 0.35
+  });
+  const darkGlassMat = new THREE.MeshStandardMaterial({
+    color: C(0x16262c), roughness: 0.18, metalness: 0.45, side: THREE.DoubleSide
+  });
+  const trunkMat = new THREE.MeshStandardMaterial({ color: C(0x6a5846), roughness: 0.95 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: C(0x3a6a3a), roughness: 0.92, flatShading: true });
+  const signMat = new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide, toneMapped: false });
+  const hedgeMat = new THREE.MeshStandardMaterial({ color: C(0x3f6138), roughness: 0.95, flatShading: true });
+
+  // ---------------------------------------------------------------- ground
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(900, 760),
+    new THREE.MeshStandardMaterial({ map: paveTex, roughness: 0.95, metalness: 0.02 })
+  );
+  ground.material.map.repeat.set(24, 20);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set(0, -0.04, -40);
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  const lawn = new THREE.Mesh(
+    new THREE.CircleGeometry(78, 48),
+    new THREE.MeshStandardMaterial({ color: C(0x6f8a58), roughness: 0.95 })
+  );
+  lawn.rotation.x = -Math.PI / 2;
+  lawn.position.set(0, 0.01, 0);
+  lawn.receiveShadow = true;
+  scene.add(lawn);
+
+  // ---------------------------------------------------------------- gym plan
+  const RAW = [
+    [106.4, 571.6], [98.9, 571.7], [87.9, 573.9], [77.9, 578.3], [71.9, 582.3],
+    [64.6, 589.8], [60.9, 595.5], [57.4, 604.9], [56.5, 611.5], [56.8, 618.1],
+    [59.4, 627.8], [62.5, 633.8], [69.1, 641.9], [74.6, 646.5], [84.2, 651.8],
+    [91.3, 654.2], [102.4, 655.9], [113.7, 655.2], [120.9, 653.5], [130.9, 649.1],
+    [136.9, 645.1], [142, 640.3], [147.9, 631.9], [150.5, 625.7], [152.3, 615.9],
+    [151.4, 606], [149.4, 599.6], [146.3, 593.6], [139.7, 585.5], [134.2, 580.9],
+    [124.6, 575.6], [117.5, 573.2]
+  ];
+  const CX = 104.4, CZ = 613.75;
+  const RING = RAW.map(function (p) { return [p[0] - CX, p[1] - CZ]; });
+  const EAVE = 18, PEAK = 33;
+
+  function wall(x1, z1, x2, z2, y0, y1, mat, mu, mv) {
+    const len = Math.hypot(x2 - x1, z2 - z1);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute([
+      x1, y0, z1, x2, y0, z2, x2, y1, z2, x1, y1, z1
+    ], 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute([
+      0, 0, len / mu, 0, len / mu, (y1 - y0) / mv, 0, (y1 - y0) / mv
+    ], 2));
+    geo.setIndex([0, 1, 2, 0, 2, 3]);
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, mat);
+    m.castShadow = true; m.receiveShadow = true;
+    scene.add(m);
+    return m;
+  }
+
+  for (let i = 0; i < RING.length; i++) {
+    const a = RING[i], b = RING[(i + 1) % RING.length];
+    wall(a[0], a[1], b[0], b[1], 0, 6, baseMat, 3.6, 3.0);
+    wall(a[0], a[1], b[0], b[1], 6, EAVE, panelMat, 3.6, 4.0);
+    wall(a[0], a[1], b[0], b[1], EAVE - 0.5, EAVE + 0.4, whiteMat, 3.6, 1.0);
+  }
+
+  (function roofDeck() {
+    const shape = new THREE.Shape();
+    RING.forEach(function (p, i) {
+      if (i === 0) shape.moveTo(p[0], -p[1]); else shape.lineTo(p[0], -p[1]);
+    });
+    shape.closePath();
+    const geo = new THREE.ShapeGeometry(shape);
+    geo.rotateX(-Math.PI / 2);
+    geo.translate(0, EAVE - 0.15, 0);
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      color: C(0xd8d8d2), roughness: 0.8, metalness: 0.1, side: THREE.DoubleSide
+    }));
+    m.receiveShadow = true;
+    scene.add(m);
+  })();
+
+  // 单叶折面：低多边形 + 沿长轴脊线；两端外挑落地
+  const upperMat = new THREE.MeshStandardMaterial({
+    color: C(0xd8d8d2), roughness: 0.62, metalness: 0.18,
+    side: THREE.DoubleSide
+  });
+
+  function upperShell() {
+    const NU = 36, NV = 12, pos = [], uv = [], idx = [];
+    const L = 152, W = 96;
+    for (let i = 0; i <= NU; i++) {
+      const u = -1 + 2 * i / NU;
+      const tip = Math.max(0, 1 - u * u);
+      const half = Math.max(0.45, (W / 2) * Math.pow(tip, 0.62));
+      for (let j = 0; j <= NV; j++) {
+        const v = -1 + 2 * j / NV;
+        const ridgeV = 0.5;
+        const d = Math.abs(v - ridgeV);
+        const bump = Math.pow(Math.max(0, 1 - Math.pow(d / 0.5, 2)), 0.8);
+        const xAbs = Math.abs(u) * L / 2;
+        const tipX = Math.max(0, 1 - Math.pow(xAbs / (L / 2), 2));
+        const ridgeY = PEAK * Math.sqrt(tipX);
+        const e = Math.min(1, Math.max(0, (xAbs - 48) / (L / 2 - 48)));
+        const eaveY = EAVE * (1 - e * e * (3 - 2 * e));
+        const y = eaveY + (ridgeY - eaveY) * bump;
+        pos.push(u * L / 2, Math.min(PEAK, y), v * half);
+        uv.push((u + 1) / 2, (v + 1) / 2);
+      }
+    }
+    for (let i = 0; i < NU; i++) {
+      for (let j = 0; j < NV; j++) {
+        const a = i * (NV + 1) + j;
+        const b = a + 1;
+        const c = a + NV + 2;
+        const d = a + NV + 1;
+        idx.push(a, b, c, a, c, d);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, upperMat);
+    m.castShadow = true; m.receiveShadow = true;
+    scene.add(m);
+  }
+
+  upperShell();
+
+  // ---------------------------------------------------------------- entrance
+  // 入口移到西侧高檐下，避开南侧落地的壳体
+  const portal = new THREE.Group();
+  portal.position.set(47.6, 0, -8);
+  portal.rotation.y = -Math.PI / 2;
+  scene.add(portal);
+
+  const pGlass = new THREE.Mesh(new THREE.BoxGeometry(20, 11, 4), glassMat);
+  pGlass.position.set(0, 5.5, -1);
+  pGlass.castShadow = true; pGlass.receiveShadow = true;
+  portal.add(pGlass);
+
+  [-10.4, 10.4].forEach(function (x) {
+    const c = new THREE.Mesh(new THREE.BoxGeometry(0.8, 11.4, 4.4), whiteMat);
+    c.position.set(x, 5.7, -1);
+    c.castShadow = true;
+    portal.add(c);
+  });
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(21.6, 1.0, 4.4), whiteMat);
+  beam.position.set(0, 11.2, -1);
+  beam.castShadow = true;
+  portal.add(beam);
+
+  const canopy = new THREE.Mesh(new THREE.BoxGeometry(24, 0.45, 5.0), whiteMat);
+  canopy.position.set(0, 11.6, -5.0);
+  canopy.castShadow = true;
+  portal.add(canopy);
+
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(11, 2.75), signMat);
+  sign.position.set(0, 12.9, -7.55);
+  sign.rotation.y = Math.PI;
+  portal.add(sign);
+
+  for (let i = 0; i < 4; i++) {
+    const top = 0.6 - i * 0.15;
+    const step = new THREE.Mesh(new THREE.BoxGeometry(22, top, 1.0), whiteMat);
+    step.position.set(0, top / 2, -3.6 - i * 1.0);
+    step.castShadow = true; step.receiveShadow = true;
+    portal.add(step);
+  }
+
+  [-5.2, 0, 5.2].forEach(function (x) {
+    const d = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 6.5), darkGlassMat);
+    d.position.set(x, 3.25, -3.04);
+    portal.add(d);
+  });
+
+  // ---------------------------------------------------------------- planting
+  function tree(x, z, s) {
+    const g = new THREE.Group();
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.24 * s, 0.4 * s, 3.8 * s, 6), trunkMat);
+    t.position.y = 1.9 * s; t.castShadow = true; g.add(t);
+    for (let i = 0; i < 3; i++) {
+      const c = new THREE.Mesh(new THREE.IcosahedronGeometry((1.8 + Math.random() * 0.5) * s, 1), leafMat);
+      c.position.set((Math.random() - 0.5) * 2.4 * s, 4.4 * s + Math.random() * 1.4 * s, (Math.random() - 0.5) * 2.4 * s);
+      c.castShadow = true;
+      g.add(c);
+    }
+    g.position.set(x, 0, z);
+    scene.add(g);
+  }
+
+  [[-58, -44, 1.1], [-44, 46, 1.0], [54, 42, 1.05], [66, -36, 1.0],
+   [-72, 8, 0.9], [40, 58, 0.95], [-34, -62, 0.9], [62, 12, 0.85]]
+    .forEach(function (p) { tree(p[0], p[1], p[2]); });
+
+  for (let i = 0; i < 22; i++) {
+    const a = (i / 22) * Math.PI * 2;
+    const r = 62;
+    const h = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3 + Math.random() * 0.5, 1), hedgeMat);
+    h.position.set(Math.cos(a) * r, 0.9, Math.sin(a) * r * 0.85);
+    h.castShadow = true;
+    scene.add(h);
+  }
+
+  // ---------------------------------------------------------------- UI
+  const quiz = document.getElementById('quiz');
+  const fb = document.getElementById('fb');
+  const spinBtn = document.getElementById('spinBtn');
+  const topBtn = document.getElementById('topBtn');
+  setTimeout(function () { quiz.classList.add('show'); }, 1600);
+
+  spinBtn.addEventListener('click', function () {
+    controls.autoRotate = !controls.autoRotate;
+    spinBtn.textContent = controls.autoRotate ? '暂停旋转' : '自动旋转';
+  });
+
+  let topView = false;
+  topBtn.addEventListener('click', function () {
+    topView = !topView;
+    controls.autoRotate = false;
+    spinBtn.textContent = '自动旋转';
+    if (topView) {
+      camera.position.set(0.01, 165, 0.01);
+      controls.target.set(0, 10, 0);
+      topBtn.textContent = '回到透视';
+    } else {
+      camera.position.copy(HERO);
+      controls.target.set(0, 13, 0);
+      topBtn.textContent = '俯视 / 透视';
+    }
+    controls.update();
+  });
+
+  document.querySelectorAll('#quiz .opts button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const ok = btn.dataset.a === 'gym';
+      if (ok) {
+        fb.className = 'fb ok';
+        fb.innerHTML = '✓ 对。识别点：单叶折面、浅灰上壳、西侧入口。';
+      } else {
+        fb.className = 'fb no';
+        fb.innerHTML = '再看一眼：屋顶是一整片折面，脊线沿长轴；不是两片独立的叶子。';
+      }
+    });
+  });
+
+  const refWrap = document.getElementById('refWrap');
+  document.getElementById('refBtn').addEventListener('click', function () {
+    refWrap.classList.toggle('open');
+  });
+
+  renderer.domElement.addEventListener('pointerdown', function () {
+    controls.autoRotate = false;
+    spinBtn.textContent = '自动旋转';
+  });
+
+  window.addEventListener('resize', function () {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+</script>
+</body>
+</html>

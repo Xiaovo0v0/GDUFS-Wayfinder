@@ -118,7 +118,7 @@
 
   var renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputEncoding = THREE.sRGBEncoding;
@@ -150,10 +150,13 @@
   var sunDist = Math.max(spanX, spanZ) * 1.15;
   sun.position.set(centerX - sunDist * 0.55, sunDist * 0.88, centerZ - sunDist * 0.55);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(4096, 4096);
+  sun.shadow.mapSize.set(1024, 1024);
   var sc = sun.shadow.camera;
   var half = Math.max(spanX, spanZ) * 0.78;
   sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half;
+  // 场景静态：阴影只烘一次，避免每帧重绘 4096 阴影贴图
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true;
   sc.near = 10; sc.far = Math.max(spanX, spanZ) * 3;
   sun.shadow.bias = -0.0008;
   scene.add(sun);
@@ -367,6 +370,8 @@
     var g = new THREE.Group();
     var mat = new THREE.MeshLambertMaterial({ color: col(0x4a6639), side: THREE.DoubleSide });
     D.buildings.forEach(function (b) {
+      if (b.id === "B002" || b.id === "B031" || b.id === "B041" || b.id.indexOf("B045") === 0) return;
+      if (["B033", "B034", "B036", "B037", "B038E", "B038F", "B038G"].indexOf(b.id) >= 0) return;
       if (b.type === "sports" || b.type === "dorm" || b.type === "gate") return;
       if ((b.area || 0) < 4500) return;
       var ring = b.rings && b.rings[0];
@@ -424,12 +429,180 @@
     basketball: 0x3f6fa8, tennis: 0x4a8358, badminton: 0x4f7f72,
     soccer: 0x4f8a48, volleyball: 0xc0a068, running: 0x9a5f45, track: 0x9a5f45
   };
+
+  // ---- 塑胶跑道：红色胶面 + 白色分道线 + 足球场标线 ----
+  function makeCanvasTex(w, h, draw) {
+    var cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    var g = cv.getContext("2d");
+    draw(g, w, h);
+    var t = new THREE.CanvasTexture(cv);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.encoding = THREE.sRGBEncoding;
+    t.anisotropy = 4;
+    return t;
+  }
+  var trackTex = makeCanvasTex(256, 256, function (g, w, h) {
+    g.fillStyle = "#b5523f"; g.fillRect(0, 0, w, h);
+    for (var i = 0; i < 3200; i++) {
+      g.fillStyle = Math.random() < 0.5 ? "rgba(0,0,0,0.055)" : "rgba(255,255,255,0.045)";
+      g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+  });
+  trackTex.repeat.set(0.08, 0.08);
+  var grassTex = makeCanvasTex(256, 256, function (g, w, h) {
+    g.fillStyle = "#4f8a48"; g.fillRect(0, 0, w, h);
+    for (var y = 0; y < h; y += 32) {
+      g.fillStyle = (y / 32) % 2 ? "rgba(0,0,0,0.055)" : "rgba(255,255,255,0.03)";
+      g.fillRect(0, y, w, 32);
+    }
+    for (var i = 0; i < 2600; i++) {
+      g.fillStyle = "rgba(255,255,255,0.035)";
+      g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+  });
+  grassTex.repeat.set(0.05, 0.05);
+  var whiteLineMat = new THREE.MeshBasicMaterial({
+    color: 0xf2f6f4, side: THREE.DoubleSide, transparent: true, opacity: 0.96, depthWrite: false
+  });
+
+  function applyCanvasTex(grp, tex) {
+    grp.traverse(function (o) {
+      if (!o.isMesh) return;
+      o.material.map = tex;
+      o.material.color.set(0xffffff);
+      o.material.needsUpdate = true;
+    });
+  }
+
+  // 从中心沿角度打到环边，返回距离
+  function rayRing(ring, cx, cz, ang, mode) {
+    var dx = Math.cos(ang), dz = Math.sin(ang);
+    var best = null;
+    for (var i = 0; i < ring.length; i++) {
+      var a = ring[i], b = ring[(i + 1) % ring.length];
+      var ex = b[0] - a[0], ez = b[1] - a[1];
+      var den = dx * ez - dz * ex;
+      if (Math.abs(den) < 1e-9) continue;
+      var t = ((a[0] - cx) * ez - (a[1] - cz) * ex) / den;
+      var u = ((a[0] - cx) * dz - (a[1] - cz) * dx) / den;
+      if (t > 0 && u >= -1e-6 && u <= 1 + 1e-6) {
+        if (best === null || (mode === "max" ? t > best : t < best)) best = t;
+      }
+    }
+    return best;
+  }
+
+  function addLaneNumber(n, x, z) {
+    var cv = document.createElement("canvas");
+    cv.width = 64; cv.height = 64;
+    var g = cv.getContext("2d");
+    g.clearRect(0, 0, 64, 64);
+    g.fillStyle = "#f2f6f4";
+    g.font = "bold 40px Arial, sans-serif";
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText(String(n), 32, 34);
+    var tex = new THREE.CanvasTexture(cv);
+    tex.encoding = THREE.sRGBEncoding;
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+    sp.position.set(x, 0.7, z);
+    sp.scale.set(3.0, 3.0, 1);
+    scene.add(sp);
+  }
+
+  function addTrackMarkings(outer, inner) {
+    var cx = 0, cz = 0;
+    outer.forEach(function (p) { cx += p[0]; cz += p[1]; });
+    cx /= outer.length; cz /= outer.length;
+    var N = 180, LANES = 8;
+    for (var k = 0; k <= LANES; k++) {
+      var pts = [];
+      for (var i = 0; i <= N; i++) {
+        var ang = i / N * Math.PI * 2;
+        var ro = rayRing(outer, cx, cz, ang, "max");
+        var ri = rayRing(inner, cx, cz, ang, "min");
+        if (ro === null) ro = ri;
+        if (ri === null) ri = ro;
+        if (ro === null) continue;
+        var ox = cx + ro * Math.cos(ang), oz = cz + ro * Math.sin(ang);
+        var ix = cx + ri * Math.cos(ang), iz = cz + ri * Math.sin(ang);
+        var t = k / LANES;
+        pts.push([ox + (ix - ox) * t, oz + (iz - oz) * t]);
+      }
+      if (pts.length > 1) scene.add(new THREE.Mesh(ribbonGeometry(pts, 0.22, 0.318, 1), whiteLineMat));
+    }
+    // 起终点线 + 道次号（放在东侧直道）
+    var ang0 = 0;
+    var ro0 = rayRing(outer, cx, cz, ang0, "max");
+    var ri0 = rayRing(inner, cx, cz, ang0, "min");
+    if (ro0 !== null && ri0 !== null) {
+      var os = [cx + ro0 * Math.cos(ang0), cz + ro0 * Math.sin(ang0)];
+      var is = [cx + ri0 * Math.cos(ang0), cz + ri0 * Math.sin(ang0)];
+      scene.add(new THREE.Mesh(ribbonGeometry([os, is], 0.85, 0.322, 1), whiteLineMat));
+      for (var k2 = 0; k2 < LANES; k2++) {
+        var tt = (k2 + 0.5) / LANES;
+        addLaneNumber(k2 + 1, os[0] + (is[0] - os[0]) * tt, os[1] + (is[1] - os[1]) * tt);
+      }
+    }
+  }
+
+  function addPitch(inner) {
+    var xs = inner.map(function (p) { return p[0]; });
+    var zs = inner.map(function (p) { return p[1]; });
+    var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+    var minZ = Math.min.apply(null, zs), maxZ = Math.max.apply(null, zs);
+    var cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
+    var iw = maxX - minX, ih = maxZ - minZ;
+    var pw = Math.min(iw * 0.72, 68);
+    var pl = Math.min(ih * 0.78, 105);
+    var x1 = cx - pw / 2, x2 = cx + pw / 2;
+    var z1 = cz - pl / 2, z2 = cz + pl / 2;
+    var y = 0.322;
+    function seg(ax, az, bx, bz, wid) {
+      scene.add(new THREE.Mesh(ribbonGeometry([[ax, az], [bx, bz]], wid || 0.12, y, 1), whiteLineMat));
+    }
+    seg(x1, z1, x2, z1); seg(x2, z1, x2, z2); seg(x2, z2, x1, z2); seg(x1, z2, x1, z1);
+    seg(cx, z1, cx, z2);
+    var cpts = [];
+    for (var i = 0; i <= 56; i++) {
+      var a = i / 56 * Math.PI * 2;
+      cpts.push([cx + Math.cos(a) * 9.15, cz + Math.sin(a) * 9.15]);
+    }
+    scene.add(new THREE.Mesh(ribbonGeometry(cpts, 0.12, y, 1), whiteLineMat));
+    var pbw = Math.min(40.32, pw * 0.62), pbd = Math.min(16.5, pl * 0.17);
+    var gbw = Math.min(18.32, pw * 0.3), gbd = Math.min(5.5, pl * 0.07);
+    [-1, 1].forEach(function (sgn) {
+      var zz = sgn < 0 ? z1 : z2;
+      var dir = sgn < 0 ? 1 : -1;
+      seg(cx - pbw / 2, zz, cx + pbw / 2, zz);
+      seg(cx - pbw / 2, zz, cx - pbw / 2, zz + dir * pbd);
+      seg(cx + pbw / 2, zz, cx + pbw / 2, zz + dir * pbd);
+      seg(cx - pbw / 2, zz + dir * pbd, cx + pbw / 2, zz + dir * pbd);
+      seg(cx - gbw / 2, zz, cx + gbw / 2, zz);
+      seg(cx - gbw / 2, zz, cx - gbw / 2, zz + dir * gbd);
+      seg(cx + gbw / 2, zz, cx + gbw / 2, zz + dir * gbd);
+      seg(cx - gbw / 2, zz + dir * gbd, cx + gbw / 2, zz + dir * gbd);
+      var spts = [];
+      for (var j = 0; j <= 18; j++) {
+        var a2 = j / 18 * Math.PI * 2;
+        spts.push([cx + Math.cos(a2) * 0.35, zz + dir * 11 + Math.sin(a2) * 0.35]);
+      }
+      scene.add(new THREE.Mesh(ribbonGeometry(spts, 0.14, y, 1), whiteLineMat));
+    });
+  }
+
   D.landscape.forEach(function (l) {
     if (!l.pitch || l.water) return;
-    // 田径场是带内环的环状面：外圈跑道 + 内场草地
+    // 田径场：红色胶面 + 8 道白线 + 内场草地 + 足球场标线
     if (l.sport === "running" && l.rings.length > 1) {
-      scene.add(flatPolygonMesh([l.rings[0]], col(0x9a5f45), 0.22, 1.0));
-      scene.add(flatPolygonMesh([l.rings[1]], col(0x4f8a48), 0.26, 1.0));
+      var track = flatPolygonMesh([l.rings[0]], 0xffffff, 0.22, 1.0);
+      applyCanvasTex(track, trackTex);
+      scene.add(track);
+      var field = flatPolygonMesh([l.rings[1]], 0xffffff, 0.26, 1.0);
+      applyCanvasTex(field, grassTex);
+      scene.add(field);
+      addTrackMarkings(l.rings[0], l.rings[1]);
+      addPitch(l.rings[1]);
       return;
     }
     scene.add(flatPolygonMesh(l.rings, col(PITCH_COLOR[l.sport] || 0x4f7a52), 0.25, 1.0));
@@ -1008,6 +1181,18 @@
   procedural.add(roofDetailGroup);
 
   D.buildings.forEach(function (b) {
+    // 南校图书馆改用 library-model.js 的地标模型，跳过旧的程序化体块
+    if (b.id === "B002" && CAMPUS !== "north") return;
+    // 南校体育馆改用 gym-model.js 的地标模型，跳过旧的程序化体块
+    if (b.id === "B031" && CAMPUS !== "north") return;
+    // 南校学术交流中心改用 academic-model.js 的地标模型
+    if (b.id === "B041" && CAMPUS !== "north") return;
+    // 南校实验楼 A-E 区改用 lab-model.js 的地标模型
+    if (b.id.indexOf("B045") === 0 && CAMPUS !== "north") return;
+    // 南校教学楼 A-G 改用 teaching-model.js 的参数化模型
+    if (CAMPUS !== "north" && ["B033", "B034", "B036", "B037", "B038E", "B038F", "B038G"].indexOf(b.id) >= 0) return;
+    // 南苑/北苑宿舍改用 dorm-model.js 的参数化模型
+    if (CAMPUS !== "north" && ["B005", "B006", "B007", "B008", "B009", "B010", "B011", "B013", "B014", "B015", "B016", "B017", "B018"].indexOf(b.id) >= 0) return;
     var st = styleFor(b);
     var tex = facadeTexture(st);
 
@@ -1074,6 +1259,159 @@
     }
   });
 
+  // 南校图书馆：用 library-model.js 的白天外景地标模型替换旧体块
+  var landmarkMeshes = [];
+  var landmarkGroup = null;
+  if (CAMPUS !== "north" && typeof window.buildGDUFSLibrary === "function") {    var b002 = null;
+    for (var b2i = 0; b2i < D.buildings.length; b2i++) {
+      if (D.buildings[b2i].id === "B002") { b002 = D.buildings[b2i]; break; }
+    }
+    if (b002) {
+      landmarkGroup = window.buildGDUFSLibrary();
+      // 本地正面朝 -z，直接朝向默认相机（南侧主广场）；主体向北落进 B002 轮廓
+      landmarkGroup.scale.set(0.9, 1.0, 1.8);
+      landmarkGroup.rotation.y = 0;
+      landmarkGroup.position.set(94.3, 0, 117);
+      landmarkGroup.traverse(function (o) {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.userData.building = b002;
+        landmarkMeshes.push(o);
+        buildingMeshes.push(o);
+      });
+      scene.add(landmarkGroup);
+    }
+  }
+
+  // 南校体育馆：B031 叶形平面 + 单叶拱壳
+  var gymMeshes = [];
+  var gymGroup = null;
+  if (CAMPUS !== "north" && typeof window.buildGDUFSGym === "function") {
+    var b031 = null;
+    for (var b3i = 0; b3i < D.buildings.length; b3i++) {
+      if (D.buildings[b3i].id === "B031") { b031 = D.buildings[b3i]; break; }
+    }
+    if (b031) {
+      b031.height = 33;
+      gymGroup = window.buildGDUFSGym();
+      gymGroup.rotation.y = 0;
+      gymGroup.position.set(104.4, 0, 613.75);
+      gymGroup.traverse(function (o) {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.userData.building = b031;
+        gymMeshes.push(o);
+        buildingMeshes.push(o);
+      });
+      scene.add(gymGroup);
+    }
+  }
+
+  // 南校学术交流中心：B041 临河橙色长楼
+  var academicMeshes = [];
+  var academicGroup = null;
+  if (CAMPUS !== "north" && typeof window.buildGDUFSAcademic === "function") {
+    var b041 = null;
+    for (var b4i = 0; b4i < D.buildings.length; b4i++) {
+      if (D.buildings[b4i].id === "B041") { b041 = D.buildings[b4i]; break; }
+    }
+    if (b041) {
+      b041.height = 23;
+      academicGroup = window.buildGDUFSAcademic();
+      academicGroup.rotation.y = 0;
+      academicGroup.position.set(-224.3, 0, -309.25);
+      academicGroup.traverse(function (o) {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.userData.building = b041;
+        academicMeshes.push(o);
+        buildingMeshes.push(o);
+      });
+      scene.add(academicGroup);
+    }
+  }
+
+  // 南校实验楼：B045A-E 五区 + 中央钟楼
+  var labMeshes = [];
+  var labGroup = null;
+  if (CAMPUS !== "north" && typeof window.buildGDUFSLab === "function") {
+    var labById = {};
+    D.buildings.forEach(function (b) { if (b.id.indexOf("B045") === 0) labById[b.id] = b; });
+    labGroup = window.buildGDUFSLab();
+    labGroup.rotation.y = 0;
+    labGroup.position.set(-193.25, 0, 112.2);
+    labGroup.traverse(function (o) {
+      if (!o.isMesh) return;
+      o.castShadow = true;
+      o.receiveShadow = true;
+      var p = o, zid = null;
+      while (p && !zid) {
+        if (p.userData && p.userData.buildingId) zid = p.userData.buildingId;
+        p = p.parent;
+      }
+      var b = zid ? labById[zid] : null;
+      if (b) {
+        o.userData.building = b;
+        labMeshes.push(o);
+        buildingMeshes.push(o);
+      }
+    });
+    scene.add(labGroup);
+  }
+
+  // 南校教学楼 A-G：与实验楼同一套橙白风格
+  var teachingMeshes = [];
+  var teachingGroups = [];
+  if (CAMPUS !== "north" && typeof window.buildGDUFSTeaching === "function") {
+    var teachingIds = ["B033", "B034", "B036", "B037", "B038E", "B038F", "B038G"];
+    teachingIds.forEach(function (id) {
+      var tb = null;
+      for (var ti = 0; ti < D.buildings.length; ti++) {
+        if (D.buildings[ti].id === id) { tb = D.buildings[ti]; break; }
+      }
+      if (!tb) return;
+      var tg = window.buildGDUFSTeaching(tb);
+      tg.traverse(function (o) {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.userData.building = tb;
+        teachingMeshes.push(o);
+        buildingMeshes.push(o);
+      });
+      scene.add(tg);
+      teachingGroups.push(tg);
+    });
+  }
+
+  // 南苑 / 北苑宿舍：7 层 22.4 m，橙白 + 长边阳台
+  var dormMeshes = [];
+  var dormGroups = [];
+  if (CAMPUS !== "north" && typeof window.buildGDUFSDorm === "function") {
+    var dormIds = ["B005", "B006", "B007", "B008", "B009", "B010", "B011", "B013", "B014", "B015", "B016", "B017", "B018"];
+    dormIds.forEach(function (id) {
+      var db = null;
+      for (var di = 0; di < D.buildings.length; di++) {
+        if (D.buildings[di].id === id) { db = D.buildings[di]; break; }
+      }
+      if (!db) return;
+      var dg = window.buildGDUFSDorm(db);
+      dg.traverse(function (o) {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.userData.building = db;
+        dormMeshes.push(o);
+        buildingMeshes.push(o);
+      });
+      scene.add(dg);
+      dormGroups.push(dg);
+    });
+  }
+
   // 校门：门柱 + 横梁
   D.gates.forEach(function (g) {
     var gate = new THREE.Group();
@@ -1115,7 +1453,8 @@
         o.castShadow = true;
         o.receiveShadow = true;
         var tag = (o.name || "") + "|" + (o.parent ? o.parent.name : "");
-        var mm = tag.match(/[BN]\d{3}/);
+        var mm = tag.match(/[BN]\d{3}[A-Z]?/);
+        if (mm && (mm[0] === "B002" || mm[0] === "B031" || mm[0] === "B041" || mm[0].indexOf("B045") === 0 || ["B033","B034","B036","B037","B038E","B038F","B038G"].indexOf(mm[0]) >= 0 || ["B005","B006","B007","B008","B009","B010","B011","B013","B014","B015","B016","B017","B018"].indexOf(mm[0]) >= 0)) { o.visible = false; return; }
         var b = mm ? byId[mm[0]] : null;
         if (b) { o.userData.building = b; tagged++; }
         if (o.material && o.material.map) { o.material.map.anisotropy = 4; }
@@ -1132,8 +1471,15 @@
       scene.remove(procedural);
       scene.add(gltf.scene);
       addRoofGreenery();
+      renderer.shadowMap.needsUpdate = true;
       buildingMeshes.length = 0;
-      gltf.scene.traverse(function (o) { if (o.isMesh) { buildingMeshes.push(o); } });
+      gltf.scene.traverse(function (o) { if (o.isMesh && o.visible) { buildingMeshes.push(o); } });
+      for (var lm = 0; lm < landmarkMeshes.length; lm++) buildingMeshes.push(landmarkMeshes[lm]);
+      for (var gm = 0; gm < gymMeshes.length; gm++) buildingMeshes.push(gymMeshes[gm]);
+      for (var am = 0; am < academicMeshes.length; am++) buildingMeshes.push(academicMeshes[am]);
+      for (var lmm = 0; lmm < labMeshes.length; lmm++) buildingMeshes.push(labMeshes[lmm]);
+      for (var tm = 0; tm < teachingMeshes.length; tm++) buildingMeshes.push(teachingMeshes[tm]);
+      for (var dm = 0; dm < dormMeshes.length; dm++) buildingMeshes.push(dormMeshes[dm]);
       window.__navDebug.mode = "glb";
       window.__navDebug.glbObjects = gltf.scene.children.length;
       window.__navDebug.glbTagged = tagged;
@@ -1192,6 +1538,15 @@
       z: (tunnelBox[1] + tunnelBox[3]) / 2,
       w: 64, h: 16
     });
+  }
+
+  // 标签宽度按实际渲染尺寸测量：中英文同一个地点长度差很多（"图书馆" vs "Library"），
+  // 用中文字数估算会让英文标签互相压住，手机小屏上尤其明显
+  for (var li = 0; li < labelItems.length; li++) {
+    var lw = labelItems[li].el.offsetWidth;
+    var lh = labelItems[li].el.offsetHeight;
+    if (lw > 0) { labelItems[li].w = lw; }
+    if (lh > 0) { labelItems[li].h = lh; }
   }
 
   function updateLabels() {
@@ -1265,6 +1620,7 @@
   function shortestRoute(s, t) {
     if (s === t) return { dist: 0, seq: [] };
     var n = G.nodes.length;
+    if (s < 0 || t < 0 || s >= n || t >= n) return null;   // 定位点没贴上路网时不要炸
     var dist = new Float64Array(n);
     dist.fill(Infinity);
     var prevNode = new Int32Array(n); prevNode.fill(-1);
@@ -1335,7 +1691,8 @@
 
   function drawMarkers() {
     clearGroup(markerGroup);
-    if (startPlace) {
+    // 「我的位置」自己有一套蓝色标记（精度圈 + 圆点），不再叠一圈绿环
+    if (startPlace && startPlace !== myPlace) {
       var m1 = new THREE.Mesh(
         new THREE.TorusGeometry(4.5, 1.2, 8, 24),
         new THREE.MeshBasicMaterial({ color: 0x4cff9a })
@@ -1506,21 +1863,30 @@
 
     var _e = window.GDUFS_LANG && window.GDUFS_LANG.get() === "en";
     var _n = window.tName || function (x) { return x; };
+    var mine = (startPlace === myPlace && myMeta)
+      ? (_e
+        ? '<br><span class="ok">from my location · ±' + Math.round(myMeta.accuracy) + ' m</span>'
+        : '<br><span class="ok">起点为我的位置 · 精度 ±' + Math.round(myMeta.accuracy) + ' 米</span>')
+      : "";
     setStatus(
       '<b>' + _n(startPlace.label) + '</b> → <b>' + _n(endPlace.label) + '</b><br>' +
       (_e
         ? 'Walk about <span class="ok">' + Math.round(res.dist) + ' m</span> · ' + pts.length + ' waypoints' +
           (viaTunnel ? '<br><span class="ok">via the underground tunnel</span>' : '')
         : '沿道路步行约 <span class="ok">' + Math.round(res.dist) + ' 米</span> · 途经 ' + pts.length + ' 个路点' +
-          (viaTunnel ? '<br><span class="ok">经地下隧道穿行</span>' : ''))
+          (viaTunnel ? '<br><span class="ok">经地下隧道穿行</span>' : '')) + mine
     );
   }
 
   // ============================================================
   // 10. 交互
   // ============================================================
-  function fillSelect(sel) {
+  function fillSelect(sel, withMe) {
     var html = '<option value="-1">' + (window.t ? window.t("form.select") : "请选择…") + '</option>';
+    // 定位过之后，起点下拉里多一项「我的位置」（value=-2，不对应 places 的下标）
+    if (withMe && myPlace) {
+      html += '<option value="-2">' + (window.t ? window.t("form.me") : "📍 我的位置") + '</option>';
+    }
     places.forEach(function (p, i) {
       var lb = window.tName ? window.tName(p.label) : p.label;
       html += '<option value="' + i + '">' + lb + "</option>";
@@ -1529,11 +1895,12 @@
   }
   var startSel = document.getElementById("startSelect");
   var endSel = document.getElementById("endSelect");
-  fillSelect(startSel);
+  fillSelect(startSel, true);
   fillSelect(endSel);
 
   startSel.addEventListener("change", function () {
-    startPlace = places[parseInt(this.value, 10)] || null;
+    var v = parseInt(this.value, 10);
+    startPlace = v === -2 ? myPlace : (places[v] || null);
     route();
   });
   endSel.addEventListener("change", function () {
@@ -1542,7 +1909,9 @@
   });
 
   function syncSelects() {
-    startSel.value = startPlace ? String(places.indexOf(startPlace)) : "-1";
+    startSel.value = startPlace
+      ? (startPlace === myPlace ? "-2" : String(places.indexOf(startPlace)))
+      : "-1";
     endSel.value = endPlace ? String(places.indexOf(endPlace)) : "-1";
   }
 
@@ -1564,7 +1933,10 @@
       try { window.__onBuildingClick(b); } catch (err) { /* 忽略面板异常 */ }
     }
     if (!place) { setStatus('<span class="warn">该建筑未命名，无法作为导航点。</span>'); return; }
-    if (!startPlace || (startPlace && endPlace)) {
+    if (startPlace === myPlace && !endPlace) {
+      // 已经定位过：点建筑直接当终点，起点保留「我的位置」
+      endPlace = place;
+    } else if (!startPlace || (startPlace && endPlace)) {
       startPlace = place; endPlace = null;
     } else {
       endPlace = place;
@@ -1587,7 +1959,199 @@
   document.getElementById("btnReset").addEventListener("click", resetView);
 
   // ============================================================
-  // 11. 渲染循环
+  // 11. 定位「我的位置」
+  // ============================================================
+  // 分工：geo.js 只负责「GPS 经纬度 → 校园本地坐标（x 西正、z 北正）」；
+  // 这里负责贴路网、画标记、把「我的位置」当成一个临时起点参与算路。
+  // 之所以不把坐标算进 Dify：定位是每秒钟都在变的前端状态，走一趟大模型
+  // 既慢又没必要，LLM 拿不到 GPS，也不该负责画图。
+  var myPlace = null;
+  var myMeta = null;
+  var myGroup = new THREE.Group();
+  scene.add(myGroup);
+
+  // 最近路网节点：定位点一般不在路上，用最近节点当算路起点，偏差画成接驳段
+  function nearestNode(x, z) {
+    var best = -1, bd = Infinity;
+    for (var i = 0; i < G.nodes.length; i++) {
+      var dx = G.nodes[i][0] - x, dz = G.nodes[i][1] - z;
+      var d = dx * dx + dz * dz;
+      if (d < bd) { bd = d; best = i; }
+    }
+    return { node: best, dist: Math.sqrt(bd) };
+  }
+
+  function nearestPlace(x, z) {
+    var best = null, bd = Infinity;
+    for (var i = 0; i < places.length; i++) {
+      var p = places[i];
+      var d = Math.hypot(p.x - x, p.z - z);
+      if (d < bd) { bd = d; best = p; }
+    }
+    return best ? { label: best.label, dist: bd } : null;
+  }
+
+  // 我附近的 k 个地点（不含自身），给"我附近有什么"这类问句用
+  function nearbyPlaces(k) {
+    if (!myPlace) return [];
+    return places.map(function (p) {
+      return { label: p.label, dist: Math.hypot(p.x - myPlace.x, p.z - myPlace.z), kind: p.kind };
+    }).sort(function (a, b) { return a.dist - b.dist; }).slice(0, k || 3);
+  }
+
+  function myLabelSprite(text) {
+    var c = document.createElement("canvas");
+    c.width = 256; c.height = 72;
+    var g = c.getContext("2d");
+    g.fillStyle = "rgba(27,110,243,0.95)";
+    var r = 20, w = 256, h = 72;
+    g.beginPath();
+    g.moveTo(6 + r, 6);
+    g.lineTo(w - 6 - r, 6);
+    g.quadraticCurveTo(w - 6, 6, w - 6, 6 + r);
+    g.lineTo(w - 6, h - 6 - r);
+    g.quadraticCurveTo(w - 6, h - 6, w - 6 - r, h - 6);
+    g.lineTo(6 + r, h - 6);
+    g.quadraticCurveTo(6, h - 6, 6, h - 6 - r);
+    g.lineTo(6, 6 + r);
+    g.quadraticCurveTo(6, 6, 6 + r, 6);
+    g.closePath();
+    g.fill();
+    g.fillStyle = "#ffffff";
+    g.font = "600 30px 'PingFang SC','Microsoft YaHei',sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText(text, w / 2, h / 2 + 1);
+
+    var tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding;
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: tex, transparent: true, depthTest: false, depthWrite: false
+    }));
+    sp.scale.set(22, 6.2, 1);
+    sp.renderOrder = 7;
+    return sp;
+  }
+
+  function drawMyMarker(x, z, acc) {
+    clearGroup(myGroup);
+    // 精度圈：半径=GPS 报告的 accuracy（米），一眼看出"大概在这一片"
+    var disc = new THREE.Mesh(
+      new THREE.CircleGeometry(acc, 48),
+      new THREE.MeshBasicMaterial({
+        color: 0x2f6ea8, transparent: true, opacity: 0.18,
+        depthWrite: false, side: THREE.DoubleSide
+      })
+    );
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.set(x, 0.55, z);
+    myGroup.add(disc);
+
+    var ring = new THREE.Mesh(
+      new THREE.TorusGeometry(Math.max(4.2, Math.min(acc * 0.3, 12)), 0.9, 8, 36),
+      new THREE.MeshBasicMaterial({ color: 0xffffff })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(x, 0.8, z);
+    myGroup.add(ring);
+
+    var dot = new THREE.Mesh(
+      new THREE.CircleGeometry(3.4, 24),
+      new THREE.MeshBasicMaterial({ color: 0x1b6ef3, depthWrite: false })
+    );
+    dot.rotation.x = -Math.PI / 2;
+    dot.position.set(x, 1.0, z);
+    myGroup.add(dot);
+
+    var sp = myLabelSprite(window.t ? window.t("me.label") : "我的位置");
+    sp.position.set(x, 22, z);   // 抬到校门/建筑标注（y=7）之上，避免"正门"和"我的位置"叠在一起
+    myGroup.add(sp);
+  }
+
+  function myStatusHtml() {
+    var en = window.GDUFS_LANG && window.GDUFS_LANG.get() === "en";
+    var _n = window.tName || function (x) { return x; };
+    var near = myPlace ? nearestPlace(myPlace.x, myPlace.z) : null;
+    var acc = myMeta ? Math.round(myMeta.accuracy) : 0;
+    if (en) {
+      return '<b>You are here</b> · ±' + acc + ' m' +
+        (near ? '<br>Nearest landmark: ' + _n(near.label) + ' · ' + Math.round(near.dist) + ' m' : '') +
+        '<br>Pick a destination to route from your location.';
+    }
+    return '<b>已定位到我的位置</b> · 精度 ±' + acc + ' 米' +
+      (near ? '<br>最近的地标：' + _n(near.label) + ' · 约 ' + Math.round(near.dist) + ' 米' : '') +
+      '<br>选个终点，就能从你这里开始算路。';
+  }
+
+  /**
+   * 设定我的位置（xy 为校园本地坐标，单位米）
+   * @param {number} x  西正（与建筑/路网同一套坐标）
+   * @param {number} z  北正
+   * @param {object} opt {accuracy:米, lat, lon, heading}
+   */
+  function setMyPosition(x, z, opt) {
+    opt = opt || {};
+    if (!isFinite(x) || !isFinite(z)) { return null; }
+    var acc = +opt.accuracy;
+    if (!isFinite(acc) || acc <= 0) { acc = 25; }
+    acc = Math.max(6, Math.min(300, acc));
+
+    var first = !myPlace;
+    var moved = first ? Infinity : Math.hypot(x - myPlace.x, z - myPlace.z);
+
+    var nn = nearestNode(x, z);
+    myPlace = { label: "我的位置", x: x, z: z, node: nn.node, kind: "me" };
+    myMeta = { accuracy: acc, snap: nn.dist, at: Date.now(), lat: opt.lat, lon: opt.lon };
+    drawMyMarker(x, z, acc);
+
+    startPlace = myPlace;
+    fillSelect(startSel, true);
+    syncSelects();
+    // 连续定位时每秒重算一次路线既费性能又闪，走动了 3 m 以上才重算
+    if (first || moved > 3 || !endPlace) { route(); }
+    if (!endPlace) { setStatus(myStatusHtml()); }
+
+    // 只在第一次或明显移动时推镜头，否则用户自己转视角会被抢回去
+    if (window.__navDebug.flyTo && (first || moved > 60)) {
+      window.__navDebug.flyTo(x, z, Math.max(90, acc * 3), Math.max(230, acc * 6));
+    }
+    return {
+      x: x, z: z, accuracy: acc, node: nn.node,
+      snap: Math.round(nn.dist * 10) / 10,
+      routed: !!endPlace
+    };
+  }
+
+  function clearMyPosition() {
+    if (!myPlace) { return; }
+    if (startPlace === myPlace) { startPlace = null; }
+    myPlace = null;
+    myMeta = null;
+    clearGroup(myGroup);
+    fillSelect(startSel, true);
+    syncSelects();
+    route();
+  }
+
+  window.__navDebug.setMyPosition = setMyPosition;
+  window.__navDebug.clearMyPosition = clearMyPosition;
+  window.__navDebug.getMyPosition = function () {
+    if (!myPlace) { return null; }
+    return {
+      x: myPlace.x, z: myPlace.z, node: myPlace.node,
+      accuracy: myMeta ? myMeta.accuracy : 0,
+      snap: myMeta ? Math.round(myMeta.snap * 10) / 10 : 0,
+      nearest: nearestPlace(myPlace.x, myPlace.z)
+    };
+  };
+  window.__navDebug.nearestPlace = function () {
+    return myPlace ? nearestPlace(myPlace.x, myPlace.z) : null;
+  };
+  window.__navDebug.nearbyPlaces = nearbyPlaces;
+  window.__navDebug.nearestNode = nearestNode;
+
+  // ============================================================
+  // 12. 渲染循环
   // ============================================================
   var needle = document.getElementById("needle");
   var camDir = new THREE.Vector3();
@@ -1642,6 +2206,11 @@
 
   function findPlace(label) {
     if (!label) { return null; }
+    // 「我的位置」不是 places 里的一项，而是定位后生成的一个临时起点
+    var raw0 = String(label).replace(/[（(].*?[）)]/g, "").trim();
+    if (/^(我的位置|我的所在地|当前位置|我在这里|我这儿|我这|my location|where am i)$/i.test(raw0)) {
+      return myPlace || null;
+    }
     var raw = normPlace(label);
     if (!raw) { return null; }
     var n = normPlace(expandAlias(raw));
@@ -1684,6 +2253,9 @@
 
   // 相机飞行：把镜头推到某个地面点
   var flyState = null;
+  window.__navDebug.renderInfo = function () {
+    return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles };
+  };
   window.__navDebug.flyTo = function (x, z, height, dist) {
     var h = height || 60;
     var d = dist || 220;

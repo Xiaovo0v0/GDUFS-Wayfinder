@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#004694" />
 <link rel="icon" href="data:," />
 <title>尚行 · 广外校园向导</title>
 <style>
@@ -36,6 +37,11 @@
     --sh-2: 0 10px 30px rgba(10, 40, 80, .14);
 
     --font: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+
+    /* 手机安全区：刘海 / 底部小白条。桌面浏览器取到 0px，不影响原布局 */
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --kb: 0px;              /* 软键盘高度，由 mobile.js 写入 */
   }
 
   html, body {
@@ -43,6 +49,8 @@
     font-family: var(--font);
     color: var(--ink-900);
     -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
   }
   #app { position: fixed; inset: 0; }
   button { font-family: inherit; }
@@ -77,6 +85,22 @@
   .pill button.on { background: var(--gw-blue-700); color: #fff; }
   #topbar .sep { width: 1px; height: 20px; background: var(--line); margin: 0 2px; }
 
+  /* 手机专用：右上角「语心」入口（桌面端对话面板常驻，不需要这个按钮） */
+  #ai-open {
+    display: none; align-items: center; gap: 5px; flex: 0 0 auto;
+    height: 32px; padding: 0 9px 0 3px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface);
+    color: var(--gw-blue-900); font-size: 11.5px; font-weight: 600;
+    cursor: pointer; box-shadow: var(--sh-1);
+  }
+  #ai-open .ava {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--gw-blue-700); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500;
+  }
+  #ai-open.on { border-color: var(--gw-blue-500); background: var(--gw-blue-100); }
+
   /* ---------- 建筑标注 ---------- */
   #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
   #labels .lbl {
@@ -93,15 +117,37 @@
   }
 
   /* ---------- 左侧控制面板 ---------- */
+  /* 桌面端只是把面板与建筑卡包一层，display:contents 不产生任何盒子 */
+  #dock { display: contents; }
   #panel {
     position: fixed; top: 74px; left: 16px; z-index: 10;
     background: var(--surface); color: var(--ink-900);
-    padding: 14px 16px 15px; border-radius: var(--r-l); width: 302px;
+    border-radius: var(--r-l); width: 302px;
     border: 1px solid var(--line);
     box-shadow: var(--sh-2);
-    max-height: calc(100vh - 96px); overflow-y: auto;
+    max-height: calc(100vh - 96px);
+    display: flex; flex-direction: column; overflow: hidden;
   }
-  #panel h1 { margin: 0 0 3px; font-size: 16px; font-weight: 600; color: var(--gw-blue-900); }
+  #panel .panel-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 16px 0;
+  }
+  #panel .panel-title { flex: 1 1 auto; min-width: 0; }
+  /* 手机端收起后显示的一行摘要；桌面端始终隐藏 */
+  #panel .mini-summary {
+    display: none; margin-top: 2px;
+    font-size: 11.5px; line-height: 1.4; color: var(--ink-500);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #panel .mini-summary.warn { color: var(--gw-red); }
+  /* 标题固定、内容独立滚动：手机端把图例/说明收起来时不会把标题顶出屏幕 */
+  #panel .panel-scroll {
+    padding: 0 16px 15px; overflow-y: auto; min-height: 0;
+    -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  }
+  #panel h1 { margin: 0 0 3px; font-size: 16px; font-weight: 600; color: var(--gw-blue-900); flex: 1 1 auto; }
+  #panelToggle { display: none; }
+  #panelCollapse { display: none; }
   #panel .sub { margin: 0 0 12px; font-size: 11.5px; line-height: 1.6; color: var(--ink-500); }
   .row { margin: 8px 0; }
   .row label { display: block; font-size: 11.5px; color: var(--ink-500); margin-bottom: 3px; }
@@ -190,6 +236,12 @@
   }
   #ai-badge.off { background: var(--gw-red-soft); color: #a30d1b; border-color: #f4c7cc; }
   #ai-toggle { margin-left: auto; color: var(--ink-300); }
+  #ai-close {
+    display: none; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%; flex: 0 0 auto;
+    margin-left: auto; border: 1px solid var(--line); background: var(--surface-2);
+    color: var(--ink-500); font-size: 13px; line-height: 1; cursor: pointer;
+  }
   #ai-body { padding: 10px 12px; overflow-y: auto; max-height: 44vh; display: flex; flex-direction: column; gap: 8px; }
   .msg { line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
   .msg.user {
@@ -274,14 +326,170 @@
   body.walking #panel, body.walking #ai, body.walking #topbar {
     opacity: 0; pointer-events: none; transition: opacity .2s;
   }
+  body.walking #bcard { opacity: 0; pointer-events: none; }
   body.walking #labels { opacity: .3; transition: opacity .2s; }
 
-  /* ---------- 窄屏 ---------- */
-  @media (max-width: 860px) {
-    #panel { width: calc(100vw - 32px); max-height: 46vh; }
-    #ai { width: calc(100vw - 40px); right: 20px; bottom: 84px; }
-    #bcard { width: calc(100vw - 32px); bottom: 12px; }
-    #topbar { right: 16px; }
+  /* ============================================================
+     手机端（≤760px）：顶栏通栏 + 底部抽屉
+     桌面布局原样保留，只在窄屏重排；安全区用 env() 让开刘海和底部小白条
+     ============================================================ */
+  @media (max-width: 760px) {
+    /* ---------- 顶栏 ---------- */
+    #topbar {
+      top: 0; left: 0; right: 0;
+      height: auto; min-height: calc(48px + var(--safe-t));
+      padding: calc(6px + var(--safe-t)) 10px 6px;
+      gap: 8px; box-sizing: border-box;
+      border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+      background: rgba(255, 255, 255, .94);
+      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+      box-shadow: 0 2px 12px rgba(10, 40, 80, .06);
+    }
+    #logo { width: 26px; height: 26px; font-size: 13px; }
+    #brand { min-width: 0; overflow: hidden; }
+    #brand b {
+      font-size: 13px; letter-spacing: .04em; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    #brand span {
+      font-size: 8.5px; letter-spacing: .02em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #topbar .sep { display: none; }
+    #campusSwitch { margin-left: auto; }
+    #campusSwitch, #langSwitch, #ai-open { flex: 0 0 auto; }
+    .pill button { font-size: 11px; padding: 4px 8px; }
+    #ai-open { display: flex; }
+
+    /* ---------- 底部抽屉 ---------- */
+    #dock {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 0 8px calc(8px + var(--safe-b));
+      max-height: calc(100vh - 56px);
+      max-height: calc(100dvh - 56px - var(--safe-t));
+      pointer-events: none;
+    }
+    #dock > * { pointer-events: auto; }
+
+    #panel {
+      position: relative; top: auto; left: auto; width: auto;
+      max-height: 60vh; max-height: 60dvh;
+      padding: 8px 14px 10px; border-radius: 16px;
+      flex: 0 1 auto; min-height: 0;
+    }
+    #panel .panel-head { padding: 0 0 2px; gap: 8px; cursor: pointer; }
+    #panel h1 { margin: 0; font-size: 15.5px; }
+    #panel .panel-scroll { padding: 0; }
+    #panel .sub { display: none; }
+
+    /* 收起态：只留标题 + 一行摘要 + 展开箭头 */
+    #panel.collapsed .panel-scroll { display: none; }
+    #panel.collapsed #panelToggle { display: none; }
+    #panel.collapsed .mini-summary { display: block; }
+    #panelCollapse {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; flex: 0 0 auto; padding: 0;
+      border-radius: 50%; border: 1px solid var(--line); background: var(--surface-2);
+      color: var(--gw-blue-700); font-size: 12px; line-height: 1; cursor: pointer;
+    }
+    #panelCollapse .chev { font-style: normal; transition: transform .18s; }
+    #panel.collapsed #panelCollapse .chev { transform: rotate(180deg); }
+
+    #panelToggle {
+      display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto;
+      min-height: 28px; padding: 5px 10px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--surface-2);
+      color: var(--gw-blue-700); font-size: 11.5px; font-weight: 500;
+      cursor: pointer;
+    }
+    #panel .panel-extra { display: none; }
+    #panel.expanded .panel-extra { display: block; }
+    #panel.expanded #panelToggle {
+      background: var(--gw-blue-100); border-color: var(--gw-blue-500); color: var(--gw-blue-700);
+    }
+
+    #panel .row { margin: 6px 0; }
+    #panel .row label { font-size: 11.5px; margin-bottom: 3px; }
+    select { font-size: 16px; padding: 9px 10px; border-radius: 9px; }
+    /* 去掉移动端 300ms 点击延迟；地图画布由 OrbitControls 自己设 touch-action:none */
+    button, select, .chip { touch-action: manipulation; }
+    #status {
+      margin-top: 8px; padding-top: 8px; min-height: 0;
+      font-size: 12px; line-height: 1.55;
+    }
+
+    /* 按钮两行：三个开关一行，两个主操作一行 */
+    .btns { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 9px; }
+    .btns button {
+      min-height: 38px; padding: 6px 4px; border-radius: 9px;
+      font-size: 12.5px; white-space: nowrap;
+    }
+    #btnLabels, #btnRoads, #btnReset { grid-column: span 2; }
+    #btnWalk, #btnLocate { grid-column: span 3; }
+
+    .legend { margin-top: 10px; font-size: 11.5px; gap: 5px 10px; }
+    .hint { font-size: 10.5px; }
+
+    /* 建筑信息卡：叠在抽屉上方，不遮挡操作区 */
+    #bcard {
+      position: relative; left: auto; bottom: auto; transform: none;
+      width: auto; max-height: 30vh; max-height: 30dvh; overflow-y: auto;
+      flex: 0 2 auto; min-height: 0;
+    }
+
+    /* 指北针挪到右上角（和地图类应用一致），底部整条留给抽屉 */
+    #compass {
+      top: calc(60px + var(--safe-t)); bottom: auto; right: 12px;
+      width: 42px; height: 42px;
+    }
+    #needle { font-size: 11px; padding-top: 4px; }
+    #compass .n { font-size: 9px; padding-bottom: 4px; }
+
+    /* ---------- 语心对话：全屏浮层 ---------- */
+    #ai {
+      display: none;
+      left: 8px; right: 8px; width: auto;
+      top: calc(56px + var(--safe-t));
+      bottom: calc(8px + var(--safe-b) + var(--kb));
+      max-height: none; border-radius: 16px; z-index: 60;
+    }
+    body.ai-open #ai { display: flex; }
+    #ai-body { max-height: none; flex: 1 1 auto; min-height: 0; overscroll-behavior: contain; }
+    #ai-toggle { display: none; }
+    #ai-close { display: flex; }
+    .chips { max-height: none; overflow-y: visible; flex: 0 0 auto; }
+    .ai-input { flex: 0 0 auto; }
+
+    /* ---------- 第一人称漫游控制条 ---------- */
+    #walkbar {
+      left: 8px; right: 8px; bottom: calc(8px + var(--safe-b));
+      transform: none; white-space: normal;
+      display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px;
+      gap: 6px 8px; padding: 8px 10px;
+    }
+    #walkbar.on { transform: none; }
+    #walkbar button { width: 100%; height: 32px; }
+    #walkbar #walk-info {
+      grid-area: 1 / 2; min-width: 0; align-self: center;
+      font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #walk-pause { grid-area: 1 / 1; }
+    #walk-exit { grid-area: 1 / 3; }
+    #walkbar #walk-progress { grid-area: 2 / 1 / 3 / 4; width: 100%; justify-self: stretch; }
+  }
+
+  /* 小屏：去掉装饰性英文副标题，保证顶栏一行放得下 */
+  @media (max-width: 400px) {
+    #brand span { display: none; }
+    #topbar { gap: 6px; }
+    .pill button { padding: 4px 7px; }
+    #ai-open { padding-right: 8px; }
+  }
+  /* 320px 级小屏（英文标签更长）：语心按钮只留头像，避免顶栏挤爆 */
+  @media (max-width: 340px) {
+    #ai-open { padding: 0 4px; }
+    #ai-open .txt { display: none; }
   }
   /* ---------- 办事卡片（C3） ---------- */
   .card-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -329,14 +537,10 @@
     <button data-lang="zh" class="on">中</button>
     <button data-lang="en">EN</button>
   </div>
-</div>
-
-<div id="bcard" class="hidden">
-  <button class="x" id="bcard-x">×</button>
-  <h2 id="bcard-name"></h2>
-  <div class="meta" id="bcard-meta"></div>
-  <p class="func" id="bcard-func"></p>
-  <div class="foot" id="bcard-foot"></div>
+  <!-- 手机端入口：桌面端对话面板常驻，这个按钮隐藏 -->
+  <button id="ai-open" type="button" aria-controls="ai" aria-expanded="false" aria-label="语心" data-i18n-aria="ai.name">
+    <span class="ava" id="ai-open-ava">语</span><span class="txt" data-i18n="ai.name">语心</span>
+  </button>
 </div>
 
 <div id="ai">
@@ -344,6 +548,7 @@
     <span class="avatar">语</span><b data-i18n="ai.name">语心</b>
     <span id="ai-badge">连接中…</span>
     <span id="ai-toggle">▾</span>
+    <button id="ai-close" type="button" aria-label="关闭语心" title="关闭">✕</button>
   </div>
   <div id="ai-body"></div>
   <div class="chips" id="ai-chips"></div>
@@ -353,47 +558,73 @@
   </div>
 </div>
 
-<div id="panel">
-  <h1 data-i18n="panel.title">广外校园向导</h1>
-  <p class="sub" id="panelSub" data-i18n="panel.sub">
-    广东外语外贸大学 · 大学城校区<br>
-    51 栋建筑 · LOD2 模型 · 步行路径规划
-  </p>
-
-  <div class="row">
-    <label data-i18n="form.from">起点</label>
-    <select id="startSelect"></select>
-  </div>
-  <div class="row">
-    <label data-i18n="form.to">终点</label>
-    <select id="endSelect"></select>
+<div id="dock">
+  <div id="bcard" class="hidden">
+    <button class="x" id="bcard-x">×</button>
+    <h2 id="bcard-name"></h2>
+    <div class="meta" id="bcard-meta"></div>
+    <p class="func" id="bcard-func"></p>
+    <div class="foot" id="bcard-foot"></div>
   </div>
 
-  <div id="status"></div>
+  <div id="panel">
+    <div class="panel-head" id="panelHead">
+      <div class="panel-title">
+        <h1 data-i18n="panel.title">广外校园向导</h1>
+        <div class="mini-summary" id="miniSummary">点这里展开，选起点和终点</div>
+      </div>
+      <button id="panelToggle" type="button" aria-expanded="false" aria-controls="panelExtra">
+        <span data-i18n="sheet.legend">图例</span>
+      </button>
+      <button id="panelCollapse" type="button" aria-expanded="true" aria-label="收起校园向导" title="收起校园向导">
+        <i class="chev" aria-hidden="true">▾</i>
+      </button>
+    </div>
+    <div class="panel-scroll">
+      <p class="sub" id="panelSub" data-i18n="panel.sub">
+        广东外语外贸大学 · 大学城校区<br>
+        51 栋建筑 · LOD2 模型 · 步行路径规划
+      </p>
 
-  <div class="btns">
-    <button id="btnLabels" class="on" data-i18n="btn.labels">建筑标注</button>
-    <button id="btnRoads" class="on" data-i18n="btn.roads">道路</button>
-    <button id="btnReset" data-i18n="btn.reset">重置视角</button>
-    <button id="btnWalk" data-i18n="btn.walk">走过去看看</button>
-  </div>
+      <div class="row">
+        <label data-i18n="form.from">起点</label>
+        <select id="startSelect"></select>
+      </div>
+      <div class="row">
+        <label data-i18n="form.to">终点</label>
+        <select id="endSelect"></select>
+      </div>
 
-  <div class="legend">
-    <div class="lg"><span class="sw" style="background:#c4bba8"></span><span data-i18n="legend.teaching">教学 / 实验</span></div>
-    <div class="lg"><span class="sw" style="background:#cbbd9f"></span><span data-i18n="legend.dorm">学生宿舍</span></div>
-    <div class="lg"><span class="sw" style="background:#854b39"></span><span data-i18n="legend.library">图书馆</span></div>
-    <div class="lg"><span class="sw" style="background:#a4644c"></span><span data-i18n="legend.canteen">食堂</span></div>
-    <div class="lg"><span class="sw" style="background:#b3bfc7"></span><span data-i18n="legend.sports">体育场馆</span></div>
-    <div class="lg"><span class="sw" style="background:#b9a684"></span><span data-i18n="legend.culture">文化 / 会堂</span></div>
-    <div class="lg"><span class="sw" style="background:#cfd6da"></span><span data-i18n="legend.clinic">门诊</span></div>
-    <div class="lg"><span class="sw" style="background:#b6b1a5"></span><span data-i18n="legend.misc">其他</span></div>
-  </div>
+      <div id="status"></div>
 
-  <div class="hint" id="panelHint" data-i18n="hint.body">
-    左键拖动旋转 · 滚轮缩放 · 右键平移<br>
-    可直接点击建筑设置起点 / 终点。<br>
-    生活区和教学区经 <b>地下隧道</b> 穿行（图中青色）。<br>
-    名称/层数已按官方资料与规划验收合格证修正；立面为程序化生成，非测绘成果。
+      <div class="btns">
+        <button id="btnLabels" class="on" data-i18n="btn.labels">建筑标注</button>
+        <button id="btnRoads" class="on" data-i18n="btn.roads">道路</button>
+        <button id="btnReset" data-i18n="btn.reset">重置视角</button>
+        <button id="btnWalk" data-i18n="btn.walk">走过去看看</button>
+        <button id="btnLocate" data-i18n="btn.locate">📍 我的位置</button>
+      </div>
+
+      <div class="panel-extra" id="panelExtra">
+        <div class="legend">
+          <div class="lg"><span class="sw" style="background:#c4bba8"></span><span data-i18n="legend.teaching">教学 / 实验</span></div>
+          <div class="lg"><span class="sw" style="background:#cbbd9f"></span><span data-i18n="legend.dorm">学生宿舍</span></div>
+          <div class="lg"><span class="sw" style="background:#854b39"></span><span data-i18n="legend.library">图书馆</span></div>
+          <div class="lg"><span class="sw" style="background:#a4644c"></span><span data-i18n="legend.canteen">食堂</span></div>
+          <div class="lg"><span class="sw" style="background:#b3bfc7"></span><span data-i18n="legend.sports">体育场馆</span></div>
+          <div class="lg"><span class="sw" style="background:#b9a684"></span><span data-i18n="legend.culture">文化 / 会堂</span></div>
+          <div class="lg"><span class="sw" style="background:#cfd6da"></span><span data-i18n="legend.clinic">门诊</span></div>
+          <div class="lg"><span class="sw" style="background:#b6b1a5"></span><span data-i18n="legend.misc">其他</span></div>
+        </div>
+
+        <div class="hint" id="panelHint" data-i18n="hint.body">
+          左键拖动旋转 · 滚轮缩放 · 右键平移<br>
+          可直接点击建筑设置起点 / 终点。<br>
+          生活区和教学区经 <b>地下隧道</b> 穿行（图中青色）。<br>
+          名称/层数已按官方资料与规划验收合格证修正；立面为程序化生成，非测绘成果。
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -408,11 +639,20 @@
 <script src="i18n.js"></script>
 <script src="faq-data.js"></script>
 <script src="info-data.js"></script>
+<script src="model-utils.js"></script>
+<script src="library-model.js"></script>
+<script src="gym-model.js"></script>
+<script src="academic-model.js"></script>
+<script src="lab-model.js"></script>
+<script src="teaching-model.js"></script>
+<script src="dorm-model.js"></script>
 <script src="app.js"></script>
 <script src="walk.js"></script>
+<script src="geo.js"></script>
 <script src="ai-config.js"></script>
 <script src="ai-config.local.js"></script>
 <script src="navigator-ui.js"></script>
+<script src="mobile.js"></script>
 <script>
 /* 校区 / 语言切换：都写进 URL，切换即重新加载（保留另一个维度） */
 (function () {
@@ -424,10 +664,15 @@
   })();
 
   function go(campus, lang) {
+    lang = lang === "en" ? "en" : "zh";
+    // 语言偏好同时写进 localStorage 和 URL：URL 优先，且中英文都要显式带上。
+    // 只给 en 带 lang 参数时，切回中文会得到无参数 URL，i18n.js 又读回
+    // localStorage 里的 "en"，于是界面永远停在英文。
+    try { localStorage.setItem("gdufs_lang", lang); } catch (e) { /* 忽略 */ }
     var qs = [];
     if (campus === "north") qs.push("campus=north");
-    if (lang === "en") qs.push("lang=en");
-    location.href = location.pathname + (qs.length ? "?" + qs.join("&") : "");
+    qs.push("lang=" + lang);
+    location.href = location.pathname + "?" + qs.join("&");
   }
 
   var cbs = document.querySelectorAll("#campusSwitch button");

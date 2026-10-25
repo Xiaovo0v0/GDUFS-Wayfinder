@@ -20,6 +20,26 @@
   var chips = document.getElementById("ai-chips");
   var panel = document.getElementById("ai");
   var head = document.getElementById("ai-head");
+  var aiOpenBtn = document.getElementById("ai-open");
+  var aiCloseBtn = document.getElementById("ai-close");
+
+  // 手机端：语心默认收起，从顶栏按钮打开成浮层；桌面端常驻，逻辑不参与
+  function phoneLayout() {
+    return window.matchMedia("(max-width: 760px)").matches;
+  }
+  function setAiOpen(open) {
+    if (!phoneLayout()) return;
+    panel.classList.toggle("open", !!open);
+    document.body.classList.toggle("ai-open", !!open);
+    if (aiOpenBtn) {
+      aiOpenBtn.classList.toggle("on", !!open);
+      aiOpenBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    if (open) {
+      // 展开后滚到最新一条，别让用户自己找
+      setTimeout(function () { body.scrollTop = body.scrollHeight; }, 60);
+    }
+  }
 
   var online = null; // null=未知 true=在线 false=离线
   // ?ai=off 强制走本地规则（现场网络不通时用来稳定演示，README 里有说明）
@@ -294,6 +314,10 @@
   // ---------------- 动作执行 ----------------
   function applyAction(a) {
     if (!a) return;
+    if (a.intent === "navigate" && lastHadLoc && a.to) {
+      // 问句里带"我这里/我的位置"：按前端的真实定位点重算，别从最近地标起步
+      a = { intent: a.intent, from: "我的位置", to: a.to, answer: a.answer, card: a.card };
+    }
     var place = a.intent === "navigate" ? (a.to || a.place || "") : (a.place || "");
     if (a.intent === "navigate" && (a.from || a.to)) {
       var r = nav.setPlaces(a.from || "", a.to || "");
@@ -316,6 +340,44 @@
       nav.flyTo(fp.x, fp.z, 120, 260);
       addSys("已在地图上定位：" + fp.label);
     }
+  }
+
+  // ---------------- 定位（"我的位置"） ----------------
+  var lastHadLoc = false;
+
+  function myPlaceInfo() {
+    return (nav && nav.getMyPosition) ? nav.getMyPosition() : null;
+  }
+  function locWords(q) {
+    return /我这里|我这儿|我这|我现在|我的位置|我在哪|我附近|我身边|离我/.test(q || "");
+  }
+  // 最近的、且不是问题里已经点到的那几个地名（避免"图书馆附近去图书馆"）
+  function nearLabelFor(q, exclude) {
+    var list = (nav && nav.nearbyPlaces) ? nav.nearbyPlaces(8) : [];
+    for (var i = 0; i < list.length; i++) {
+      var hit = (exclude || []).some(function (s) { return s === list[i].label; });
+      if (!hit) return list[i].label;
+    }
+    return null;
+  }
+  function myLocationText() {
+    var me = myPlaceInfo();
+    if (!me) return null;
+    var near = me.nearest || (nav.nearestPlace && nav.nearestPlace());
+    var list = (nav.nearbyPlaces ? nav.nearbyPlaces(4) : []).filter(function (p) {
+      return !near || p.label !== near.label;
+    });
+    var lines = [];
+    lines.push(near
+      ? "你现在在「" + near.label + "」附近，直线约 " + Math.round(near.dist) + " 米（定位精度 ±" + Math.round(me.accuracy) + " 米）。"
+      : "已定位到你的位置（精度 ±" + Math.round(me.accuracy) + " 米）。");
+    if (list.length) {
+      lines.push("附近还有：" + list.slice(0, 3).map(function (p) {
+        return p.label + " " + Math.round(p.dist) + " 米";
+      }).join("、"));
+    }
+    lines.push("说「去图书馆」，我就从你这里开始算路。");
+    return lines.join("\n");
   }
 
   // ---------------- 在线：Dify ----------------
@@ -381,6 +443,26 @@
   function localAnswer(q) {
     var spots = findPlaceInText(q);
     var navWords = /怎么去|怎么走|怎样去|如何到|路线|导航|多远|在哪|位置/.test(q);
+
+    // 「我在哪 / 附近有什么」：定位是前端的确定性事实，不用绕大模型
+    var me = myPlaceInfo();
+    if (me && /我在哪|我在什么位置|我的位置|我附近|附近有|身边有/.test(q) &&
+        !/怎么去|怎么走|路线|导航/.test(q)) {
+      return { text: myLocationText(), card: null };
+    }
+    // 「我这里怎么去 XX」：起点用真实定位点，而不是最近的那个地标
+    if (me && locWords(q) && spots.length === 1 && navWords) {
+      var rMe = nav.setPlaces("我的位置", spots[0]);
+      if (rMe && rMe.from && rMe.to) {
+        var tm = nav.findPlace(rMe.to);
+        if (tm) nav.flyTo((me.x + tm.x) / 2, (me.z + tm.z) / 2, 260, 520);
+        return {
+          text: "已从你现在的位置算到「" + rMe.to + "」：沿路步行约 " +
+            Math.round(window.__lastRouteDist || 0) + " 米（离线模式，按道路网络计算）。",
+          card: null
+        };
+      }
+    }
 
     if (spots.length >= 2) {
       var r = nav.setPlaces(spots[1], spots[0]);
@@ -471,10 +553,22 @@
   }
 
   // ---------------- 交互 ----------------
+  // 问题里带"我这里/我的位置"时，给 Dify 补一句"我现在在X附近"：
+  // 算路代码节点按出现顺序取前两个地名，于是 from=最近地标、to=用户说的目的地，
+  // Dify 那边一个节点都不用改，也不用把经纬度塞进提示词。
+  function withMyLocation(q) {
+    var me = myPlaceInfo();
+    if (!me || !locWords(q)) return q;
+    var near = nearLabelFor(q, findPlaceInText(q));
+    if (!near) return q;
+    return "我现在在" + near + "附近。" + q;
+  }
+
   function send(text) {
     var q = (text != null ? text : input.value).trim();
     if (!q || busy) return;
     lastQuery = q;
+    lastHadLoc = !!(myPlaceInfo() && locWords(q));
     addMsg("user", q);
     input.value = "";
     busy = true;
@@ -510,7 +604,7 @@
       return;
     }
 
-    askDify(q)
+    askDify(withMyLocation(q))
       .then(function (raw) {
         online = true;
         setBadge();
@@ -535,8 +629,18 @@
   sendBtn.addEventListener("click", function () { send(); });
   input.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
   head.addEventListener("click", function () {
+    // 手机上「点头部 = 收起浮层」，和弹层习惯一致；桌面端仍保留折叠
+    if (phoneLayout()) { setAiOpen(false); return; }
     panel.classList.toggle("collapsed");
     document.getElementById("ai-toggle").textContent = panel.classList.contains("collapsed") ? "▸" : "▾";
+  });
+  if (aiOpenBtn) aiOpenBtn.addEventListener("click", function () { setAiOpen(true); });
+  if (aiCloseBtn) aiCloseBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    setAiOpen(false);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && panel.classList.contains("open")) setAiOpen(false);
   });
 
   var T = window.t || function (k) { return k; };
@@ -552,7 +656,10 @@
 
   // 头像与名字跟随语言
   var av = document.querySelector("#ai-head .avatar");
-  if (av) av.textContent = (window.GDUFS_LANG && window.GDUFS_LANG.get() === "en") ? "Y" : "语";
+  var enNow = window.GDUFS_LANG && window.GDUFS_LANG.get() === "en";
+  if (av) av.textContent = enNow ? "Y" : "语";
+  var avOpen = document.getElementById("ai-open-ava");
+  if (avOpen) avOpen.textContent = enNow ? "Y" : "语";
 
   addMsg("bot", NORTH ? T("ai.greet.north") : T("ai.greet"));
   if (FORCE_OFFLINE) online = false;
@@ -562,6 +669,8 @@
   var q0 = /[?&]q=([^&]+)/.exec(location.search);
   if (q0) {
     var text0 = decodeURIComponent(q0[1].replace(/\+/g, " "));
+    // 手机端进来就让用户看到这条问答，而不是藏在收起的面板里
+    setAiOpen(true);
     setTimeout(function () {
       var inp = document.querySelector("#ai-input");
       if (inp) inp.value = text0;
