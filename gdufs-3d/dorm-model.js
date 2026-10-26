@@ -8,7 +8,7 @@
 
   var C = function (hex) { return new THREE.Color(hex).convertSRGBToLinear(); };
   var maxAniso = 8;
-  var shared = null;
+  var shared = {};
 
   function makeTex(w, h, draw) {
     var cv = document.createElement('canvas');
@@ -22,22 +22,34 @@
     return t;
   }
 
-  function getMaterials() {
-    if (shared) return shared;
-    var facadeTex = makeTex(256, 256, function (g, w, h) {
-      g.fillStyle = '#d98a62'; g.fillRect(0, 0, w, h);
-      g.fillStyle = '#f2efe8'; g.fillRect(0, 0, w, 22);
+  // 三套宿舍立面：赭石 / 米砂 / 灰蓝。51 栋宿舍楼如果共用一张贴图，
+  // 远看就是一排复制品，所以按楼栋 id 哈希各取一套
+  var VARIANTS = [
+    { wall: '#d98a62', skirt: '#c47a52', band: '#f2efe8' },
+    { wall: '#e0d5b8', skirt: '#c9bd9c', band: '#f7f4ec' },
+    { wall: '#c8d1d6', skirt: '#adb8be', band: '#f2f4f5' }
+  ];
+
+  function makeFacadeTex(colors) {
+    return makeTex(256, 256, function (g, w, h) {
+      g.fillStyle = colors.wall; g.fillRect(0, 0, w, h);
+      g.fillStyle = colors.band; g.fillRect(0, 0, w, 22);
       // 单间窗
       g.fillStyle = '#203f49'; g.fillRect(46, 58, 164, 118);
       g.fillStyle = '#e8e4da'; g.fillRect(46, 58, 6, 118); g.fillRect(204, 58, 6, 118);
       g.fillRect(46, 58, 164, 6); g.fillRect(46, 170, 164, 6);
       g.fillStyle = 'rgba(255,255,255,0.16)'; g.fillRect(56, 66, 60, 44);
       // 窗下墙裙
-      g.fillStyle = '#c47a52'; g.fillRect(0, 22, w, 36); g.fillRect(0, 176, w, h - 176);
+      g.fillStyle = colors.skirt; g.fillRect(0, 22, w, 36); g.fillRect(0, 176, w, h - 176);
       g.fillStyle = 'rgba(80,45,30,0.15)';
       for (var x = 0; x < w; x += 64) g.fillRect(x, 22, 2, h - 22);
       g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(0, 22, w, 3);
     });
+  }
+
+  function getMaterials(v) {
+    var idx = ((v | 0) % VARIANTS.length + VARIANTS.length) % VARIANTS.length;
+    if (shared[idx]) return shared[idx];
     var glassTex = makeTex(256, 256, function (g, w, h) {
       g.fillStyle = '#2a4a55'; g.fillRect(0, 0, w, h);
       var grd = g.createLinearGradient(0, 0, w, h);
@@ -47,19 +59,34 @@
       for (var x = 0; x < w; x += 64) g.fillRect(x, 0, 4, h);
       for (var y = 0; y < h; y += 80) g.fillRect(0, y, w, 3);
     });
-    shared = {
+    var facadeTex = makeFacadeTex(VARIANTS[idx]);
+    // 屋面碎石贴图：纯色车顶一样的高亮平面最容易露怯，给它一点颗粒
+    var roofTex = makeTex(256, 256, function (g, w, h) {
+      g.fillStyle = '#6e7275'; g.fillRect(0, 0, w, h);
+      for (var gx = 0; gx < w; gx += 32) { g.fillStyle = 'rgba(0,0,0,0.10)'; g.fillRect(gx, 0, 2, h); }
+      for (var gy = 0; gy < h; gy += 32) { g.fillStyle = 'rgba(0,0,0,0.10)'; g.fillRect(0, gy, w, 2); }
+      for (var k = 0; k < 260; k++) {
+        var bx = (k * 37) % w, by = (k * 71) % h, bs = 4 + (k % 3) * 4;
+        var v = 96 + ((k * 13) % 24);
+        g.fillStyle = 'rgb(' + v + ',' + (v + 2) + ',' + (v + 4) + ')';
+        g.fillRect(bx, by, bs, bs);
+      }
+    });
+    shared[idx] = {
       white: new THREE.MeshStandardMaterial({ color: C(0xf2efe8), roughness: 0.55, metalness: 0.02, side: THREE.DoubleSide }),
-      roof: new THREE.MeshStandardMaterial({ color: C(0xd8d4c8), roughness: 0.85, metalness: 0.05, side: THREE.DoubleSide }),
+      roof: new THREE.MeshStandardMaterial({ map: roofTex, color: C(0xffffff), roughness: 0.94, metalness: 0.02, side: THREE.DoubleSide }),
       facade: new THREE.MeshStandardMaterial({ map: facadeTex, roughness: 0.8, metalness: 0.02, side: THREE.DoubleSide }),
       glass: new THREE.MeshStandardMaterial({ map: glassTex, roughness: 0.2, metalness: 0.4, side: THREE.DoubleSide }),
       dark: new THREE.MeshStandardMaterial({ color: C(0x4a4a44), roughness: 0.8 }),
       ac: new THREE.MeshStandardMaterial({ color: C(0xd6d4cc), roughness: 0.7, metalness: 0.1 })
     };
-    return shared;
+    return shared[idx];
   }
 
   window.buildGDUFSDorm = function (b) {
-    var M = getMaterials();
+    var seed = 0;
+    if (b && b.id) for (var si = 0; si < b.id.length; si++) seed = (seed * 131 + b.id.charCodeAt(si)) & 0xFFFF;
+    var M = getMaterials(seed % VARIANTS.length);
     var root = new THREE.Group();
     root.name = 'GDUFS_Dorm_' + b.id;
     if (!b || !b.rings || !b.rings[0] || b.rings[0].length < 3) return root;
@@ -67,7 +94,14 @@
     var ring = b.rings[0].map(function (p) { return [p[0], p[1]]; });
     var H = b.height || 22.4;
     var GROUND_H = 3.2;
-    var LEVELS = [3.2, 6.4, 9.6, 12.8, 16.0, 19.2, 22.4];
+    // 层数按官方 data 走，而不是写死 7 层；层高均分到 H
+    var nLevels = b.levels && b.levels > 1
+      ? b.levels
+      : Math.max(3, Math.round((H - GROUND_H) / 3.2) + 1);
+    var LEVELS = [];
+    for (var li = 0; li < nLevels; li++) {
+      LEVELS.push(GROUND_H + (H - GROUND_H) * (li / (nLevels - 1)));
+    }
 
     function outNormal(x1, z1, x2, z2) {
       var dx = x2 - x1, dz = z2 - z1, len = Math.hypot(dx, dz) || 1;

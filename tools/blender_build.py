@@ -63,13 +63,25 @@ def tex_mat(name, path):
     return m
 
 
+PALS = ("cold", "sand", "terra")
+KINDS = ("ribbon", "punch", "curtain", "large", "panel")
+
 MATS = {}
-for kind in ("ribbon", "punch", "curtain", "large", "panel"):
-    MATS[kind] = tex_mat("facade_" + kind, os.path.join(TEX, kind + ".png"))
-MAT_ROOF = solid_mat("roof", (106, 111, 115))
+for kind in KINDS:
+    for pal in PALS:
+        MATS[(kind, pal)] = tex_mat("facade_%s_%s" % (kind, pal),
+                                    os.path.join(TEX, "%s_%s.png" % (kind, pal)))
+    # 兜底：老命名的那张
+    MATS[(kind, None)] = tex_mat("facade_" + kind, os.path.join(TEX, kind + ".png"))
+MAT_ROOF = tex_mat("roof", os.path.join(TEX, "roof.png"))
+MAT_ROOF.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.95
+for _n in MAT_ROOF.node_tree.nodes:
+    if _n.type == "TEX_IMAGE":
+        _n.interpolation = "Linear"
 MAT_ROOF2 = solid_mat("roof_dark", (85, 89, 92))
 MAT_ACCENT = solid_mat("accent", (120, 100, 88))
 MAT_METAL = solid_mat("metal", (150, 154, 156), 0.6)
+MAT_PLINTH = solid_mat("plinth", (92, 95, 98), 0.95)
 
 
 # ---------------------------------------------------------------- geometry
@@ -134,6 +146,13 @@ def uv_ring_quads(ring, y0, y1, u_off, uv_scale_u, uv_scale_v):
 def build_building(b):
     verts, faces, uvs, mat_idx = [], [], [], []
 
+    # 每栋楼一个稳定种子：决定配色与贴图相位，避免 51 栋长得一模一样
+    seed = 0
+    for i, ch in enumerate(b["id"]):
+        seed = (seed * 131 + ord(ch) * (i + 1)) & 0xFFFFFF
+    pal = PALS[seed % len(PALS)]
+    u_phase = (seed % 89) / 7.0
+
     def add(part_v, part_f, part_uv, mi):
         base = len(verts)
         verts.extend(part_v)
@@ -145,9 +164,37 @@ def build_building(b):
     # 立面
     total = 0.0
     for ring in b["rings"]:
-        v, f, u, L = uv_ring_quads(ring, 0.0, b["height"], total / BAY, 1 / BAY, 1 / FLOOR)
+        v, f, u, L = uv_ring_quads(ring, 0.0, b["height"], total / BAY + u_phase, 1 / BAY, 1 / FLOOR)
         add(v, f, u, 0)  # 0 = 贴图材质
         total += L
+
+    # 勒脚：底下一圈深色，把楼"压"在地上，远看更有分量
+    plinth_h = 1.1
+    for ring in b["rings"]:
+        n = len(ring)
+        cx0 = sum(p[0] for p in ring) / n
+        cz0 = sum(p[1] for p in ring) / n
+        for i in range(n):
+            p0, p1 = ring[i], ring[(i + 1) % n]
+            dx, dz = p1[0] - p0[0], p1[1] - p0[1]
+            L = math.hypot(dx, dz)
+            if L < 0.05:
+                continue
+            nx, nz = dz / L, -dx / L
+            mx, mz = (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2
+            if (mx - cx0) * nx + (mz - cz0) * nz < 0:
+                nx, nz = -nx, -nz
+            ox, oz = nx * 0.06, nz * 0.06
+            base = len(verts)
+            verts += [
+                (p0[0] + ox, -(p0[1] + oz), 0.0),
+                (p0[0] + ox, -(p0[1] + oz), plinth_h),
+                (p1[0] + ox, -(p1[1] + oz), plinth_h),
+                (p1[0] + ox, -(p1[1] + oz), 0.0),
+            ]
+            faces.append((base, base + 1, base + 2, base + 3))
+            uvs.append([(0.0, 0.0)] * 4)
+            mat_idx.append(4)
 
     # 屋顶
     for ring in b["rings"]:
@@ -156,7 +203,7 @@ def build_building(b):
         base = len(verts)
         verts.extend(cap)
         faces.append(tuple(base + i for i in range(n)))
-        uvs.append([(0.0, 0.0)] * n)
+        uvs.append([(p[0] / 8.0, p[1] / 8.0) for p in ring])
         mat_idx.append(1)
 
     # 女儿墙
@@ -278,10 +325,11 @@ def build_building(b):
 
     # 材质槽：0 贴图立面 / 1 屋顶 / 2 女儿墙+雨棚 / 3 屋顶设备
     kind = b["style"]["kind"]
-    me.materials.append(MATS[kind])
+    me.materials.append(MATS.get((kind, pal)) or MATS[(kind, None)])
     me.materials.append(MAT_ROOF)
     me.materials.append(MAT_ACCENT)
     me.materials.append(MAT_METAL)
+    me.materials.append(MAT_PLINTH)
     for pi, poly in enumerate(me.polygons):
         poly.material_index = mat_idx[pi] if pi < len(mat_idx) else 0
 

@@ -1509,7 +1509,8 @@
         if (o.material && o.material.map) { o.material.map.anisotropy = 4; }
         // B5：屋面偏冷灰，屋顶设备提亮，形成层次
         if (o.material && o.material.name === "roof") {
-          o.material.color = new THREE.Color(0x5a6167);
+          // 屋面已改成「碎石贴图」，这里不要再染色，否则会把贴图乘成一片死灰
+          o.material.color = new THREE.Color(0xffffff);
           o.material.roughness = 0.95;
         }
         if (o.material && o.material.name === "metal") {
