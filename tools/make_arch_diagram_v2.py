@@ -169,7 +169,7 @@ d.text((230, y5 + 26), "广外办事指南", font=font(20, True), fill=BLUE_D)
 d.text((230, y5 + 56), "40 条事项 · 12,550 字 · 混合检索 + bge-reranker-v2-m3 重排", font=font(17), fill=INK)
 d.rounded_rectangle([926, y5 + 18, 1620, y5 + 102], radius=12, fill=(255, 255, 255), outline=BLUE, width=2)
 d.text((944, y5 + 26), "广外校园百科", font=font(20, True), fill=BLUE_D)
-d.text((944, y5 + 56), "61 条 · 16,858 字 · 楼栋/场馆/食堂档案 · 同一套检索配置", font=font(17), fill=INK)
+d.text((944, y5 + 56), "101 条 · 24,635 字 · 南北校楼栋/场馆/食堂 · 同一套检索配置", font=font(17), fill=INK)
 badge(1608, y5 + 20, "③", RED)
 
 # ---------- ⑥ 数据层 ----------

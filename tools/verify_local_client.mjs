@@ -55,7 +55,7 @@ await withPage(base + '?lang=zh', 7000, async (b) => {
   })`);
   console.log('   ', JSON.stringify(s));
   s.mode === 'glb' ? pass('GLB 模型已加载（file:// 下）') : fail('模型未加载，mode=' + s.mode);
-  s.buildings === 51 ? pass('南校 51 栋建筑') : fail('建筑数 ' + s.buildings);
+  s.buildings === 52 ? pass('南校 52 条（51 栋 + 八角楼）') : fail('建筑数 ' + s.buildings);
   s.services === 40 ? pass('办事数据 40 条') : fail('办事数据 ' + s.services);
   s.trees > 500 ? pass('行道树 ' + s.trees + ' 棵') : fail('树太少');
   await b.shot(path.join(REPO, 'artifacts/3d/local_verify_south.png'));
