@@ -1,0 +1,14 @@
+[
+  {
+    "name": "八角楼",
+    "aliases": ["八角楼会议厅", "八角楼会议室", "八角楼会场"],
+    "type": "culture",
+    "floors": "2 层会场（无固定教室）",
+    "built_year": "",
+    "function": "大学城校区中小型会场：配双 LED 屏、投影系统、徽标屏与多媒体音响，主要承接全校性或校级以上会议、重要学术活动与外事接待；由校长办公室统一管理，设备由现代教育技术中心维护",
+    "opening_hours": "按预约开放：会议前两个工作日联系校办综合科登记，电教设施另需向教育技术中心预约",
+    "location_hint": "行政办公楼北侧延伸出去的八边形建筑，与行政办公楼连为一体；从行政出入口进校后沿主路向西南约 120 米",
+    "sources": ["https://dbxb.gdufs.edu.cn/bslc/hysyd.htm", "https://etr.gdufs.edu.cn/info/1032/3628.htm"],
+    "confidence": "high"
+  }
+]

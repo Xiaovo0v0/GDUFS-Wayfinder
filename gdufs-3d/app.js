@@ -342,6 +342,7 @@
       color: col(0x6b7161), side: THREE.DoubleSide
     });
     D.buildings.forEach(function (b) {
+      if (b.sub) return;   // 子建筑的铺装由母楼那一片覆盖
       var minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
       (b.rings || []).forEach(function (ring) {
         ring.forEach(function (p) {
@@ -1181,6 +1182,9 @@
   procedural.add(roofDetailGroup);
 
   D.buildings.forEach(function (b) {
+    // 子建筑（如八角楼）的轮廓本来就长在母楼里，GLB 已经把它挤出成型，
+    // 这里再建一遍会和母楼重面闪烁，所以只画它的屋顶冠
+    if (b.sub) return;
     // 南校图书馆改用 library-model.js 的地标模型，跳过旧的程序化体块
     if (b.id === "B002" && CAMPUS !== "north") return;
     // 南校体育馆改用 gym-model.js 的地标模型，跳过旧的程序化体块
@@ -1258,6 +1262,51 @@
       }
     }
   });
+
+  // 子建筑（八角楼）：母楼 GLB 已经把八边形挤出来了，这里只加一圈屋顶冠，
+  // 让它在一片方盒子里一眼能认出来是"那栋八个角的楼"
+  (function addSubPlaceCrowns() {
+    var crownGroup = new THREE.Group();
+    crownGroup.name = "subPlaceCrowns";
+    var capMat = new THREE.MeshStandardMaterial({ color: col(0x8f979c), roughness: 0.72, metalness: 0.12 });
+    var bandMat = new THREE.MeshStandardMaterial({ color: col(0x3f4750), roughness: 0.85 });
+    D.buildings.forEach(function (b) {
+      if (!b.sub || !b.rings || !b.rings[0]) return;
+      var ring = b.rings[0];
+      var minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      ring.forEach(function (p) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minZ) minZ = p[1];
+        if (p[1] > maxZ) maxZ = p[1];
+      });
+      var cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
+      var r = Math.min(maxX - minX, maxZ - minZ) / 2;
+      if (r < 3) return;
+      var base = b.parent ? (D.buildings.filter(function (x) { return x.id === b.parent; })[0] || {}).height || b.height : b.height;
+      // 八边形冠：比楼体略收进，顶部收一个小斜面，像会场的屋面
+      var capH = 2.6;
+      var cap = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.9, r * 0.98, capH, 8, 1, false), capMat);
+      cap.position.set(cx, base + capH / 2, cz);
+      cap.rotation.y = Math.PI / 8;
+      cap.castShadow = true;
+      cap.receiveShadow = true;
+      cap.userData.building = b;
+      crownGroup.add(cap);
+      var band = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.01, r * 1.01, 0.9, 8, 1, true), bandMat);
+      band.position.set(cx, base - 0.45, cz);
+      band.rotation.y = Math.PI / 8;
+      band.userData.building = b;
+      crownGroup.add(band);
+      var tip = new THREE.Mesh(new THREE.ConeGeometry(r * 0.55, 1.8, 8), capMat);
+      tip.position.set(cx, base + capH + 0.9, cz);
+      tip.rotation.y = Math.PI / 8;
+      tip.castShadow = true;
+      crownGroup.add(tip);
+    });
+    scene.add(crownGroup);
+    window.__navDebug.subCrowns = crownGroup.children.length;
+  })();
 
   // 南校图书馆：用 library-model.js 的白天外景地标模型替换旧体块
   var landmarkMeshes = [];
