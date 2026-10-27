@@ -1995,13 +1995,17 @@
     window.__lastRouteDist = res.dist;
 
     // 路线：下层深橙描边 + 上层亮橙，读起来像一条"带"而不是一片"色块"
-    var geoOuter = ribbonGeometry(pts, 5.4, 0.40, 12);
+    // 抬到路面之上（路面 y=0.60、人行道 0.56），并给材质加 polygonOffset：
+    // 相机 near=4 / far=14000，一千米外深度缓冲精度远小于 0.2 m，只靠抬高会被路面 z-fight 掉。
+    var geoOuter = ribbonGeometry(pts, 5.4, 0.72, 12);
     pathGroup.add(new THREE.Mesh(geoOuter, new THREE.MeshBasicMaterial({
-      color: 0xb8430c, side: THREE.DoubleSide, transparent: true, opacity: 0.92
+      color: 0xb8430c, side: THREE.DoubleSide, transparent: true, opacity: 0.92,
+      polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -12
     })));
-    var geoInner = ribbonGeometry(pts, 3.4, 0.47, 12);
+    var geoInner = ribbonGeometry(pts, 3.4, 0.79, 12);
     pathGroup.add(new THREE.Mesh(geoInner, new THREE.MeshBasicMaterial({
-      color: 0xffa02e, side: THREE.DoubleSide
+      color: 0xffa02e, side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -16
     })));
 
     // 每 100 米一个距离牌
