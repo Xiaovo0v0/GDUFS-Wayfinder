@@ -24,7 +24,7 @@ os.makedirs(OUT, exist_ok=True)
 
 MARGIN = 14.0     # 边界外保留 14 m，够画外环路，又不带出城道路
 MIN_LEN = 10.0    # 太短的碎段直接丢
-SNAP = 16.0       # 断头端 16 m 内有别的路就接上去（做成丁字口）
+SNAP = 30.0       # 断头端 30 m 内有别的路就接上去（做成丁字口）
 
 
 def load_data():
