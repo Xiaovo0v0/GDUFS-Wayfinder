@@ -936,35 +936,112 @@
     lampCount = positions.length;
   })();
 
-  // 地下隧道（青色）：跨南北校区的唯一通道
+  // 地下隧道：两校区之间的下穿通道。青色路面是老样子（一眼能认出），
+  // 另外补了侧墙、两端的门洞与洞口暗面，让它从空中看也是一条"通道"而不是一块蓝色色块。
   var tunnelGroup = new THREE.Group();
   var tunnelBox = null;
-  D.roads.forEach(function (r) {
-    if (!r.tunnel) return;
-    r.lines.forEach(function (pts) {
-      var g = ribbonGeometry(pts, 16, 1.35);
-      tunnelGroup.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({
-        color: 0x2fd0ff, side: THREE.DoubleSide, transparent: true, opacity: 0.8, depthWrite: false
-      })));
-      var ends = [pts[0], pts[pts.length - 1]];
-      ends.forEach(function (p) {
-        var ring = new THREE.Mesh(
-          new THREE.TorusGeometry(6, 1.4, 8, 20),
-          new THREE.MeshBasicMaterial({ color: 0x2fd0ff })
-        );
-        ring.rotation.x = -Math.PI / 2;
-        ring.position.set(p[0], 1.6, p[1]);
-        tunnelGroup.add(ring);
-      });
-      pts.forEach(function (p) {
-        if (!tunnelBox) { tunnelBox = [p[0], p[1], p[0], p[1]]; return; }
-        tunnelBox[0] = Math.min(tunnelBox[0], p[0]);
-        tunnelBox[1] = Math.min(tunnelBox[1], p[1]);
-        tunnelBox[2] = Math.max(tunnelBox[2], p[0]);
-        tunnelBox[3] = Math.max(tunnelBox[3], p[1]);
+  (function buildTunnel() {
+    var roads = D.roads.filter(function (r) { return r.tunnel && r.lines && r.lines.length; });
+    if (!roads.length) return;
+
+    var W = 13.5;          // 通道净宽
+    var WALL_H = 3.2;      // 侧墙高度
+    var FLOOR_Y = 0.62;    // 与车行道同高
+    var floorMat = new THREE.MeshLambertMaterial({ color: col(0x363b3f) });
+    var wallMat = new THREE.MeshLambertMaterial({ color: col(0x9d9a91), side: THREE.DoubleSide });
+    var capMat = new THREE.MeshLambertMaterial({ color: col(0xb3afa4) });
+    var holeMat = new THREE.MeshBasicMaterial({ color: col(0x1d2226), side: THREE.DoubleSide });
+    var cyanMat = new THREE.MeshBasicMaterial({
+      color: col(0x2fd0ff), side: THREE.DoubleSide, transparent: true, opacity: 0.72, depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8
+    });
+
+    // 由四个角点拼一个四边形
+    function quad(a, b, c, d) {
+      var g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute([].concat(a, b, c, a, c, d), 3));
+      g.computeVertexNormals();
+      return g;
+    }
+
+    roads.forEach(function (r) {
+      r.lines.forEach(function (pts) {
+        if (pts.length < 2) return;
+        var p0 = pts[0], p1 = pts[pts.length - 1];
+        var dx = p1[0] - p0[0], dz = p1[1] - p0[1];
+        var L = Math.hypot(dx, dz);
+        if (L < 1e-3) return;
+        var ux = dx / L, uz = dz / L;
+        var nx = -uz * W / 2, nz = ux * W / 2;
+
+        // 逐段铺：深色路面 + 中间青色带 + 两侧竖墙
+        for (var i = 0; i < pts.length - 1; i++) {
+          var a = pts[i], b = pts[i + 1];
+          var sdx = b[0] - a[0], sdz = b[1] - a[1];
+          var sL = Math.hypot(sdx, sdz);
+          if (sL < 1e-3) continue;
+          var snx = -sdz / sL * W / 2, snz = sdx / sL * W / 2;
+          var a1 = [a[0] + snx, FLOOR_Y, a[1] + snz], a2 = [a[0] - snx, FLOOR_Y, a[1] - snz];
+          var b1 = [b[0] + snx, FLOOR_Y, b[1] + snz], b2 = [b[0] - snx, FLOOR_Y, b[1] - snz];
+          tunnelGroup.add(new THREE.Mesh(quad(a1, b1, b2, a2), floorMat));
+          // 侧墙
+          tunnelGroup.add(new THREE.Mesh(quad(
+            a1, b1, [b1[0], FLOOR_Y + WALL_H, b1[2]], [a1[0], FLOOR_Y + WALL_H, a1[2]]), wallMat));
+          tunnelGroup.add(new THREE.Mesh(quad(
+            [a2[0], FLOOR_Y + WALL_H, a2[2]], [b2[0], FLOOR_Y + WALL_H, b2[2]], b2, a2), wallMat));
+        }
+
+        // 中间青色导引带（保留原来的视觉标识，但收窄成车道宽度）
+        var cw = 7.0;
+        var cnx = -uz * cw / 2, cnz = ux * cw / 2;
+        var q1 = [p0[0] + cnx, FLOOR_Y + 0.16, p0[1] + cnz], q2 = [p0[0] - cnx, FLOOR_Y + 0.16, p0[1] - cnz];
+        var q3 = [p1[0] + cnx, FLOOR_Y + 0.16, p1[1] + cnz], q4 = [p1[0] - cnx, FLOOR_Y + 0.16, p1[1] - cnz];
+        tunnelGroup.add(new THREE.Mesh(quad(q1, q3, q4, q2), cyanMat));
+
+        // 两端门洞：两根柱子 + 过梁 + 暗色洞口
+        [p0, p1].forEach(function (p, k) {
+          var dirX = k === 0 ? -ux : ux, dirZ = k === 0 ? -uz : uz;   // 朝外
+          var ang = Math.atan2(dirX, dirZ);
+
+          var pillarGeo = new THREE.BoxGeometry(1.7, 4.3, 1.7);
+          [-1, 1].forEach(function (side) {
+            var m = new THREE.Mesh(pillarGeo, capMat);
+            var off = side * (W / 2 + 0.85);
+            m.position.set(p[0] + (-uz) * off, FLOOR_Y + 2.15, p[1] + ux * off);
+            tunnelGroup.add(m);
+          });
+
+          var lintel = new THREE.Mesh(new THREE.BoxGeometry(W + 4.4, 1.15, 1.7), capMat);
+          lintel.position.set(p[0], FLOOR_Y + 4.3 + 0.575, p[1]);
+          lintel.rotation.y = ang;
+          tunnelGroup.add(lintel);
+
+          var hole = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.6, 3.9), holeMat);
+          hole.position.set(p[0] + dirX * 0.9, FLOOR_Y + 1.95, p[1] + dirZ * 0.9);
+          hole.rotation.y = ang;
+          tunnelGroup.add(hole);
+
+          // 洞口上方的青色拱环：远处也能一眼认出「这里是隧道」
+          var arch = new THREE.Mesh(
+            new THREE.TorusGeometry(8.2, 0.62, 8, 24),
+            new THREE.MeshBasicMaterial({ color: col(0x2fd0ff) })
+          );
+          arch.position.set(p[0], FLOOR_Y + 2.1, p[1]);
+          arch.rotation.y = ang;
+          tunnelGroup.add(arch);
+        });
+
+        // 记录包围盒（信息卡上的「地下隧道」标签用）
+        pts.forEach(function (p) {
+          if (!tunnelBox) { tunnelBox = [p[0], p[1], p[0], p[1]]; return; }
+          tunnelBox[0] = Math.min(tunnelBox[0], p[0]);
+          tunnelBox[1] = Math.min(tunnelBox[1], p[1]);
+          tunnelBox[2] = Math.max(tunnelBox[2], p[0]);
+          tunnelBox[3] = Math.max(tunnelBox[3], p[1]);
+        });
       });
     });
-  });
+  })();
   scene.add(tunnelGroup);
   window.__navDebug = { camera: camera, controls: controls, tunnelBox: tunnelBox, scene: scene, renderer: renderer };
   window.__navDebug.lampCount = lampCount;
