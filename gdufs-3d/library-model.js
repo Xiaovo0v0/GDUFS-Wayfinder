@@ -25,21 +25,35 @@
     var C = function (hex) { return new THREE.Color(hex).convertSRGBToLinear(); };
 
     // ---------------------------------------------------------------- textures
+    /* 米色外墙贴图。一贴图 = 一层楼（wall() 传 mu/mv = 3.6 m），
+     * 因此把一樘窗画进贴图，所有米色墙面就自动开窗，
+     * 不用改几何；图书馆被拉伸到 100 m 的长边也不会是一片空白。
+     */
     var beigeTex = makeTex(256, 256, function (g, w, h) {
       g.fillStyle = '#d9c4a4'; g.fillRect(0, 0, w, h);
-      for (var i = 0; i < 2600; i++) {
+      for (var i = 0; i < 900; i++) {
         var v = Math.random() > 0.5 ? 255 : 0;
-        g.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',0.022)';
+        g.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',0.02)';
         g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
       }
-      g.strokeStyle = 'rgba(150,125,95,0.32)'; g.lineWidth = 1;
-      for (var y = 0; y < h; y += 64) {
-        g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
-        var off = (y / 64) % 2 ? 32 : 0;
-        for (var x = off; x < w; x += 64) {
-          g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 64); g.stroke();
-        }
-      }
+      // 石缝（只画右/下边，保证平铺无缝）
+      g.strokeStyle = 'rgba(150,125,95,0.24)'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(0, h - 0.5); g.lineTo(w, h - 0.5); g.stroke();
+      g.beginPath(); g.moveTo(w - 0.5, 0); g.lineTo(w - 0.5, h); g.stroke();
+
+      var wx = 58, wy = 46, ww = 140, wh = 118;
+      g.fillStyle = '#c9b494'; g.fillRect(wx - 5, wy - 5, ww + 10, wh + 10);
+      var grd = g.createLinearGradient(0, wy, 0, wy + wh);
+      grd.addColorStop(0, '#5f747e');
+      grd.addColorStop(0.55, '#3d515c');
+      grd.addColorStop(1, '#2b3c46');
+      g.fillStyle = grd; g.fillRect(wx, wy, ww, wh);
+      g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(wx, wy, ww, 8);
+      g.fillStyle = '#b8a486';
+      g.fillRect(wx + ww / 2 - 3, wy, 6, wh);
+      g.fillRect(wx, wy + wh * 0.42, ww, 5);
+      g.fillStyle = 'rgba(0,0,0,0.20)'; g.fillRect(wx - 5, wy + wh + 5, ww + 10, 7);
+      g.fillStyle = '#e8d9c0'; g.fillRect(wx - 8, wy + wh + 12, ww + 16, 6);
     });
 
     var glassTex = makeTex(256, 320, function (g, w, h) {
@@ -107,7 +121,11 @@
     var beigeMat = new THREE.MeshStandardMaterial({ map: beigeTex, roughness: 0.92, metalness: 0.02, side: THREE.DoubleSide });
     var glassMat = new THREE.MeshStandardMaterial({ map: glassTex, roughness: 0.16, metalness: 0.35, emissive: C(0x0a2028), emissiveIntensity: 0.35, side: THREE.DoubleSide });
     var finGlassMat = new THREE.MeshStandardMaterial({ map: finGlassTex, roughness: 0.28, metalness: 0.3, emissive: C(0x081820), emissiveIntensity: 0.3, side: THREE.DoubleSide });
-    var roofMat = new THREE.MeshStandardMaterial({ color: C(0xd2d2cc), roughness: 0.72, metalness: 0.22, side: THREE.DoubleSide });
+    var roofMat = new THREE.MeshStandardMaterial({
+      map: window.GDUFS_ROOF_TEX ? window.GDUFS_ROOF_TEX(4) : null,
+      color: window.GDUFS_ROOF_TEX ? C(0xffffff) : C(0xd2d2cc),
+      roughness: 0.9, metalness: 0.05, side: THREE.DoubleSide
+    });
     var whiteMat = new THREE.MeshStandardMaterial({ color: C(0xecece6), roughness: 0.55, metalness: 0.12, side: THREE.DoubleSide });
     var columnMat = new THREE.MeshStandardMaterial({ color: C(0xc4c8cc), roughness: 0.35, metalness: 0.55, side: THREE.DoubleSide });
     var finMat = new THREE.MeshStandardMaterial({ color: C(0xd8d8d2), roughness: 0.48, metalness: 0.28, side: THREE.DoubleSide });

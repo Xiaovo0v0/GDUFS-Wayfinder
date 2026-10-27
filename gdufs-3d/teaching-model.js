@@ -50,7 +50,11 @@
     });
     shared = {
       white: new THREE.MeshStandardMaterial({ color: C(0xf2efe8), roughness: 0.55, metalness: 0.02, side: THREE.DoubleSide }),
-      roof: new THREE.MeshStandardMaterial({ color: C(0xd8d4c8), roughness: 0.85, metalness: 0.05, side: THREE.DoubleSide }),
+      roof: new THREE.MeshStandardMaterial({
+      map: window.GDUFS_ROOF_TEX ? window.GDUFS_ROOF_TEX(0.125) : null,
+      color: window.GDUFS_ROOF_TEX ? C(0xffffff) : C(0xd8d4c8),
+      roughness: 0.9, metalness: 0.03, side: THREE.DoubleSide
+    }),
       facade: new THREE.MeshStandardMaterial({ map: facadeTex, roughness: 0.78, metalness: 0.02, side: THREE.DoubleSide }),
       glass: new THREE.MeshStandardMaterial({ map: glassTex, roughness: 0.2, metalness: 0.4, side: THREE.DoubleSide }),
       dark: new THREE.MeshStandardMaterial({ color: C(0x4a4a44), roughness: 0.8 })

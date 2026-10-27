@@ -38,6 +38,35 @@
     return out;
   }
 
+  /* 屋面碎石贴图：地标 JS 模型的屋顶原本是纯色，近看是一片死白。
+   * 每次调用新建一份（不要 clone CanvasTexture，clone 出来会是白面）。
+   * repeatTiles：UV 以「米」为单位的几何（ShapeGeometry）传 1/8（8 m 一格）；
+   *               UV 是 0..1 的几何（BoxGeometry 屋面板）传 4 左右。
+   */
+  window.GDUFS_ROOF_TEX = function (repeatTiles) {
+    var w = 256, h = 256;
+    var cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    var g = cv.getContext('2d');
+    g.fillStyle = '#6e7275';
+    g.fillRect(0, 0, w, h);
+    for (var x = 0; x < w; x += 32) { g.fillStyle = 'rgba(0,0,0,0.10)'; g.fillRect(x, 0, 2, h); }
+    for (var y = 0; y < h; y += 32) { g.fillStyle = 'rgba(0,0,0,0.10)'; g.fillRect(0, y, w, 2); }
+    for (var k = 0; k < 340; k++) {
+      var bx = (k * 37) % w, by = (k * 71) % h, bs = 4 + (k % 3) * 4;
+      var v = 96 + ((k * 13) % 24);
+      g.fillStyle = 'rgb(' + v + ',' + (v + 2) + ',' + (v + 4) + ')';
+      g.fillRect(bx, by, bs, bs);
+    }
+    var t = new THREE.CanvasTexture(cv);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.encoding = THREE.sRGBEncoding;
+    t.anisotropy = 4;
+    var r = repeatTiles || 1;
+    t.repeat.set(r, r);
+    return t;
+  };
+
   window.mergeStaticGroup = function (group) {
     if (!group) return group;
     group.updateMatrixWorld(true);
