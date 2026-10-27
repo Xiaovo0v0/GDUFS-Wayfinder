@@ -364,14 +364,62 @@
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // 校园范围内：叠一层半透明深绿，让边界可辨，同时保留草地纹理
-  scene.add(flatPolygonMesh(D.boundary, col(0x4e6642), 0.02, 0.28));
+  // 校园范围内：叠一层极淡深绿，保留草地纹理（不能太重，否则整块草地变暗）
+  scene.add(flatPolygonMesh(D.boundary, col(0x4e6642), 0.02, 0.12));
+
+  // 校园边界：画一圈绿篱 + 路缘石。远看能一眼认出「到哪里算校园」，
+  // 否则边界外的草地和边界内一模一样，贴着边界的环路会像「修在野地里」。
+  (function campusEdge() {
+    var hedgeMat = new THREE.MeshLambertMaterial({ color: 0x44583c, side: THREE.DoubleSide });
+    var curbMat = new THREE.MeshLambertMaterial({ color: 0x9aa08c, side: THREE.DoubleSide });
+    var wallMat = new THREE.MeshLambertMaterial({ color: 0x3b4f33, side: THREE.DoubleSide });
+    var H = 1.9;                                   // 绿篱高度，人能挡视线、俯视能看清
+    var gates = (D.gates || []).filter(function (g) { return g && isFinite(g.x) && isFinite(g.z); });
+    var wallPos = [];
+
+    D.boundary.forEach(function (ring) {
+      var loop = ring.slice();
+      if (loop.length > 1) loop.push(loop[0].slice());
+      var hedge = new THREE.Mesh(ribbonGeometry(loop, 7.0, 0.34, 6), hedgeMat);
+      var curb = new THREE.Mesh(ribbonGeometry(loop, 1.2, 0.36, 6), curbMat);
+      hedge.name = "campusHedge";
+      curb.name = "campusCurb";
+      hedge.receiveShadow = true;
+      scene.add(hedge);
+      scene.add(curb);
+
+      // 立面：沿边界立 1.9 m 高的绿篱墙，校门处留口
+      for (var i = 0; i < loop.length - 1; i++) {
+        var a = loop[i], b = loop[i + 1];
+        var mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+        var blocked = false;
+        for (var gi = 0; gi < gates.length; gi++) {
+          if (Math.hypot(gates[gi].x - mx, gates[gi].z - mz) < 13) { blocked = true; break; }
+        }
+        if (blocked) continue;
+        wallPos.push(
+          a[0], 0, a[1], b[0], 0, b[1], b[0], H, b[1],
+          a[0], 0, a[1], b[0], H, b[1], a[0], H, a[1]
+        );
+      }
+    });
+
+    if (wallPos.length) {
+      var wg = new THREE.BufferGeometry();
+      wg.setAttribute("position", new THREE.Float32BufferAttribute(wallPos, 3));
+      wg.computeVertexNormals();
+      var wall = new THREE.Mesh(wg, wallMat);
+      wall.name = "campusWall";
+      wall.receiveShadow = true;
+      scene.add(wall);
+    }
+  })();
 
   D.boundary.forEach(function (ring) {
     var pts = ring.map(function (p) { return new THREE.Vector3(p[0], 0.9, p[1]); });
     var bl = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({ color: 0xbcd0ae, transparent: true, opacity: 0.55 })
+      new THREE.LineBasicMaterial({ color: 0x7f8f6a, transparent: true, opacity: 0.5 })
     );
     bl.name = "boundaryLine";   // 漫游时隐藏，避免一条白线横在眼前
     scene.add(bl);

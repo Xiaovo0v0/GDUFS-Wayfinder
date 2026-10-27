@@ -62,9 +62,15 @@ def parts(geom):
 
 def main():
     write = "--write" in sys.argv
+    built = "--mask-built" in sys.argv          # 按「建成区」裁，而不是按校区边界
     D = load_data()
     core = poly_of(D["boundary"])
-    keep_poly = core.buffer(MARGIN)
+    if built:
+        bld = unary_union([Polygon(b["rings"][0]).buffer(0) for b in D["buildings"]])
+        gates = unary_union([Point(g["x"], g["z"]).buffer(30) for g in D["gates"] if "x" in g])
+        keep_poly = bld.buffer(60).union(gates)
+    else:
+        keep_poly = core.buffer(MARGIN)
 
     before_lines = sum(len(r.get("lines", [])) for r in D["roads"])
     before_len = 0.0
@@ -133,7 +139,7 @@ def main():
         line = new_roads[ri]["lines"][li]
         for which in (0, -1):
             p = Point(line[which])
-            if core.contains(p):
+            if not built and core.contains(p):
                 continue                      # 端点在校区内，不需要接
             cand = tree.query(p.buffer(SNAP))
             best = None
