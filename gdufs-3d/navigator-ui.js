@@ -394,25 +394,103 @@
     try { return JSON.parse(s); } catch (e) { return null; }
   }
 
-  function askDify(q) {
+  // 模型生成的是 {"intent":…,"answer":"…"} 这种 JSON 外壳，流式输出时外壳先到，
+  // 把 answer 字段的值边收边解出来，用户就能看到文字一个个冒出来，而不是干等 20 秒。
+  function partialAnswer(s) {
+    var t = String(s || "");
+    var head = t.replace(/^\s*```(?:json)?\s*/i, "");
+    if (head.charAt(0) !== "{") return head;        // 百科/闲聊分支是纯文本，直接流
+    var i = head.indexOf('"answer"');
+    if (i < 0) return "";
+    var j = head.indexOf(":", i);
+    if (j < 0) return "";
+    j++;
+    while (j < head.length && /\s/.test(head.charAt(j))) j++;
+    if (head.charAt(j) !== '"') return "";
+    j++;
+    var out = "", esc = false;
+    for (; j < head.length; j++) {
+      var c = head.charAt(j);
+      if (esc) { out += c === "n" ? "\n" : (c === "t" ? "  " : (c === "u" ? "" : c)); esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (c === '"') break;
+      out += c;
+    }
+    return out;
+  }
+
+  // 流式调用：onDelta(当前可见文本) 每收到一段就回调一次
+  window.__uiBuild = "stream-3";
+  function askDify(q, onDelta) {
     var ctrl = new AbortController();
-    var timer = setTimeout(function () { ctrl.abort(); }, CFG.timeout);
+    var timer = null;
+    var arm = function () {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () { ctrl.abort(); }, CFG.timeout);
+    };
+    arm();
+    var acc = "";
+
+    var feed = function (chunk) {
+      acc += chunk;
+      var vis = partialAnswer(acc);
+      if (vis && onDelta) onDelta(vis);
+    };
+
+    var parseBlock = function (block) {
+      var lines = block.split("\n");
+      var dataLine = null;
+      for (var k = 0; k < lines.length; k++) {
+        if (lines[k].indexOf("data:") === 0) { dataLine = lines[k].slice(5).trim(); break; }
+      }
+      if (!dataLine || dataLine === "[DONE]") return;
+      var ev;
+      try { ev = JSON.parse(dataLine); } catch (e) { return; }
+      if (ev.conversation_id) conversationId = ev.conversation_id;
+      // chatflow 的 message 事件把字段放在顶层，agent 模式放在 data 里，两种都要认
+      var d = ev.data || ev;
+      if (ev.event === "message" || ev.event === "agent_message") {
+        if (typeof d.answer === "string") feed(d.answer);
+      } else if (ev.event === "message_end" && (d.conversation_id || ev.conversation_id)) {
+        conversationId = d.conversation_id || ev.conversation_id || conversationId;
+      } else if (ev.event === "error") {
+        throw new Error(d.message || d.code || "dify error");
+      }
+    };
+
     return fetch(CFG.base + "/chat-messages", {
       method: "POST",
-      headers: { Authorization: "Bearer " + CFG.key, "Content-Type": "application/json" },
-      body: JSON.stringify({ inputs: {}, query: q, response_mode: "blocking", user: "web-gdufs", conversation_id: conversationId }),
+      headers: { Authorization: "Bearer " + CFG.key, "Content-Type": "application/json", Accept: "text/event-stream" },
+      body: JSON.stringify({ inputs: {}, query: q, response_mode: "streaming", user: "web-gdufs", conversation_id: conversationId }),
       signal: ctrl.signal,
     })
       .then(function (r) {
-        clearTimeout(timer);
         if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.json();
+        if (!r.body || !r.body.getReader) {
+          // 老浏览器不支持流：退回整段读
+          return r.text().then(function (all) {
+            clearTimeout(timer);
+            all.split("\n\n").forEach(parseBlock);
+            return acc;
+          });
+        }
+        var reader = r.body.getReader();
+        var dec = new TextDecoder("utf-8");
+        var buf = "";
+        var pump = function () {
+          return reader.read().then(function (res) {
+            if (res.done) { clearTimeout(timer); return acc; }
+            arm();
+            buf += dec.decode(res.value, { stream: true });
+            var parts = buf.split("\n\n");
+            buf = parts.pop();
+            for (var i = 0; i < parts.length; i++) parseBlock(parts[i]);
+            return pump();
+          });
+        };
+        return pump();
       })
-      .then(function (j) {
-        if (!j || typeof j.answer !== "string") throw new Error("bad payload");
-        if (j.conversation_id) conversationId = j.conversation_id;
-        return j.answer;
-      });
+      .catch(function (e) { clearTimeout(timer); throw e; });
   }
 
   // ---------------- 离线：本地规则 ----------------
@@ -583,6 +661,20 @@
       }
     }, 1000);
 
+    // 流式：第一段文字到了就把等待条换成回答气泡，后面持续追加
+    var liveEl = null;
+    var onDelta = function (vis) {
+      if (pending) { pending.remove(); pending = null; }
+      if (!liveEl) {
+        liveEl = addMsg("bot", vis, null);
+      } else if (liveEl.firstChild) {
+        liveEl.firstChild.nodeValue = vis;
+      } else {
+        liveEl.textContent = vis;
+      }
+      body.scrollTop = body.scrollHeight;
+    };
+
     var finish = function (payload, isOnline) {
       busy = false;
       sendBtn.disabled = false;
@@ -593,7 +685,14 @@
       if (card && !card.service) {
         card.service = findService(card.title || "");
       }
-      addMsg("bot", payload.answer || payload.text, card);
+      var text = payload.answer || payload.text || "";
+      if (liveEl) {
+        liveEl.textContent = text;
+        if (card && (card.title || card.desc || card.service)) liveEl.appendChild(buildCard(card));
+        body.scrollTop = body.scrollHeight;
+      } else {
+        addMsg("bot", text, card);
+      }
       applyAction(payload);
     };
 
@@ -604,7 +703,7 @@
       return;
     }
 
-    askDify(withMyLocation(q))
+    askDify(withMyLocation(q), onDelta)
       .then(function (raw) {
         online = true;
         setBadge();
