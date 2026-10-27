@@ -48,20 +48,26 @@
     var cv = document.createElement('canvas');
     cv.width = w; cv.height = h;
     var g = cv.getContext('2d');
-    g.fillStyle = '#6e7275';
+    g.fillStyle = '#8e9294';
     g.fillRect(0, 0, w, h);
-    for (var x = 0; x < w; x += 32) { g.fillStyle = 'rgba(0,0,0,0.10)'; g.fillRect(x, 0, 2, h); }
-    for (var y = 0; y < h; y += 32) { g.fillStyle = 'rgba(0,0,0,0.10)'; g.fillRect(0, y, w, 2); }
-    for (var k = 0; k < 340; k++) {
-      var bx = (k * 37) % w, by = (k * 71) % h, bs = 4 + (k % 3) * 4;
-      var v = 96 + ((k * 13) % 24);
-      g.fillStyle = 'rgb(' + v + ',' + (v + 2) + ',' + (v + 4) + ')';
+    /* 只画 128 px 一道的分格缝（8 m 一格时等于 4 m 一道），
+     * 且对比度压到 0.06——1 m 一道的高对比缝在 100 m 外会起摩尔纹，
+     * 屏幕上出现大块假方格，比纯色还难看。
+     */
+    g.fillStyle = 'rgba(70,74,76,0.06)';
+    for (var x = 0; x < w; x += 128) g.fillRect(x, 0, 2, h);
+    for (var y = 0; y < h; y += 128) g.fillRect(0, y, w, 2);
+    // 碎石：大颗粒 + 极低对比，远景才会平滑衰减成均匀灰
+    for (var k = 0; k < 220; k++) {
+      var bx = (k * 37) % w, by = (k * 71) % h, bs = 6 + (k % 4) * 5;
+      var v = 132 + ((k * 13) % 26);
+      g.fillStyle = 'rgba(' + v + ',' + (v + 1) + ',' + (v + 2) + ',0.35)';
       g.fillRect(bx, by, bs, bs);
     }
     var t = new THREE.CanvasTexture(cv);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.encoding = THREE.sRGBEncoding;
-    t.anisotropy = 4;
+    t.anisotropy = 8;
     var r = repeatTiles || 1;
     t.repeat.set(r, r);
     return t;

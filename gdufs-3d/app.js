@@ -273,6 +273,48 @@
     return tex;
   }
 
+  /* 楼前硬质铺装贴图：浅灰方砖 + 深缝，替代原来的单色灰绿台面。
+   * 一贴图 = 2.4 m，配合 apron 的 UV（单位是米）平铺。
+   */
+  function makePaverTexture() {
+    var c = document.createElement("canvas");
+    c.width = 256; c.height = 256;
+    var g = c.getContext("2d");
+    g.fillStyle = "#93918a";
+    g.fillRect(0, 0, 256, 256);
+
+    var rnd = rng(77123);
+    // 每块砖轻微色差
+    var tile = 64;
+    for (var ty = 0; ty < 4; ty++) {
+      for (var tx = 0; tx < 4; tx++) {
+        var v = 142 + rnd() * 20;
+        g.fillStyle = "rgba(" + Math.round(v) + "," + Math.round(v - 2) + "," + Math.round(v - 12) + ",0.55)";
+        g.fillRect(tx * tile, ty * tile, tile, tile);
+      }
+    }
+    // 砖缝
+    g.strokeStyle = "rgba(96,94,88,0.55)";
+    g.lineWidth = 2;
+    for (var k = 0; k <= 4; k++) {
+      g.beginPath(); g.moveTo(k * tile, 0); g.lineTo(k * tile, 256); g.stroke();
+      g.beginPath(); g.moveTo(0, k * tile); g.lineTo(256, k * tile); g.stroke();
+    }
+    // 污渍，避免太干净
+    for (var i = 0; i < 90; i++) {
+      var x = rnd() * 256, y = rnd() * 256, r = 2 + rnd() * 9;
+      g.fillStyle = "rgba(112,110,102,0.10)";
+      g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+    }
+
+    var tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 4;
+    tex.repeat.set(1 / 2.4, 1 / 2.4);
+    return tex;
+  }
+
   // 带贴图的多边形面：ShapeGeometry 的 UV 等于形状坐标，所以按米设置平铺密度
   function texturedPolygonMesh(rings, tex, y, metersPerTile, tint) {
     var group = new THREE.Group();
@@ -339,7 +381,7 @@
   (function buildingAprons() {
     var group = new THREE.Group();
     var apronMat = new THREE.MeshLambertMaterial({
-      color: col(0x6b7161), side: THREE.DoubleSide
+      map: makePaverTexture(), side: THREE.DoubleSide
     });
     D.buildings.forEach(function (b) {
       if (b.sub) return;   // 子建筑的铺装由母楼那一片覆盖
@@ -396,6 +438,80 @@
     });
     scene.add(g);
     return g;
+  }
+
+  /* 屋顶设备：楼梯间出屋面 + 空调机组 + 屋面小构筑。
+   * 近景时 BLENDER LOD2 屋顶是一整块板，空得不像真楼；
+   * 这里按面积给每栋楼撒 1~3 个体块，合并成一个 InstancedMesh（一次 draw call）。
+   */
+  function addRoofClutter() {
+    var rand = rng(20261027);   // rand 是植被 IIFE 里的局部变量，这里必须自己起一个
+    var items = [];
+    D.buildings.forEach(function (b) {
+      if (b.sub) return;
+      if (b.type === "sports" || b.type === "gate") return;
+      var ring = b.rings && b.rings[0];
+      if (!ring || ring.length < 3) return;
+      var H = b.height || 0;
+      if (H < 8) return;
+      var minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      var sx = 0, sz = 0;
+      ring.forEach(function (p) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minZ) minZ = p[1];
+        if (p[1] > maxZ) maxZ = p[1];
+        sx += p[0]; sz += p[1];
+      });
+      var cx = sx / ring.length, cz = sz / ring.length;
+      var hw = (maxX - minX) / 2, hd = (maxZ - minZ) / 2;
+      if (hw < 3 || hd < 3) return;
+      var area = b.area || 0;
+      var want = area > 6000 ? 4 : (area > 3500 ? 3 : (area > 1200 ? 2 : 1));
+      /* 在包围盒里随机撒点，用 pointInRing 命中率筛；
+       * 不能从质心往外抖——L 形、U 形楼的质心常常落在天井外面，
+       * 抖出来的点全被判出界，结果大屋顶一个设备都没有。
+       */
+      var placed = 0, tries = 0;
+      while (placed < want && tries < 60) {
+        tries++;
+        var px = minX + rand() * (maxX - minX);
+        var pz = minZ + rand() * (maxZ - minZ);
+        if (!pointInRing(px, pz, ring)) continue;
+        // 离轮廓至少 2.2 m，免得设备压在女儿墙上
+        if (!pointInRing(px + 2.2, pz, ring) || !pointInRing(px - 2.2, pz, ring) ||
+            !pointInRing(px, pz + 2.2, ring) || !pointInRing(px, pz - 2.2, ring)) continue;
+        var stair = (placed === 0);
+        var w = stair ? 3.0 + rand() * 2.4 : 1.1 + rand() * 1.3;
+        var d = stair ? 2.6 + rand() * 1.8 : 1.1 + rand() * 1.1;
+        var hh = stair ? 2.3 + rand() * 0.9 : 0.8 + rand() * 0.8;
+        items.push({ x: px, z: pz, y: H - 0.12, w: w, d: d, h: hh, r: rand() * Math.PI, tone: stair ? 0 : 1 });
+        placed++;
+      }
+    });
+    if (!items.length) {
+      if (window.__navDebug) window.__navDebug.roofClutter = 0;
+      return;
+    }
+    var geo = new THREE.BoxGeometry(1, 1, 1);
+    geo.translate(0, 0.5, 0);
+    var mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial(), items.length);
+    var m = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3();
+    var s = new THREE.Vector3(), e = new THREE.Euler(), c = new THREE.Color();
+    items.forEach(function (it, i) {
+      e.set(0, it.r, 0);
+      q.setFromEuler(e);
+      v.set(it.x, it.y, it.z);
+      s.set(it.w, it.h, it.d);
+      m.compose(v, q, s);
+      mesh.setMatrixAt(i, m);
+      c.set(it.tone ? 0x9aa0a3 : 0xbdbab1).convertSRGBToLinear();
+      mesh.setColorAt(i, c);
+    });
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    if (window.__navDebug) window.__navDebug.roofClutter = items.length;
   }
 
   // ---- 北校区：道路与相思河来自官方平面图栅格化的透明图层 ----
@@ -939,13 +1055,32 @@
       pts.push([x, z, 0.75 + rand() * 0.6]);
     }
 
-    var trunkGeo = new THREE.CylinderGeometry(0.32, 0.44, 4.2, 5);
-    trunkGeo.translate(0, 2.1, 0);
-    var crownGeo = new THREE.IcosahedronGeometry(3.1, 0);
-    crownGeo.translate(0, 6.4, 0);
+    var trunkGeo = new THREE.CylinderGeometry(0.30, 0.46, 4.6, 6);
+    trunkGeo.translate(0, 2.3, 0);
+    /* 树冠：二十面体细分一级（80 面）比原来的 20 面圆得多；
+     * 再把顶点按「方向哈希」做径向扰动，得到不那么规整的团块状轮廓。
+     * 哈希按方向取值，所以同一位置的重复顶点位移一致，不会裂开。
+     */
+    var crownGeo = new THREE.IcosahedronGeometry(3.1, 1);
+    (function jitterCrown(geo) {
+      var pos = geo.attributes.position;
+      function h3(x, y, z) {
+        var s = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453;
+        return s - Math.floor(s);
+      }
+      for (var vi = 0; vi < pos.count; vi++) {
+        var vx = pos.getX(vi), vy = pos.getY(vi), vz = pos.getZ(vi);
+        var len = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1;
+        var nx = vx / len, ny = vy / len, nz = vz / len;
+        var k = 0.86 + h3(Math.round(nx * 500), Math.round(ny * 500), Math.round(nz * 500)) * 0.30;
+        pos.setXYZ(vi, vx * k, vy * (0.88 + k * 0.14), vz * k);
+      }
+      geo.computeVertexNormals();
+      geo.translate(0, 6.6, 0);
+    })(crownGeo);
 
     var trunkMat = new THREE.MeshLambertMaterial({ color: col(0x6b5340) });
-    var crownMat = new THREE.MeshLambertMaterial({ color: col(0x3f6b3c) });
+    var crownMat = new THREE.MeshLambertMaterial({ color: col(0x3f6b3c), flatShading: true });
     var trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, pts.length);
     var crowns = new THREE.InstancedMesh(crownGeo, crownMat, pts.length);
     var m = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s = new THREE.Vector3();
@@ -1521,6 +1656,7 @@
       scene.remove(procedural);
       scene.add(gltf.scene);
       addRoofGreenery();
+      addRoofClutter();
       renderer.shadowMap.needsUpdate = true;
       buildingMeshes.length = 0;
       gltf.scene.traverse(function (o) { if (o.isMesh && o.visible) { buildingMeshes.push(o); } });

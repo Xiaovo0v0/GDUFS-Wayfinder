@@ -6,7 +6,7 @@ import fs from 'node:fs';
 
 const OUT = 'C:/Users/86134/Desktop/gdufs/artifacts/3d';
 fs.mkdirSync(OUT, { recursive: true });
-const url = 'file:///C:/Users/86134/Desktop/gdufs/gdufs-3d/index.html';
+const url = 'http://127.0.0.1:8080/index.html?cb=' + Date.now();
 const b = new Browser({ port: 9337, visible: false });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
