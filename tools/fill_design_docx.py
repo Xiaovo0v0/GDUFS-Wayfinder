@@ -41,7 +41,7 @@ SCENES = ("① 报到季：从正门到宿舍、到报到点；② 考试周：�
 
 # 对话模型名：周五（2026-10-24）V4-Flash 下线后，用环境变量覆盖并重跑本脚本：
 #   GDUFS_MODEL_DOC="DeepSeek-V4.1-Flash-1017-w8a8" python tools/fill_design_docx.py
-MODEL_NAME = os.environ.get("GDUFS_MODEL_DOC") or "DeepSeek-V4-Flash-0731"
+MODEL_NAME = os.environ.get("GDUFS_MODEL_DOC") or "DeepSeek-V4-Flash-w8a8-mtp"
 
 PLATFORM = ("Dify 1.17.1 社区版（学校部署于 172.17.1.46）。对话模型 " + MODEL_NAME + "，"
             "向量模型 bge-m3，重排模型 bge-reranker-v2-m3。前端为自研 Three.js 静态页面，"
@@ -61,7 +61,7 @@ PAIN = (
 )
 
 FUNC = (
-    "M1 3D 校园地图：南校区 51 栋、北校区 42 栋，均由同一套 Blender 无头脚本生成 LOD2 模型"
+    "M1 3D 校园地图：南校区 51 栋（另标八角楼）、北校区 42 栋，均由同一套 Blender 无头脚本生成 LOD2 模型"
     "（程序化立面、女儿墙、屋顶设备）；北校区轮廓来自学校官方平面图矢量化；含 9 个官方校门、水系与近千棵行道树；"
     "支持第一人称漫游（1.4 m/s，人眼高度 1.65 m）。\n"
     "M2 智能导航：用自然语言说出起终点，直接在地图上画出步行路线，标注总距离、耗时与每 100 米路标。\n"
