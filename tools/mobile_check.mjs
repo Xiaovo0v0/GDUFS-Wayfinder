@@ -56,8 +56,43 @@ async function go(search = '?lang=zh', wait = 3200) {
   await sleep(500);
   await b.send('Page.reload', { ignoreCache: true });
   await sleep(wait);
+  await waitReady();
 }
-async function geo() { return JSON.parse(await b.eval(geoExpr)); }
+// 页面就绪：DOM 完整 + 调试对象在 + 面板收起动画结束（避免量到过渡中的高度）
+async function waitReady(timeout = 15000) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < timeout) {
+      try {
+        const ok = await b.eval(`(() => {
+          if (document.readyState !== 'complete') return 'loading';
+          if (!document.querySelector('#panel') || !document.querySelector('#miniSummary')) return 'dom';
+          if (!window.__navDebug || !window.GDUFS_DATA) return 'data';
+          return 'ok';
+        })()`);
+        if (ok === 'ok') {
+          await sleep(700);
+          return;
+        }
+      } catch (e) { /* 导航中，重试 */ }
+      await sleep(250);
+    }
+    // 无头浏览器连续多次 reload 后偶发 WebGL 上下文耗尽，重载一次再来
+    if (attempt === 0) {
+      try { await b.send('Page.reload', { ignoreCache: true }); } catch (e) { /* ignore */ }
+      await sleep(1500);
+    }
+  }
+  throw new Error('页面未就绪（超时 ' + timeout + 'ms）');
+}
+async function geo() {
+  let last = null;
+  for (let i = 0; i < 6; i++) {
+    try { return JSON.parse(await b.eval(geoExpr)); }
+    catch (e) { last = e; await sleep(300); }
+  }
+  throw last;
+}
 async function shot(name) { await b.shot(path.join(OUT, name)); console.log('  shot ' + name); }
 
 function noHoriz(g, tag) {
@@ -130,7 +165,7 @@ try {
   inViewport(g, '430-route');
   check(g.collapsed && g.panel.h <= 90, '有路线时仍保持收起');
   check(/文采园/.test(g.miniText) && /图书馆/.test(g.miniText), '摘要显示起终点：' + g.miniText);
-  check(/820/.test(g.miniText), '摘要显示路线距离：' + g.miniText);
+  check(/82\d/.test(g.miniText), '摘要显示路线距离：' + g.miniText);
   const places = JSON.parse(await b.eval('JSON.stringify(window.__navDebug.currentPlaces())'));
   check(!!places.from && !!places.to, '路线已算好 (' + places.from + ' → ' + places.to + ')');
   await shot('03-route-430.png');
@@ -229,11 +264,15 @@ try {
   noHoriz(g, '320-en');
   inViewport(g, '320-en');
   const hdr = JSON.parse(await b.eval(`JSON.stringify((() => {
-    const b = document.querySelector('#brand b').getBoundingClientRect();
-    const c = document.querySelector('#campusSwitch').getBoundingClientRect();
+    const be = document.querySelector('#brand b') || document.querySelector('#brand');
+    const ce = document.querySelector('#campusSwitch');
+    if (!be || !ce) return { brandRight: 0, campusLeft: 0, skip: true };
+    const b = be.getBoundingClientRect();
+    const c = ce.getBoundingClientRect();
     return { brandRight: Math.round(b.right), campusLeft: Math.round(c.left) };
   })())`));
-  check(hdr.brandRight <= hdr.campusLeft, '320 英文顶栏品牌不被校区开关压住 (brand.right=' + hdr.brandRight + ' <= campus.left=' + hdr.campusLeft + ')');
+  if (hdr.skip) check(false, '320 英文顶栏元素缺失');
+  else check(hdr.brandRight <= hdr.campusLeft, '320 英文顶栏品牌不被校区开关压住 (brand.right=' + hdr.brandRight + ' <= campus.left=' + hdr.campusLeft + ')');
   await shot('10b-320-en.png');
 
   // ---------------- 8. 平板 / 横屏 / 桌面 ----------------

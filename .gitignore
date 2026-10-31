@@ -2,7 +2,7 @@
 .browser-profile/
 .chrome-profile/
 
-# Blender å®‰è£…åŒ…ï¼ˆ380 MBï¼Œé‡è£…æ—¶å¯å†ä¸‹ï¼‰
+# Blender å®‰è£…åŒ…ï¼ˆ380 MBï¼Œé‡è£…æ—¶å¯å†ä¸‹è½½ï¼‰
 tools/dist/
 
 # å·²è§£å‹çš„ç¬¬ä¸‰æ–¹æŠ€èƒ½åŒ…
@@ -16,36 +16,36 @@ __pycache__/
 tmp/
 temp/
 
-# Â¼ÆÁÖĞ¼äÖ¡£¨Ìå»ı´ó£¬¿ÉÖØĞÂÉú³É£©
+# å½•å±ä¸­é—´å¸§ï¼ˆä½“ç§¯å¤§ï¼Œå¯é‡æ–°ç”Ÿæˆï¼‰
 artifacts/video/**/frames/
 artifacts/video/norm/
 tools/bin/
 
-# ÍÅ¶Ó¸öÈËĞÅÏ¢£¬²»½ø²Ö¿â
+# å›¢é˜Ÿä¸ªäººä¿¡æ¯ï¼Œä¸è¿›ä»“åº“
 deliverables/team.json
 
-# Éó¼ÆÊ±½âÑ¹µÄ¸±±¾£¬²»ĞèÒª½ø²Ö¿â
+# å®¡è®¡æ—¶è§£å‹çš„å‰¯æœ¬ï¼Œä¸éœ€è¦è¿›ä»“åº“
 artifacts/audit/
 artifacts/video/seq/
 
-# ============ Ğ­×÷²Ö¿â²ßÂÔ£¨2026-10-22£©============
-# 1) ÃÜÔ¿£ºÕæÊµ Dify ÃÜÔ¿Ö»·Å±¾µØ£¬²»½ø²Ö¿â
+# ============ åä½œä»“åº“ç­–ç•¥ï¼ˆ2026-10-22ï¼‰============
+# 1) å¯†é’¥ï¼šçœŸå® Dify å¯†é’¥åªæ”¾æœ¬åœ°ï¼Œä¸è¿›ä»“åº“
 gdufs-3d/ai-config.local.js
 
-# 2) ¹¹½¨²úÎï£ºdist ÓÉ tools/build_single_file.mjs Éú³É
+# 2) æ„å»ºäº§ç‰©ï¼šdist ç”± tools/build_single_file.mjs ç”Ÿæˆ
 gdufs-3d/dist/
 
-# 3) ´óÌå»ı³ÉÆ·£ºÊÓÆµÓë´ò°ü zip ×ß GitHub Release£¬²»½ø²Ö¿â
+# 3) å¤§ä½“ç§¯æˆå“ï¼šè§†é¢‘ä¸æ‰“åŒ… zip èµ° GitHub Releaseï¼Œä¸è¿›ä»“åº“
 deliverables/*.mp4
 deliverables/*.zip
 
-# 4) ÔçÆÚÕûÀí°æ×ÊÁÏ°ü£¨ÒÑ±» data/ Óë gdufs-3d/ È¡´ú£©
+# 4) æ—©æœŸæ•´ç†ç‰ˆèµ„æ–™åŒ…ï¼ˆå·²è¢« data/ ä¸ gdufs-3d/ å–ä»£ï¼‰
 gdufs-south-campus/
 
-# 5) ´ò°üÉú³É¡¢ÇÒÄÚÇ¶ÁËÃÜÔ¿µÄµ¥ÎÄ¼şÍøÒ³£¨ÓÉ tools/build_single_file.mjs Éú³É£©
+# 5) æ‰“åŒ…ç”Ÿæˆã€ä¸”å†…åµŒäº†å¯†é’¥çš„å•æ–‡ä»¶ç½‘é¡µï¼ˆç”± tools/build_single_file.mjs ç”Ÿæˆï¼‰
 deliverables/local-client/*.html
 
-# 6) ½ØÍ¼ÓëÑéÖ¤²úÎï£¨tools/shot.mjs¡¢verify_local_client Éú³É£©
+# 6) æˆªå›¾ä¸éªŒè¯äº§ç‰©ï¼ˆtools/shot.mjsã€verify_local_client ç”Ÿæˆï¼‰
 artifacts/3d/
 artifacts/*.png
 
@@ -53,3 +53,6 @@ artifacts/*.png
 artifacts/*
 !artifacts/blender/
 !artifacts/blender/**
+
+# æ•°æ®é‡å»ºå‰çš„å¤‡ä»½ï¼ˆtools/*.py ç”Ÿæˆï¼‰
+gdufs-3d/*.before-*

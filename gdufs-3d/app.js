@@ -188,6 +188,110 @@
     return s;
   }
 
+  // 多边形向外等距偏移（角平分线法）。水系要做出「下沉的河槽」，
+  // 需要一个比水面大一圈的岸顶环，直接用缓冲后的环来当岸顶。
+  function offsetRing(ring, d) {
+    var pts = [];
+    for (var i = 0; i < ring.length; i++) {
+      var p = ring[i];
+      if (i === ring.length - 1 && ring.length > 1 &&
+          Math.abs(p[0] - ring[0][0]) < 1e-6 && Math.abs(p[1] - ring[0][1]) < 1e-6) continue;
+      pts.push([p[0], p[1]]);
+    }
+    var n = pts.length;
+    if (n < 3) return null;
+    var area = 0;
+    for (var k = 0; k < n; k++) {
+      var a = pts[k], b = pts[(k + 1) % n];
+      area += a[0] * b[1] - b[0] * a[1];
+    }
+    var ccw = area > 0;
+    var out = [];
+    for (var i2 = 0; i2 < n; i2++) {
+      var p0 = pts[(i2 - 1 + n) % n], p1 = pts[i2], p2 = pts[(i2 + 1) % n];
+      var e1 = [p1[0] - p0[0], p1[1] - p0[1]];
+      var e2 = [p2[0] - p1[0], p2[1] - p1[1]];
+      var l1 = Math.hypot(e1[0], e1[1]) || 1, l2 = Math.hypot(e2[0], e2[1]) || 1;
+      e1[0] /= l1; e1[1] /= l1; e2[0] /= l2; e2[1] /= l2;
+      // 外法线（逆时针环的右手边）
+      var n1 = ccw ? [e1[1], -e1[0]] : [-e1[1], e1[0]];
+      var n2 = ccw ? [e2[1], -e2[0]] : [-e2[1], e2[0]];
+      var bx = n1[0] + n2[0], bz = n1[1] + n2[1];
+      var bl = Math.hypot(bx, bz);
+      if (bl < 1e-6) { bx = n1[0]; bz = n1[1]; bl = 1; }
+      bx /= bl; bz /= bl;
+      var cosHalf = Math.max(0.35, bx * n1[0] + bz * n1[1]);
+      out.push([p1[0] + bx * d / cosHalf, p1[1] + bz * d / cosHalf]);
+    }
+    return out;
+  }
+
+  // 把水面多边形做成「下沉河槽」：水面在 y=-0.5，四周 4 m 的岸坡抬到 y=0.04。
+  // 之前只是把多边形平铺在 0.5 高处，看着像一条贴在地上的蓝色纸带。
+  function waterChannel(rings, opts) {
+    var o = opts || {};
+    var waterY = o.waterY == null ? -0.5 : o.waterY;
+    var bankY = o.bankY == null ? 0.04 : o.bankY;
+    var width = o.bankWidth == null ? 3.2 : o.bankWidth;
+    var group = new THREE.Group();
+
+    rings.forEach(function (ring) {
+      var inner = [];
+      for (var i = 0; i < ring.length; i++) {
+        var p = ring[i];
+        if (i === ring.length - 1 && ring.length > 1 &&
+            Math.abs(p[0] - ring[0][0]) < 1e-6 && Math.abs(p[1] - ring[0][1]) < 1e-6) continue;
+        inner.push([p[0], p[1]]);
+      }
+      if (inner.length < 3) return;
+      var outer = offsetRing(inner, width);
+      if (!outer) return;
+
+      // 岸坡：内环（水面）到外环（岸顶）的四边形带
+      var pos = [];
+      for (var k = 0; k < inner.length; k++) {
+        var k2 = (k + 1) % inner.length;
+        var a = inner[k], b = inner[k2], c = outer[k2], d = outer[k];
+        pos.push(a[0], waterY, a[1], b[0], waterY, b[1], c[0], bankY, c[1]);
+        pos.push(a[0], waterY, a[1], c[0], bankY, c[1], d[0], bankY, d[1]);
+      }
+      var bg = new THREE.BufferGeometry();
+      bg.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      bg.computeVertexNormals();
+      var bank = new THREE.Mesh(bg, new THREE.MeshLambertMaterial({
+        color: col(o.bankColor == null ? 0x55603e : o.bankColor),
+        side: THREE.DoubleSide
+      }));
+      bank.name = "waterBank";
+      bank.receiveShadow = true;
+      group.add(bank);
+
+      // 水面
+      var shape = ringToShape(inner);
+      if (shape) {
+        var wg = new THREE.ShapeGeometry(shape);
+        wg.rotateX(-Math.PI / 2);
+        wg.translate(0, waterY, 0);
+        var water = new THREE.Mesh(wg, new THREE.MeshBasicMaterial({
+          color: col(o.color == null ? 0x2f6f8c : o.color),
+          side: THREE.DoubleSide, transparent: true, opacity: 0.96
+        }));
+        water.name = "waterSurface";
+        group.add(water);
+      }
+
+      // 水线：压一条深色边，远看不会糊成一片
+      var lip = [];
+      for (var m = 0; m < inner.length; m++) lip.push(new THREE.Vector3(inner[m][0], waterY + 0.02, inner[m][1]));
+      lip.push(new THREE.Vector3(inner[0][0], waterY + 0.02, inner[0][1]));
+      group.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(lip),
+        new THREE.LineBasicMaterial({ color: col(0x1d4356), transparent: true, opacity: 0.8 })
+      ));
+    });
+    return group;
+  }
+
   function flatPolygonMesh(rings, color, y, opacity) {
     var group = new THREE.Group();
     rings.forEach(function (ring) {
@@ -205,31 +309,178 @@
     return group;
   }
 
-  function ribbonGeometry(pts, width, y, tileLen) {
-    var pos = [];
-    var uv = [];
-    var run = 0;
+  function ribbonGeometry(pts, width, y, tileLen, cap, miterMax) {
     var tl = tileLen || 12;
-    for (var i = 0; i < pts.length - 1; i++) {
-      var a = pts[i], b = pts[i + 1];
-      var dx = b[0] - a[0], dz = b[1] - a[1];
-      var L = Math.hypot(dx, dz);
-      if (L < 1e-6) continue;
-      var nx = -dz / L * width / 2, nz = dx / L * width / 2;
-      var a1 = [a[0] + nx, a[1] + nz], a2 = [a[0] - nx, a[1] - nz];
-      var b1 = [b[0] + nx, b[1] + nz], b2 = [b[0] - nx, b[1] - nz];
-      var v0 = run / tl, v1 = (run + L) / tl;
+    var ext = cap || 0;
+    // 首尾沿切线各延长 ext 米：路口处两段路以任意角度相交时，
+    // 方头端点会露出一个三角缺口，延长半个路宽就能把它盖住。
+    if (ext > 0 && pts.length >= 2) {
+      var p0 = pts[0], p1 = pts[1];
+      var d0 = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+      if (d0 > 1e-6) {
+        pts = [[p0[0] - (p1[0] - p0[0]) / d0 * ext, p0[1] - (p1[1] - p0[1]) / d0 * ext]].concat(pts.slice(1));
+      }
+      var q0 = pts[pts.length - 2], q1 = pts[pts.length - 1];
+      var d1 = Math.hypot(q1[0] - q0[0], q1[1] - q0[1]);
+      if (d1 > 1e-6) {
+        pts = pts.slice(0, -1).concat([[q1[0] + (q1[0] - q0[0]) / d1 * ext, q1[1] + (q1[1] - q0[1]) / d1 * ext]]);
+      }
+    }
+
+    var n = pts.length;
+    var pos = [], uv = [];
+    if (n < 2) {
+      var empty = new THREE.BufferGeometry();
+      empty.setAttribute("position", new THREE.Float32BufferAttribute([], 3));
+      empty.setAttribute("uv", new THREE.Float32BufferAttribute([], 2));
+      return empty;
+    }
+
+    var closed = n > 3 &&
+      Math.abs(pts[0][0] - pts[n - 1][0]) < 1e-6 &&
+      Math.abs(pts[0][1] - pts[n - 1][1]) < 1e-6;
+
+    // 累计弧长 → 贴图沿路连续，不会每段重新起头
+    var arc = [0];
+    for (var i = 1; i < n; i++) {
+      arc.push(arc[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    }
+
+    // 逐点法线（角平分线 + 斜接）：每段各画一个四边形时，拐角外侧会缺口、
+    // 内侧会重叠，俯视看就是路面「断了一节」、中线错位。改成整条连续带。
+    var NX = [], NZ = [], SC = [];
+    for (var v = 0; v < n; v++) {
+      var nx = 0, nz = 0, cnt = 0;
+      if (closed || v > 0) {
+        var pi = closed ? (v - 1 + n) % n : v - 1;
+        var ex = pts[v][0] - pts[pi][0], ez = pts[v][1] - pts[pi][1];
+        var el = Math.hypot(ex, ez);
+        if (el > 1e-9) { nx += -ez / el; nz += ex / el; cnt++; }
+      }
+      if (closed || v < n - 1) {
+        var ni = closed ? (v + 1) % n : v + 1;
+        var fx = pts[ni][0] - pts[v][0], fz = pts[ni][1] - pts[v][1];
+        var fl = Math.hypot(fx, fz);
+        if (fl > 1e-9) { nx += -fz / fl; nz += fx / fl; cnt++; }
+      }
+      if (!cnt) { NX.push(0); NZ.push(0); SC.push(0); continue; }
+      var ln = Math.hypot(nx, nz);
+      if (ln < 1e-9) { NX.push(0); NZ.push(0); SC.push(0); continue; }
+      NX.push(nx / ln); NZ.push(nz / ln);
+      SC.push(Math.min(2 / ln, miterMax || 2.2));   // 太尖的角限制斜接长度，免得炸出长刺
+    }
+
+    var hw = width / 2;
+    for (var k = 0; k < n - 1; k++) {
+      var a = pts[k], b = pts[k + 1];
+      if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 1e-6) continue;
+      var ha = hw * SC[k], hb = hw * SC[k + 1];
+      var a1 = [a[0] + NX[k] * ha, a[1] + NZ[k] * ha];
+      var a2 = [a[0] - NX[k] * ha, a[1] - NZ[k] * ha];
+      var b1 = [b[0] + NX[k + 1] * hb, b[1] + NZ[k + 1] * hb];
+      var b2 = [b[0] - NX[k + 1] * hb, b[1] - NZ[k + 1] * hb];
+      var v0 = arc[k] / tl, v1 = arc[k + 1] / tl;
       pos.push(a1[0], y, a1[1], a2[0], y, a2[1], b1[0], y, b1[1]);
       uv.push(0, v0, 1, v0, 0, v1);
       pos.push(a2[0], y, a2[1], b2[0], y, b2[1], b1[0], y, b1[1]);
       uv.push(1, v0, 1, v1, 0, v1);
-      run += L;
     }
     var g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
     g.computeVertexNormals();
     return g;
+  }
+
+  // 折线沿法向等距偏移（角平分线法）。人行道/路缘要按「单侧」铺，
+  // 才能在路口和双幅路中央分隔带里让开，而不是整条带子横穿过去。
+  function offsetPolyline(pts, d) {
+    var n = pts.length, out = [];
+    for (var i = 0; i < n; i++) {
+      var p = pts[i], nx = 0, nz = 0, cnt = 0;
+      if (i > 0) {
+        var dx = p[0] - pts[i - 1][0], dz = p[1] - pts[i - 1][1], L = Math.hypot(dx, dz);
+        if (L > 1e-6) { nx += -dz / L; nz += dx / L; cnt++; }
+      }
+      if (i < n - 1) {
+        var dx2 = pts[i + 1][0] - p[0], dz2 = pts[i + 1][1] - p[1], L2 = Math.hypot(dx2, dz2);
+        if (L2 > 1e-6) { nx += -dz2 / L2; nz += dz2 / L2; cnt++; }
+      }
+      if (!cnt) { out.push([p[0], p[1]]); continue; }
+      var ln = Math.hypot(nx, nz);
+      if (ln < 1e-6) { out.push([p[0], p[1]]); continue; }
+      var sc = Math.min(2 / ln, 2.0);   // 尖角处限制 miter 长度，别炸出长刺
+      out.push([p[0] + nx / ln * d * sc, p[1] + nz / ln * d * sc]);
+    }
+    return out;
+  }
+
+  // 按弧长重采样折线，用于沿人行道每隔 2 m 做一次「这里能不能铺」的判定
+  function resampleLine(pts, step) {
+    var segs = [], total = 0;
+    for (var i = 0; i < pts.length - 1; i++) {
+      var a = pts[i], b = pts[i + 1];
+      var L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (L < 1e-6) continue;
+      segs.push({ a: a, b: b, L: L, s: total });
+      total += L;
+    }
+    if (!segs.length) return { pts: [], total: 0 };
+    var out = [], si = 0;
+    for (var s = 0; s <= total + 1e-6; s += step) {
+      while (si < segs.length - 1 && s > segs[si].s + segs[si].L) si++;
+      var g = segs[si], t = Math.min(1, Math.max(0, (s - g.s) / g.L));
+      out.push([g.a[0] + (g.b[0] - g.a[0]) * t, g.a[1] + (g.b[1] - g.a[1]) * t]);
+    }
+    return { pts: out, total: total };
+  }
+
+  function pointSegDist(px, pz, ax, az, bx, bz) {
+    var dx = bx - ax, dz = bz - az;
+    var L2 = dx * dx + dz * dz;
+    if (L2 < 1e-9) return Math.hypot(px - ax, pz - az);
+    var t = ((px - ax) * dx + (pz - az) * dz) / L2;
+    t = t < 0 ? 0 : (t > 1 ? 1 : t);
+    return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+  }
+
+  // 沿折线立一道竖直墙：桥面侧板与栏杆都用它，off 为相对中心线的横向偏移
+  function wallGeometry(pts, off, y0, y1) {
+    var pos = [];
+    var run = 0;
+    for (var i = 0; i < pts.length - 1; i++) {
+      var a = pts[i], b = pts[i + 1];
+      var dx = b[0] - a[0], dz = b[1] - a[1];
+      var L = Math.hypot(dx, dz);
+      if (L < 1e-6) continue;
+      var nx = -dz / L * off, nz = dx / L * off;
+      var ax = a[0] + nx, az = a[1] + nz;
+      var bx = b[0] + nx, bz = b[1] + nz;
+      pos.push(ax, y0, az, ax, y1, az, bx, y0, bz);
+      pos.push(ax, y1, az, bx, y1, bz, bx, y0, bz);
+      run += L;
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.computeVertexNormals();
+    return g;
+  }
+
+  var bridgeSkirtMat = new THREE.MeshLambertMaterial({ color: col(0xa3a196), side: THREE.DoubleSide });
+  var bridgeRailMat = new THREE.MeshLambertMaterial({ color: col(0x8b897f), side: THREE.DoubleSide });
+
+  // 桥：加桥面侧板 + 矮护栏。否则跨水的路就是一条悬在湖面上的带子，
+  // 侧面能直接看到水从桥下穿过去的空隙。
+  function addBridgeSides(pts, w) {
+    var e = Math.max(1.0, w / 2 - 0.06);
+    [-1, 1].forEach(function (s) {
+      var skirt = new THREE.Mesh(wallGeometry(pts, s * e, -0.6, 0.62), bridgeSkirtMat);
+      skirt.name = "bridgeSkirt";
+      roadGroup.add(skirt);
+      var rail = new THREE.Mesh(wallGeometry(pts, s * e, 0.62, 1.28), bridgeRailMat);
+      rail.name = "bridgeRail";
+      roadGroup.add(rail);
+    });
   }
 
   // ============================================================
@@ -239,30 +490,32 @@
   // ---- 程序化草地贴图（B2）：不引外部图片，单文件体积不受影响 ----
   function makeGrassTexture() {
     var c = document.createElement("canvas");
-    c.width = 256; c.height = 256;
+    // 512 而不是 256：配合 groundTex.repeat 的 150 m 铺贴间隔，
+    // 单像素约 0.29 m，近看有草点、远看不会出现「每隔几十米重复一次」的花纹。
+    c.width = 512; c.height = 512;
     var g = c.getContext("2d");
     g.fillStyle = "#7d8b6a";
-    g.fillRect(0, 0, 256, 256);
+    g.fillRect(0, 0, 512, 512);
 
     var rnd = rng(20261021);
     // 细碎草点
-    for (var i = 0; i < 3200; i++) {
-      var x = rnd() * 256, y = rnd() * 256;
+    for (var i = 0; i < 12800; i++) {
+      var x = rnd() * 512, y = rnd() * 512;
       var r = 0.5 + rnd() * 1.8;
       var v = 78 + rnd() * 62;
       g.fillStyle = "rgba(" + Math.round(v - 14) + "," + Math.round(v + 6) + "," + Math.round(v - 22) + ",0.30)";
       g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
     }
-    // 大块明暗起伏，避免出现规则噪点
-    for (var j = 0; j < 70; j++) {
-      var x2 = rnd() * 256, y2 = rnd() * 256, rr = 5 + rnd() * 20;
-      g.fillStyle = rnd() > 0.5 ? "rgba(58,74,50,0.16)" : "rgba(150,164,132,0.10)";
+    // 大块明暗起伏，避免出现规则噪点（透明度压得比原来低，防止铺贴痕迹）
+    for (var j = 0; j < 280; j++) {
+      var x2 = rnd() * 512, y2 = rnd() * 512, rr = 10 + rnd() * 40;
+      g.fillStyle = rnd() > 0.5 ? "rgba(58,74,50,0.10)" : "rgba(150,164,132,0.07)";
       g.beginPath(); g.arc(x2, y2, rr, 0, 6.2832); g.fill();
     }
     // 少量土色斑，让地面不显得像塑料
-    for (var k = 0; k < 14; k++) {
-      var x3 = rnd() * 256, y3 = rnd() * 256, r3 = 3 + rnd() * 9;
-      g.fillStyle = "rgba(122,110,84,0.10)";
+    for (var k = 0; k < 56; k++) {
+      var x3 = rnd() * 512, y3 = rnd() * 512, r3 = 6 + rnd() * 18;
+      g.fillStyle = "rgba(122,110,84,0.09)";
       g.beginPath(); g.arc(x3, y3, r3, 0, 6.2832); g.fill();
     }
 
@@ -354,7 +607,7 @@
   var groundSize = Math.max(spanX, spanZ) * 4.5;
   var groundTex = makeGrassTexture();
   groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
-  groundTex.repeat.set(groundSize / 90, groundSize / 90);
+  groundTex.repeat.set(groundSize / 150, groundSize / 150);
   var ground = new THREE.Mesh(
     new THREE.PlaneGeometry(groundSize, groundSize),
     new THREE.MeshLambertMaterial({ map: groundTex, color: col(0xb3bda6) })
@@ -370,9 +623,9 @@
   // 校园边界：画一圈绿篱 + 路缘石。远看能一眼认出「到哪里算校园」，
   // 否则边界外的草地和边界内一模一样，贴着边界的环路会像「修在野地里」。
   (function campusEdge() {
-    var hedgeMat = new THREE.MeshLambertMaterial({ color: 0x44583c, side: THREE.DoubleSide });
-    var curbMat = new THREE.MeshLambertMaterial({ color: 0x9aa08c, side: THREE.DoubleSide });
-    var wallMat = new THREE.MeshLambertMaterial({ color: 0x3b4f33, side: THREE.DoubleSide });
+    var hedgeMat = new THREE.MeshLambertMaterial({ color: col(0x44583c), side: THREE.DoubleSide });
+    var curbMat = new THREE.MeshLambertMaterial({ color: col(0x9aa08c), side: THREE.DoubleSide });
+    var wallMat = new THREE.MeshLambertMaterial({ color: col(0x3b4f33), side: THREE.DoubleSide });
     var H = 1.9;                                   // 绿篱高度，人能挡视线、俯视能看清
     var gates = (D.gates || []).filter(function (g) { return g && isFinite(g.x) && isFinite(g.z); });
     var wallPos = [];
@@ -419,13 +672,15 @@
     var pts = ring.map(function (p) { return new THREE.Vector3(p[0], 0.9, p[1]); });
     var bl = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({ color: 0x7f8f6a, transparent: true, opacity: 0.5 })
+      new THREE.LineBasicMaterial({ color: col(0x7f8f6a), transparent: true, opacity: 0.5 })
     );
     bl.name = "boundaryLine";   // 漫游时隐藏，避免一条白线横在眼前
     scene.add(bl);
   });
 
-  // 楼前铺装：每栋楼按包围盒外扩 3.5 m，浅灰圆角台，让建筑稳稳落在地上
+  // 楼前铺装：沿建筑轮廓外扩一圈（约 3.5 m），浅灰方砖台，让建筑稳稳落在地上。
+  // 早期版本用的是「包围盒 + 圆角」，遇到 L 形/台阶形轮廓会多出一大块铺装，
+  // 俯视看像一块斜贴上去的白板，所以改成按真实轮廓等比放大。
   (function buildingAprons() {
     var group = new THREE.Group();
     var apronMat = new THREE.MeshLambertMaterial({
@@ -433,22 +688,28 @@
     });
     D.buildings.forEach(function (b) {
       if (b.sub) return;   // 子建筑的铺装由母楼那一片覆盖
+      var ring = (b.rings || [])[0];
+      if (!ring || ring.length < 3) return;
       var minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-      (b.rings || []).forEach(function (ring) {
-        ring.forEach(function (p) {
-          if (p[0] < minX) minX = p[0];
-          if (p[0] > maxX) maxX = p[0];
-          if (p[1] < minZ) minZ = p[1];
-          if (p[1] > maxZ) maxZ = p[1];
-        });
+      ring.forEach(function (p) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minZ) minZ = p[1];
+        if (p[1] > maxZ) maxZ = p[1];
       });
       if (!isFinite(minX)) return;
-      var pad = 3.5;
+      var shape = ringToShape(ring);
+      if (!shape) return;
       var cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
-      var hw = (maxX - minX) / 2 + pad, hd = (maxZ - minZ) / 2 + pad;
-      var geo = new THREE.ShapeGeometry(roundedRectShape(cx, cz, hw, hd, 6));
+      var span = Math.max(maxX - minX, maxZ - minZ);
+      if (span < 1) return;
+      var pad = 3.5;
+      var k = 1 + (2 * pad) / span;          // 等比外扩，形状不变
+      var geo = new THREE.ShapeGeometry(shape);
       geo.rotateX(-Math.PI / 2);
-      geo.translate(0, 0.07, 0);
+      geo.translate(-cx, 0, -cz);
+      geo.scale(k, 1, k);
+      geo.translate(cx, 0.07, cz);
       group.add(new THREE.Mesh(geo, apronMat));
     });
     group.receiveShadow = true;
@@ -456,10 +717,49 @@
   })();
 
 
-  // 屋顶绿化（B5）：大屋顶铺一块绿，让俯视有层次，不做细节建模
+  // 屋顶绿化（B5）：大屋顶铺一块绿，让俯视有层次，不做细节建模。
+  // 早期版本是「包围盒中心一块纯色矩形」，在 L 形/带凸出的屋顶上会像一块
+  // 绿色塑料布。现在改成沿屋顶轮廓内缩 3 米的多边形 + 种植基质贴图 + 一圈
+  // 花池压边，看上去像真的屋顶花园。
+  var roofGardenTex = (function () {
+    var S = 256, c = document.createElement("canvas");
+    c.width = c.height = S;
+    var g = c.getContext("2d");
+    g.fillStyle = "#415a34";
+    g.fillRect(0, 0, S, S);
+    // 深浅斑块：模拟灌木/草地的高低起伏
+    for (var i = 0; i < 900; i++) {
+      var x = Math.random() * S, y = Math.random() * S, r = 2 + Math.random() * 9;
+      g.fillStyle = Math.random() < 0.5
+        ? "rgba(90,120,64," + (0.10 + Math.random() * 0.22) + ")"
+        : "rgba(52,74,42," + (0.10 + Math.random() * 0.22) + ")";
+      g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+    }
+    // 花池分格：每隔 1/4 张图一条浅色分缝
+    g.strokeStyle = "rgba(150,152,138,0.55)";
+    g.lineWidth = 2;
+    for (var k = 0; k <= 4; k++) {
+      var t = k * S / 4;
+      g.beginPath(); g.moveTo(t, 0); g.lineTo(t, S); g.stroke();
+      g.beginPath(); g.moveTo(0, t); g.lineTo(S, t); g.stroke();
+    }
+    var tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 4;
+    return tex;
+  })();
+
   function addRoofGreenery() {
     var g = new THREE.Group();
-    var mat = new THREE.MeshLambertMaterial({ color: col(0x4a6639), side: THREE.DoubleSide });
+    var mat = new THREE.MeshLambertMaterial({
+      map: roofGardenTex, side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4
+    });
+    var kerbMat = new THREE.MeshLambertMaterial({
+      color: col(0x9c9a8e), side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -6
+    });
     D.buildings.forEach(function (b) {
       if (b.id === "B002" || b.id === "B031" || b.id === "B041" || b.id.indexOf("B045") === 0) return;
       if (["B033", "B034", "B036", "B037", "B038E", "B038F", "B038G"].indexOf(b.id) >= 0) return;
@@ -467,6 +767,7 @@
       if ((b.area || 0) < 4500) return;
       var ring = b.rings && b.rings[0];
       if (!ring || ring.length < 3) return;
+
       var minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
       ring.forEach(function (p) {
         if (p[0] < minX) minX = p[0];
@@ -477,12 +778,36 @@
       var bw = maxX - minX, bd = maxZ - minZ;
       var aspect = Math.max(bw, bd) / Math.max(1, Math.min(bw, bd));
       if (aspect > 3.2) return;              // 细长条形楼不做，避免像"绿条"
-      var w = bw * 0.26, d = bd * 0.26;
-      if (w < 5 || d < 5) return;
-      var geo = new THREE.PlaneGeometry(w, d);
+      if (bw < 8 || bd < 8) return;
+
+      // 沿轮廓内缩，保证绿块不越过女儿墙。
+      // 注意：不能用 offsetRing(-4.5)——凹多边形/带细缝的环（比如围合式宿舍楼）
+      // 内缩后会自交，ShapeGeometry 三角化出放射状细尖刺，压边 ribbon 也会炸出长刺。
+      // 改成「绕包围盒中心等比缩小」，永远不会自交，观感几乎一样。
+      var pad = 4.5;
+      var kk = Math.max(0.45, 1 - 2 * pad / Math.max(1, Math.min(bw, bd)));
+      var ccx = (minX + maxX) / 2, ccz = (minZ + maxZ) / 2;
+      var inset = ring.map(function (p) {
+        return [ccx + (p[0] - ccx) * kk, ccz + (p[1] - ccz) * kk];
+      });
+      if (!inset || inset.length < 3) return;
+      var shape = ringToShape(inset);
+      if (!shape) return;
+      var geo = new THREE.ShapeGeometry(shape);
+      // ShapeGeometry 的 uv 就是形状坐标（米），缩到 8 米一贴图
+      var uv = geo.attributes.uv;
+      for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 8, uv.getY(i) / 8);
       geo.rotateX(-Math.PI / 2);
-      geo.translate((minX + maxX) / 2, (b.height || 0) + 0.14, (minZ + maxZ) / 2);
-      g.add(new THREE.Mesh(geo, mat));
+      geo.translate(0, (b.height || 0) + 0.12, 0);
+      var m = new THREE.Mesh(geo, mat);
+      m.name = "roofGarden:" + b.id;
+      g.add(m);
+
+      // 花池压边：沿内缩轮廓铺一圈 0.5 米宽的浅色边石
+      var loop = inset.concat([inset[0]]);
+      var kerb = new THREE.Mesh(ribbonGeometry(loop, 0.5, (b.height || 0) + 0.17, 4), kerbMat);
+      kerb.name = "roofKerb:" + b.id;
+      g.add(kerb);
     });
     scene.add(g);
     return g;
@@ -628,7 +953,7 @@
   });
   grassTex.repeat.set(0.05, 0.05);
   var whiteLineMat = new THREE.MeshBasicMaterial({
-    color: 0xf2f6f4, side: THREE.DoubleSide, transparent: true, opacity: 0.96, depthWrite: false
+    color: col(0xf2f6f4), side: THREE.DoubleSide, transparent: true, opacity: 0.96, depthWrite: false
   });
 
   function applyCanvasTex(grp, tex) {
@@ -658,7 +983,7 @@
     return best;
   }
 
-  function addLaneNumber(n, x, z) {
+  function addLaneNumber(n, x, z, ang) {
     var cv = document.createElement("canvas");
     cv.width = 64; cv.height = 64;
     var g = cv.getContext("2d");
@@ -669,10 +994,18 @@
     g.fillText(String(n), 32, 34);
     var tex = new THREE.CanvasTexture(cv);
     tex.encoding = THREE.sRGBEncoding;
-    var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-    sp.position.set(x, 0.7, z);
-    sp.scale.set(3.0, 3.0, 1);
-    scene.add(sp);
+    // 平铺在跑道上（原来是 Sprite 广告牌，八道号码全竖着立在起跑线附近，
+    // 人视时挤成一串「87654321」浮在半空，俯视又看不出是画在地上的）
+    var mat = new THREE.MeshBasicMaterial({
+      map: tex, transparent: true, depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8
+    });
+    // 一道只有约 1.2 m 宽，号码必须比道窄，否则八道号码会叠成一坨
+    var m = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 1.15), mat);
+    m.rotation.set(-Math.PI / 2, 0, Math.PI - (ang || 0));
+    m.position.set(x, 0.326, z);
+    m.renderOrder = 2;
+    scene.add(m);
   }
 
   function addTrackMarkings(outer, inner) {
@@ -706,32 +1039,73 @@
       scene.add(new THREE.Mesh(ribbonGeometry([os, is], 0.85, 0.322, 1), whiteLineMat));
       for (var k2 = 0; k2 < LANES; k2++) {
         var tt = (k2 + 0.5) / LANES;
-        addLaneNumber(k2 + 1, os[0] + (is[0] - os[0]) * tt, os[1] + (is[1] - os[1]) * tt);
+        // 沿切线挪开 5 m，别正好压在白色起跑线上（压上去等于看不见）
+        addLaneNumber(k2 + 1,
+          os[0] + (is[0] - os[0]) * tt - Math.sin(ang0) * 5,
+          os[1] + (is[1] - os[1]) * tt + Math.cos(ang0) * 5, ang0);
       }
     }
   }
 
+  // 内场标线：内场往往是倾斜的圆角矩形，直接用轴对齐包围盒画标线会
+  // 让禁区线斜插进跑道。这里先求最小面积外接旋转矩形，把标线放进它的局部坐标系。
+  function orientedBox(pts) {
+    var best = null;
+    for (var deg = 0; deg < 180; deg += 0.5) {
+      var a = deg * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+      var mnU = Infinity, mxU = -Infinity, mnV = Infinity, mxV = -Infinity;
+      for (var i = 0; i < pts.length; i++) {
+        var u = pts[i][0] * ca + pts[i][1] * sa;
+        var v = -pts[i][0] * sa + pts[i][1] * ca;
+        if (u < mnU) mnU = u;
+        if (u > mxU) mxU = u;
+        if (v < mnV) mnV = v;
+        if (v > mxV) mxV = v;
+      }
+      var area = (mxU - mnU) * (mxV - mnV);
+      if (!best || area < best.area - 1e-6) {
+        best = { area: area, a: a, ca: ca, sa: sa, mnU: mnU, mxU: mxU, mnV: mnV, mxV: mxV };
+      }
+    }
+    // 长轴统一放到局部 z 轴，后面的球场标线才能按「长边=z」来写
+    if ((best.mxU - best.mnU) > (best.mxV - best.mnV)) {
+      var a2 = best.a + Math.PI / 2, c2 = Math.cos(a2), s2 = Math.sin(a2);
+      var nU = Infinity, xU = -Infinity, nV = Infinity, xV = -Infinity;
+      for (var j = 0; j < pts.length; j++) {
+        var uu = pts[j][0] * c2 + pts[j][1] * s2;
+        var vv = -pts[j][0] * s2 + pts[j][1] * c2;
+        if (uu < nU) nU = uu;
+        if (uu > xU) xU = uu;
+        if (vv < nV) nV = vv;
+        if (vv > xV) xV = vv;
+      }
+      best = { area: best.area, a: a2, ca: c2, sa: s2, mnU: nU, mxU: xU, mnV: nV, mxV: xV };
+    }
+    return best;
+  }
+
   function addPitch(inner) {
-    var xs = inner.map(function (p) { return p[0]; });
-    var zs = inner.map(function (p) { return p[1]; });
-    var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
-    var minZ = Math.min.apply(null, zs), maxZ = Math.max.apply(null, zs);
-    var cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
-    var iw = maxX - minX, ih = maxZ - minZ;
-    var pw = Math.min(iw * 0.72, 68);
-    var pl = Math.min(ih * 0.78, 105);
-    var x1 = cx - pw / 2, x2 = cx + pw / 2;
-    var z1 = cz - pl / 2, z2 = cz + pl / 2;
+    var box = orientedBox(inner);
+    var ca = box.ca, sa = box.sa;
+    var lcU = (box.mnU + box.mxU) / 2, lcV = (box.mnV + box.mxV) / 2;
+    var cx = lcU * ca - lcV * sa, cz = lcU * sa + lcV * ca;
+    var pw = Math.min((box.mxU - box.mnU) * 0.80, 68);
+    var pl = Math.min((box.mxV - box.mnV) * 0.86, 105);
+    var x1 = -pw / 2, x2 = pw / 2, z1 = -pl / 2, z2 = pl / 2;
     var y = 0.322;
+    // 局部 (u,v) → 世界 (x,z)
+    function W(u, v) { return [cx + u * ca - v * sa, cz + u * sa + v * ca]; }
     function seg(ax, az, bx, bz, wid) {
-      scene.add(new THREE.Mesh(ribbonGeometry([[ax, az], [bx, bz]], wid || 0.12, y, 1), whiteLineMat));
+      var p = W(ax, az), q = W(bx, bz);
+      scene.add(new THREE.Mesh(ribbonGeometry([p, q], wid || 0.12, y, 1), whiteLineMat));
     }
     seg(x1, z1, x2, z1); seg(x2, z1, x2, z2); seg(x2, z2, x1, z2); seg(x1, z2, x1, z1);
-    seg(cx, z1, cx, z2);
+    // 中线要横跨球场（垂直于长轴），不是顺着长轴画
+    seg(x1, 0, x2, 0);
     var cpts = [];
     for (var i = 0; i <= 56; i++) {
       var a = i / 56 * Math.PI * 2;
-      cpts.push([cx + Math.cos(a) * 9.15, cz + Math.sin(a) * 9.15]);
+      cpts.push(W(Math.cos(a) * 9.15, Math.sin(a) * 9.15));
     }
     scene.add(new THREE.Mesh(ribbonGeometry(cpts, 0.12, y, 1), whiteLineMat));
     var pbw = Math.min(40.32, pw * 0.62), pbd = Math.min(16.5, pl * 0.17);
@@ -739,18 +1113,18 @@
     [-1, 1].forEach(function (sgn) {
       var zz = sgn < 0 ? z1 : z2;
       var dir = sgn < 0 ? 1 : -1;
-      seg(cx - pbw / 2, zz, cx + pbw / 2, zz);
-      seg(cx - pbw / 2, zz, cx - pbw / 2, zz + dir * pbd);
-      seg(cx + pbw / 2, zz, cx + pbw / 2, zz + dir * pbd);
-      seg(cx - pbw / 2, zz + dir * pbd, cx + pbw / 2, zz + dir * pbd);
-      seg(cx - gbw / 2, zz, cx + gbw / 2, zz);
-      seg(cx - gbw / 2, zz, cx - gbw / 2, zz + dir * gbd);
-      seg(cx + gbw / 2, zz, cx + gbw / 2, zz + dir * gbd);
-      seg(cx - gbw / 2, zz + dir * gbd, cx + gbw / 2, zz + dir * gbd);
+      seg(-pbw / 2, zz, pbw / 2, zz);
+      seg(-pbw / 2, zz, -pbw / 2, zz + dir * pbd);
+      seg(pbw / 2, zz, pbw / 2, zz + dir * pbd);
+      seg(-pbw / 2, zz + dir * pbd, pbw / 2, zz + dir * pbd);
+      seg(-gbw / 2, zz, gbw / 2, zz);
+      seg(-gbw / 2, zz, -gbw / 2, zz + dir * gbd);
+      seg(gbw / 2, zz, gbw / 2, zz + dir * gbd);
+      seg(-gbw / 2, zz + dir * gbd, gbw / 2, zz + dir * gbd);
       var spts = [];
       for (var j = 0; j <= 18; j++) {
         var a2 = j / 18 * Math.PI * 2;
-        spts.push([cx + Math.cos(a2) * 0.35, zz + dir * 11 + Math.sin(a2) * 0.35]);
+        spts.push(W(Math.cos(a2) * 0.35, zz + dir * 11 + Math.sin(a2) * 0.35));
       }
       scene.add(new THREE.Mesh(ribbonGeometry(spts, 0.14, y, 1), whiteLineMat));
     });
@@ -776,7 +1150,7 @@
         var pts = ring.map(function (p) { return new THREE.Vector3(p[0], 0.36, p[1]); });
         scene.add(new THREE.Line(
           new THREE.BufferGeometry().setFromPoints(pts),
-          new THREE.LineBasicMaterial({ color: 0xf2f6f4, transparent: true, opacity: 0.55 })
+          new THREE.LineBasicMaterial({ color: col(0xf2f6f4), transparent: true, opacity: 0.55 })
         ));
       });
     }
@@ -787,18 +1161,10 @@
     scene.add(flatPolygonMesh(l.rings, col(0x4a86a8), 0.45, 0.92));
   });
 
-  // 湖面（OSM relation，ODbL）
+  // 湖面 / 河道（OSM relation、官方平面图矢量化，ODbL）
   if (D.waterPolygons) {
     D.waterPolygons.forEach(function (w) {
-      scene.add(flatPolygonMesh(w.rings, col(0x2f6f8c), 0.5, 0.95));
-      // 岸线
-      w.rings.forEach(function (ring) {
-        var pts = ring.map(function (p) { return new THREE.Vector3(p[0], 0.62, p[1]); });
-        scene.add(new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints(pts),
-          new THREE.LineBasicMaterial({ color: 0x86c6dd, transparent: true, opacity: 0.7 })
-        ));
-      });
+      scene.add(waterChannel(w.rings));
     });
   }
 
@@ -815,7 +1181,12 @@
   }
 
   var roadGroup = new THREE.Group();
-  var ROAD_W = { primary: 7, secondary: 6, tertiary: 5, residential: 4.5, service: 3.5, footway: 2.2, path: 2.2, steps: 2.2, track: 3 };
+  // 车行道宽度（米）
+  var ROAD_W = { primary: 7, secondary: 6, tertiary: 5, residential: 4.5, service: 3.5, track: 3, unclassified: 4, living_street: 3.5, trunk: 7.5, motorway: 8 };
+  // 步行道宽度（米）：和车行道是两套东西，宽度、颜色、铺装都不同
+  var PATH_W = { footway: 2.2, path: 1.9, steps: 2.2, pedestrian: 3.0, cycleway: 2.2, corridor: 1.8, elevator: 1.8 };
+  // 步行道类型：浅色方砖铺装，没有车道线
+  var WALK_KIND = { footway: 1, path: 1, steps: 1, pedestrian: 1, cycleway: 1, corridor: 1, elevator: 1 };
 
   // ---- 路面贴图（B3）：沥青底 + 主路双黄线 / 次路白虚线 ----
   var roadTexCache = {};
@@ -825,17 +1196,17 @@
     var c = document.createElement("canvas");
     c.width = W; c.height = H;
     var g = c.getContext("2d");
-    g.fillStyle = "#3d4144";
+    g.fillStyle = "#42474b";
     g.fillRect(0, 0, W, H);
 
     var rnd = rng(77001);
-    for (var i = 0; i < 2000; i++) {
-      var v = 44 + rnd() * 42;
-      g.fillStyle = "rgba(" + (v | 0) + "," + ((v + 2) | 0) + "," + ((v + 5) | 0) + ",0.22)";
+    for (var i = 0; i < 2400; i++) {
+      var v = 50 + rnd() * 46;
+      g.fillStyle = "rgba(" + (v | 0) + "," + ((v + 2) | 0) + "," + ((v + 5) | 0) + ",0.24)";
       g.fillRect(rnd() * W, rnd() * H, 1.6, 1.6);
     }
 
-    if (level === "primary") {
+    if (level === "primary" || level === "trunk" || level === "motorway") {
       g.fillStyle = "#d8b44a";
       g.fillRect(W / 2 - 3, 0, 2, H);
       g.fillRect(W / 2 + 1, 0, 2, H);
@@ -863,32 +1234,281 @@
     return t;
   }
 
-  var roadMatCache = {};
-  var sidewalkMat = new THREE.MeshLambertMaterial({ color: col(0xb2b6ab), side: THREE.DoubleSide });
+  /* ---- 人行道 / 步道贴图：浅色方砖，一贴图 = 2 m × 2 m ----
+   * 和沥青拉开明度差，俯视时「走人的」和「走车的」一眼能分开。
+   */
+  var walkTex = (function () {
+    var S = 128;
+    var c = document.createElement("canvas");
+    c.width = S; c.height = S;
+    var g = c.getContext("2d");
+    g.fillStyle = "#c6c0af";
+    g.fillRect(0, 0, S, S);
+    var rnd = rng(4412);
+    var n = 4, t = S / n;
+    for (var ty = 0; ty < n; ty++) {
+      for (var tx = 0; tx < n; tx++) {
+        var v = 198 + rnd() * 24;
+        g.fillStyle = "rgba(" + (v | 0) + "," + ((v - 5) | 0) + "," + ((v - 24) | 0) + ",0.8)";
+        g.fillRect(tx * t + 1, ty * t + 1, t - 2, t - 2);
+      }
+    }
+    g.strokeStyle = "rgba(138,133,120,0.5)";
+    g.lineWidth = 2;
+    for (var k = 0; k <= n; k++) {
+      g.beginPath(); g.moveTo(k * t, 0); g.lineTo(k * t, S); g.stroke();
+      g.beginPath(); g.moveTo(0, k * t); g.lineTo(S, k * t); g.stroke();
+    }
+    for (var i = 0; i < 70; i++) {
+      g.fillStyle = "rgba(150,145,130,0.10)";
+      g.beginPath(); g.arc(rnd() * S, rnd() * S, 1 + rnd() * 5, 0, 6.2832); g.fill();
+    }
+    var tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 4;
+    return tex;
+  })();
 
-  var MAIN_ROAD = { primary: 1, primary_link: 1, secondary: 1, secondary_link: 1, tertiary: 1 };
+  var roadMatCache = {};
+  // 人行道/路缘一律往「后」推一点，让沥青永远赢。这样路口里两条路的
+  // 人行道即使重叠，也会被车行道切断，而不是横着压过马路。
+  var walkMat = new THREE.MeshLambertMaterial({
+    map: walkTex, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4
+  });
+  var walkEdgeMat = new THREE.MeshLambertMaterial({
+    color: col(0x8b8878), side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 6
+  });
+
+  var MAIN_ROAD = { primary: 1, primary_link: 1, secondary: 1, secondary_link: 1, tertiary: 1, trunk: 1, motorway: 1 };
+
+  // 路口处两条路的 ribbon 都在 y=0.60，深度值完全一样，GPU 会逐像素随机
+  // 选谁赢，于是出现蓝灰条纹。按道路等级给一个由近到远的 polygonOffset，
+  // 路口就永远由高等级路覆盖：斑纹消失，标线也不会互相穿插。
+  var ROAD_RANK = {
+    motorway: 7, motorway_link: 7, trunk: 7, trunk_link: 7,
+    primary: 6, primary_link: 6, secondary: 5, secondary_link: 5,
+    tertiary: 4, tertiary_link: 4, residential: 3, unclassified: 3,
+    living_street: 3, service: 2, track: 1
+  };
+  function roadMaterial(level) {
+    if (!roadMatCache[level]) {
+      var k = ROAD_RANK[level] == null ? 2 : ROAD_RANK[level];
+      roadMatCache[level] = new THREE.MeshLambertMaterial({
+        map: roadTexture(level), side: THREE.DoubleSide,
+        polygonOffset: true, polygonOffsetFactor: -k, polygonOffsetUnits: -k * 2
+      });
+    }
+    return roadMatCache[level];
+  }
+
+  // 路口补面：两条路相交处，方头端点之间会露出三角缺口。用一块和沥青
+  // 同色同质感的圆盘垫在最下面（polygonOffset 往后退），只在没被路面盖住
+  // 的地方露出来。用纯色会和带噪点的沥青贴图对不上，所以给一张无标线的沥青贴图。
+  // 噪点粒径与密度按「1 贴图 = 12 m」标定，和 roadTexture 的沿路方向一致，
+  // 否则路口面会显得比路面「太光滑」，边界处出现一块明显的色块。
+  var asphaltTex = (function () {
+    var S = 128, c = document.createElement("canvas");
+    c.width = c.height = S;
+    var g = c.getContext("2d");
+    g.fillStyle = "#3f4448";
+    g.fillRect(0, 0, S, S);
+    var rnd = rng(88001);
+    for (var i = 0; i < 1300; i++) {
+      var v = 50 + rnd() * 46;
+      g.fillStyle = "rgba(" + (v | 0) + "," + ((v + 2) | 0) + "," + ((v + 5) | 0) + ",0.24)";
+      g.fillRect(rnd() * S, rnd() * S, 2.2, 2.2);
+    }
+    var tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 4;
+    return tex;
+  })();
+  var juncMat = new THREE.MeshLambertMaterial({
+    map: asphaltTex, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: -16, polygonOffsetUnits: -32
+  });
+
+  // —— 车行道空间索引：人行道要问「我脚下这块地方是不是别人的路面」 ——
+  var roadIndex = (function () {
+    var CELL = 12, cells = {}, list = [];
+    D.roads.forEach(function (r) {
+      if (r.tunnel) return;
+      var lv = r.highway || "service";
+      if (WALK_KIND[lv]) return;
+      var hw = (ROAD_W[lv] || 3.5) / 2;
+      if (r.width && r.width > 2.5) hw = Math.max(3.0, Math.min(r.width, 13.0)) / 2;
+      r.lines.forEach(function (pts) {
+        for (var i = 0; i < pts.length - 1; i++) {
+          var a = pts[i], b = pts[i + 1];
+          if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 1e-6) continue;
+          var id = list.length;
+          list.push({ ax: a[0], az: a[1], bx: b[0], bz: b[1], hw: hw, r: r });
+          var gx0 = Math.floor(Math.min(a[0], b[0]) / CELL), gx1 = Math.floor(Math.max(a[0], b[0]) / CELL);
+          var gz0 = Math.floor(Math.min(a[1], b[1]) / CELL), gz1 = Math.floor(Math.max(a[1], b[1]) / CELL);
+          for (var gx = gx0; gx <= gx1; gx++) {
+            for (var gz = gz0; gz <= gz1; gz++) {
+              var k = gx + ":" + gz;
+              (cells[k] || (cells[k] = [])).push(id);
+            }
+          }
+        }
+      });
+    });
+    return { CELL: CELL, cells: cells, list: list };
+  })();
+
+  // 点 (x,z) 是否压在「别的车行道」的路面里（extra 是额外让开的余量）
+  function onOtherRoad(x, z, self, extra) {
+    var CELL = roadIndex.CELL;
+    var gx = Math.floor(x / CELL), gz = Math.floor(z / CELL);
+    for (var dx = -1; dx <= 1; dx++) {
+      for (var dz = -1; dz <= 1; dz++) {
+        var ids = roadIndex.cells[(gx + dx) + ":" + (gz + dz)];
+        if (!ids) continue;
+        for (var i = 0; i < ids.length; i++) {
+          var s = roadIndex.list[ids[i]];
+          if (s.r === self) continue;
+          if (pointSegDist(x, z, s.ax, s.az, s.bx, s.bz) < s.hw + extra) return s;
+        }
+      }
+    }
+    return null;
+  }
+
+  // 同一路段在 OSM 里常被画成两条平行 way（双幅路/单向辅路）。这种邻路的
+  // 路缘几乎贴在一起，两侧人行道会把中央分隔带整个铺满，所以内侧要让开。
+  // 判据：另一条车行道离得比「它的半宽 + 2 米」还近，且方向基本平行。
+  function nearParallelRoad(x, z, self, ux, uz) {
+    if (window.__walkCutOff) return false;
+
+    var CELL = roadIndex.CELL;
+    var gx = Math.floor(x / CELL), gz = Math.floor(z / CELL);
+    for (var dx = -1; dx <= 1; dx++) {
+      for (var dz = -1; dz <= 1; dz++) {
+        var ids = roadIndex.cells[(gx + dx) + ":" + (gz + dz)];
+        if (!ids) continue;
+        for (var i = 0; i < ids.length; i++) {
+          var s = roadIndex.list[ids[i]];
+          if (s.r === self) continue;
+          if (pointSegDist(x, z, s.ax, s.az, s.bx, s.bz) > s.hw + 2.0) continue;
+          var sx = s.bx - s.ax, sz = s.bz - s.az;
+          var sl = Math.hypot(sx, sz) || 1;
+          if (Math.abs(ux * sx / sl + uz * sz / sl) > 0.72) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // 人行道：整条带子宽 w+6，中间被本路的沥青盖住，只露出两侧各 3 米。
+  // 不去偏移中心线，就不会在急弯内侧折出「鱼尾」；路口也不用裁，
+  // 沥青的 polygonOffset 比人行道靠前，压过去自然盖住。
+  // 只有双幅路的中央分隔带是真的没被沥青盖住，那里才把带子断开。
+  function roadSidewalk(pts, w, self, level) {
+    var band = w + 6.0;
+    var rs = resampleLine(pts, 2.0);
+    var P = rs.pts;
+    if (P.length < 2) return;
+    var runs = [], cur = [];
+    for (var i = 0; i < P.length; i++) {
+      var a = P[Math.max(0, i - 1)], b = P[Math.min(P.length - 1, i + 1)];
+      var dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1;
+      if (!nearParallelRoad(P[i][0], P[i][1], self, dx / L, dz / L)) cur.push(P[i]);
+      else { if (cur.length >= 3) runs.push(cur); cur = []; }
+    }
+    if (cur.length >= 3) runs.push(cur);
+    runs.forEach(function (run) {
+      var len = 0;
+      for (var j = 0; j < run.length - 1; j++) len += Math.hypot(run[j + 1][0] - run[j][0], run[j + 1][1] - run[j][1]);
+      if (len < 6.0) return;
+      var sw = new THREE.Mesh(ribbonGeometry(run, band, 0.57, 2, 0, 1.2), walkMat);
+      sw.name = "sidewalk:" + level;
+      sw.receiveShadow = true;
+      roadGroup.add(sw);
+      var cb = new THREE.Mesh(ribbonGeometry(run, band + 0.6, 0.545, 2, 0, 1.2), walkEdgeMat);
+      cb.name = "curb:" + level;
+      roadGroup.add(cb);
+    });
+  }
 
   D.roads.forEach(function (r) {
     if (r.tunnel) return;
     var level = r.highway || "service";
-    var w = ROAD_W[level] || 3;
-    if (!roadMatCache[level]) {
-      roadMatCache[level] = new THREE.MeshLambertMaterial({
-        map: roadTexture(level), side: THREE.DoubleSide
-      });
-    }
+    var isWalk = !!WALK_KIND[level];
     r.lines.forEach(function (pts) {
-      // 主/次干道两侧加人行道，先在下面铺一条更宽的浅色带
-      if (MAIN_ROAD[level]) {
-        var sw = new THREE.Mesh(ribbonGeometry(pts, w + 2.8, 0.56, 12), sidewalkMat);
-        sw.name = "sidewalk:" + level;
-        roadGroup.add(sw);
+      if (pts.length < 2) return;
+
+      // —— 步行道：浅色方砖 + 一圈深色路缘，绝不铺沥青、不画车道线 ——
+      if (isWalk) {
+        var pw = PATH_W[level] || 2.0;
+        // 北校区的步行道是从平面图量出来的，宽度更贴近真实（3~6 m）
+        if (r.width && r.width > 1.5) pw = Math.min(r.width, 7.0);
+        var pe = new THREE.Mesh(ribbonGeometry(pts, pw + 0.8, 0.545, 2, pw / 2), walkEdgeMat);
+        pe.name = "walkEdge";
+        roadGroup.add(pe);
+        var pm = new THREE.Mesh(ribbonGeometry(pts, pw, 0.6, 2, pw / 2), walkMat);
+        pm.name = "walk:" + level;
+        pm.receiveShadow = true;
+        roadGroup.add(pm);
+        return;
       }
-      var rm = new THREE.Mesh(ribbonGeometry(pts, w, 0.6, 12), roadMatCache[level]);
+
+      // —— 车行道：沥青 + 车道线；主/次干道两侧带人行道 ——
+      var w = ROAD_W[level] || 3.5;
+      // 有实测宽度（北校区来自官方平面图）就用实测值，但夹在合理区间，
+      // 免得把广场量出来的 20 m 直接画成 20 m 宽的路。
+      if (r.width && r.width > 2.5) w = Math.max(3.0, Math.min(r.width, 13.0));
+      if (MAIN_ROAD[level]) {
+        roadSidewalk(pts, w, r, level);
+      }
+      var rm = new THREE.Mesh(ribbonGeometry(pts, w, 0.6, 12, w / 2), roadMaterial(level));
       rm.name = "road:" + level;
+      rm.receiveShadow = true;
       roadGroup.add(rm);
+      // 跨水的桥：补桥面侧板与护栏，别让它看起来是悬空的一条带子
+      if (r.bridge) addBridgeSides(pts, w);
     });
   });
+
+  // —— 路口交汇面：把路口当成一块独立的沥青面，而不是两条路压在一起 ——
+  // 路面是「一条路一条 ribbon」，两条路在路口必然重叠。这里用离线算好的
+  // 路口多边形（tools/build_junctions.py）在路口铺一块同材质的沥青，压在
+  // 两条路之上：穿过路口的中心线/双黄线被自然切断——真实路口就是这样，
+  // 而不是两条路的标线叠在一起。
+  //
+  // 路口里**不画**斑马线 / 停止线：多岔、斜交、双幅路路口上，横道线很难
+  // 摆正，几条臂的横道线挤在路口四周，看起来正是「指示线叠在一起」
+  // （用户 m03417 / m03959 两次反馈的就是这个）。现在只保留「各条路的
+  // 标线在路口边缘干净收住」这一种表达。
+  (function renderJunctions() {
+    var list = D.junctions || [];
+    if (!list.length) return;
+    var nMesh = 0;
+    list.forEach(function (j) {
+      (j.rings || []).forEach(function (ring) {
+        var sh = ringToShape(ring);
+        if (!sh) return;
+        var geo = new THREE.ShapeGeometry(sh);
+        geo.rotateX(-Math.PI / 2);
+        var pos = geo.attributes.position, uv = geo.attributes.uv;
+        for (var i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / 12, pos.getZ(i) / 12);
+        geo.translate(0, 0.604, 0);
+        var m = new THREE.Mesh(geo, juncMat);
+        m.name = "junction";
+        m.receiveShadow = true;
+        roadGroup.add(m);
+        nMesh++;
+      });
+    });
+    roadGroup.userData.junctions = list.length;
+    roadGroup.userData.junctionMeshes = nMesh;
+    roadGroup.userData.crosswalks = 0;
+    roadGroup.userData.stoplines = 0;
+  })();
   scene.add(roadGroup);
 
   // 路灯（B6）：沿主干道每约 60 m 一盏，实例化，不增加 draw call 压力
@@ -936,8 +1556,9 @@
     lampCount = positions.length;
   })();
 
-  // 地下隧道：两校区之间的下穿通道。青色路面是老样子（一眼能认出），
-  // 另外补了侧墙、两端的门洞与洞口暗面，让它从空中看也是一条"通道"而不是一块蓝色色块。
+  // 地下隧道：两校区之间的下穿通道。做成「下沉明槽 + 端头门洞」：
+  // 槽底压到路面以下，车行道从上方盖过去，从空中看才是真的钻到路底下，
+  // 而不是一块浮在路面上的蓝色板。青色导引带保留，作为隧道的视觉标识。
   var tunnelGroup = new THREE.Group();
   var tunnelBox = null;
   (function buildTunnel() {
@@ -945,14 +1566,13 @@
     if (!roads.length) return;
 
     var W = 13.5;          // 通道净宽
-    var WALL_H = 3.2;      // 侧墙高度
-    var FLOOR_Y = 0.62;    // 与车行道同高
-    var floorMat = new THREE.MeshLambertMaterial({ color: col(0x363b3f) });
+    var FLOOR_Y = 0.14;    // 槽底：低于路面（0.6），路面会盖住穿过的那一段
+    var WALL_H = 0.42;     // 侧墙顶 0.56，刚好压在路面之下，不会从路面里冒出来
+    var floorMat = new THREE.MeshLambertMaterial({ color: col(0x2b3034) });
     var wallMat = new THREE.MeshLambertMaterial({ color: col(0x9d9a91), side: THREE.DoubleSide });
     var capMat = new THREE.MeshLambertMaterial({ color: col(0xb3afa4) });
-    var holeMat = new THREE.MeshBasicMaterial({ color: col(0x1d2226), side: THREE.DoubleSide });
     var cyanMat = new THREE.MeshBasicMaterial({
-      color: col(0x2fd0ff), side: THREE.DoubleSide, transparent: true, opacity: 0.72, depthWrite: false,
+      color: col(0x2fd0ff), side: THREE.DoubleSide, transparent: true, opacity: 0.8, depthWrite: false,
       polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8
     });
 
@@ -971,65 +1591,49 @@
         var dx = p1[0] - p0[0], dz = p1[1] - p0[1];
         var L = Math.hypot(dx, dz);
         if (L < 1e-3) return;
-        var ux = dx / L, uz = dz / L;
-        var nx = -uz * W / 2, nz = ux * W / 2;
 
-        // 逐段铺：深色路面 + 中间青色带 + 两侧竖墙
+        // 沿线的累计长度，用来做两端的下坡
+        var cum = [0];
+        for (var ci = 1; ci < pts.length; ci++) {
+          cum.push(cum[ci - 1] + Math.hypot(pts[ci][0] - pts[ci - 1][0], pts[ci][1] - pts[ci - 1][1]));
+        }
+        var total = cum[cum.length - 1] || 1;
+        var RAMP = Math.min(26, total * 0.42);       // 两端各 26 m 的引道
+        // 端头在地面（0.55），中间落到槽底（FLOOR_Y）：看上去就是车往地下钻
+        function floorY(s) {
+          var edge = Math.min(s, total - s);
+          var k = edge >= RAMP ? 1 : edge / RAMP;
+          k = k * k * (3 - 2 * k);                   // smoothstep，坡顶坡底不折角
+          return 0.55 - (0.55 - FLOOR_Y) * k;
+        }
+
+        // 逐段铺：下沉槽底 + 两侧挡墙（墙顶压在路面 0.6 之下，不会从马路里冒出来）
         for (var i = 0; i < pts.length - 1; i++) {
           var a = pts[i], b = pts[i + 1];
           var sdx = b[0] - a[0], sdz = b[1] - a[1];
           var sL = Math.hypot(sdx, sdz);
           if (sL < 1e-3) continue;
           var snx = -sdz / sL * W / 2, snz = sdx / sL * W / 2;
-          var a1 = [a[0] + snx, FLOOR_Y, a[1] + snz], a2 = [a[0] - snx, FLOOR_Y, a[1] - snz];
-          var b1 = [b[0] + snx, FLOOR_Y, b[1] + snz], b2 = [b[0] - snx, FLOOR_Y, b[1] - snz];
+          var ya = floorY(cum[i]), yb = floorY(cum[i + 1]);
+          var wa = Math.min(ya + WALL_H, 0.55), wb = Math.min(yb + WALL_H, 0.55);
+          var a1 = [a[0] + snx, ya, a[1] + snz], a2 = [a[0] - snx, ya, a[1] - snz];
+          var b1 = [b[0] + snx, yb, b[1] + snz], b2 = [b[0] - snx, yb, b[1] - snz];
           tunnelGroup.add(new THREE.Mesh(quad(a1, b1, b2, a2), floorMat));
-          // 侧墙
+          if (wa - ya > 0.02) {
+            tunnelGroup.add(new THREE.Mesh(quad(
+              a1, b1, [b1[0], wb, b1[2]], [a1[0], wa, a1[2]]), wallMat));
+          }
+          if (wa - ya > 0.02) {
+            tunnelGroup.add(new THREE.Mesh(quad(
+              [a2[0], wa, a2[2]], [b2[0], wb, b2[2]], b2, a2), wallMat));
+          }
+          // 中间青色导引带：贴着槽底
+          var cw = 7.0;
+          var cnx = -sdz / sL * cw / 2, cnz = sdx / sL * cw / 2;
           tunnelGroup.add(new THREE.Mesh(quad(
-            a1, b1, [b1[0], FLOOR_Y + WALL_H, b1[2]], [a1[0], FLOOR_Y + WALL_H, a1[2]]), wallMat));
-          tunnelGroup.add(new THREE.Mesh(quad(
-            [a2[0], FLOOR_Y + WALL_H, a2[2]], [b2[0], FLOOR_Y + WALL_H, b2[2]], b2, a2), wallMat));
+            [a[0] + cnx, ya + 0.035, a[1] + cnz], [b[0] + cnx, yb + 0.035, b[1] + cnz],
+            [b[0] - cnx, yb + 0.035, b[1] - cnz], [a[0] - cnx, ya + 0.035, a[1] - cnz]), cyanMat));
         }
-
-        // 中间青色导引带（保留原来的视觉标识，但收窄成车道宽度）
-        var cw = 7.0;
-        var cnx = -uz * cw / 2, cnz = ux * cw / 2;
-        var q1 = [p0[0] + cnx, FLOOR_Y + 0.16, p0[1] + cnz], q2 = [p0[0] - cnx, FLOOR_Y + 0.16, p0[1] - cnz];
-        var q3 = [p1[0] + cnx, FLOOR_Y + 0.16, p1[1] + cnz], q4 = [p1[0] - cnx, FLOOR_Y + 0.16, p1[1] - cnz];
-        tunnelGroup.add(new THREE.Mesh(quad(q1, q3, q4, q2), cyanMat));
-
-        // 两端门洞：两根柱子 + 过梁 + 暗色洞口
-        [p0, p1].forEach(function (p, k) {
-          var dirX = k === 0 ? -ux : ux, dirZ = k === 0 ? -uz : uz;   // 朝外
-          var ang = Math.atan2(dirX, dirZ);
-
-          var pillarGeo = new THREE.BoxGeometry(1.7, 4.3, 1.7);
-          [-1, 1].forEach(function (side) {
-            var m = new THREE.Mesh(pillarGeo, capMat);
-            var off = side * (W / 2 + 0.85);
-            m.position.set(p[0] + (-uz) * off, FLOOR_Y + 2.15, p[1] + ux * off);
-            tunnelGroup.add(m);
-          });
-
-          var lintel = new THREE.Mesh(new THREE.BoxGeometry(W + 4.4, 1.15, 1.7), capMat);
-          lintel.position.set(p[0], FLOOR_Y + 4.3 + 0.575, p[1]);
-          lintel.rotation.y = ang;
-          tunnelGroup.add(lintel);
-
-          var hole = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.6, 3.9), holeMat);
-          hole.position.set(p[0] + dirX * 0.9, FLOOR_Y + 1.95, p[1] + dirZ * 0.9);
-          hole.rotation.y = ang;
-          tunnelGroup.add(hole);
-
-          // 洞口上方的青色拱环：远处也能一眼认出「这里是隧道」
-          var arch = new THREE.Mesh(
-            new THREE.TorusGeometry(8.2, 0.62, 8, 24),
-            new THREE.MeshBasicMaterial({ color: col(0x2fd0ff) })
-          );
-          arch.position.set(p[0], FLOOR_Y + 2.1, p[1]);
-          arch.rotation.y = ang;
-          tunnelGroup.add(arch);
-        });
 
         // 记录包围盒（信息卡上的「地下隧道」标签用）
         pts.forEach(function (p) {
@@ -1135,6 +1739,11 @@
     // 1) 行道树：沿道路两侧交替布置
     D.roads.forEach(function (r) {
       if (r.tunnel) return;
+      // 退让距离要跟着路宽走：北校车行道 12–16 m 宽，写死 7.5 m 会让树种到
+      // 路面上（半宽已经 6–8 m）。这里取「半宽 + 2.4 m 绿带」。
+      var rhw = (ROAD_W[r.highway] || 3.5) / 2;
+      if (r.width && r.width > 2.5) rhw = Math.max(3.0, Math.min(r.width, 13.0)) / 2;
+      var off = rhw + 2.4;
       r.lines.forEach(function (line) {
         var acc = 0, side = 1;
         for (var i = 0; i < line.length - 1; i++) {
@@ -1147,12 +1756,13 @@
             side = -side;
             var f = t / L;
             var x = a[0] + dx * f, z = a[1] + dz * f;
-            var nx = -dz / L * 7.5 * side, nz = dx / L * 7.5 * side;
+            var nx = -dz / L * off * side, nz = dx / L * off * side;
             var px = x + nx, pz = z + nz;
             if (insideAnyBuilding(px, pz, 1.5)) continue;
             if (insideWater(px, pz)) continue;
             if (insidePitch(px, pz)) continue;
-            if (distToRoad(px, pz) < 4.5) continue;
+            if (distToRoad(px, pz) < 3.2) continue;
+            if (onOtherRoad(px, pz, r, 0.6)) continue;   // 别压到别的车行道上
             var inCampus = false;
             for (var bi = 0; bi < D.boundary.length; bi++) {
               if (pointInRing(px, pz, D.boundary[bi])) { inCampus = true; break; }
@@ -1205,7 +1815,7 @@
     })(crownGeo);
 
     var trunkMat = new THREE.MeshLambertMaterial({ color: col(0x6b5340) });
-    var crownMat = new THREE.MeshLambertMaterial({ color: col(0x3f6b3c), flatShading: true });
+    var crownMat = new THREE.MeshLambertMaterial({ color: col(0x3f6b3c) });
     var trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, pts.length);
     var crowns = new THREE.InstancedMesh(crownGeo, crownMat, pts.length);
     var m = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s = new THREE.Vector3();
@@ -1241,6 +1851,14 @@
     sports:    { kind: "panel",   wall: "#b3bfc7", accent: "#8799a6", glass: "#6b8496", roof: "#767f85" },
     culture:   { kind: "ribbon",  wall: "#b9a684", accent: "#9c4f39", glass: "#3a4a52", roof: "#6a6f73" },
     clinic:    { kind: "punch",   wall: "#cfd6da", accent: "#b9c2c7", glass: "#47545c", roof: "#71757a" },
+    // 北校区数据用的是更细的 type（teaching/dorm/misc/hotel/service/admin），
+    // 这里补齐映射，否则一律落到 other，整片校园会变成同一个灰。
+    teaching:  { kind: "ribbon",  wall: "#c7b191", accent: "#9c4f39", glass: "#3a4a52", roof: "#6b6560" },
+    dorm:      { kind: "punch",   wall: "#d7d2c4", accent: "#a8a08c", glass: "#414e57", roof: "#6f7276" },
+    hotel:     { kind: "ribbon",  wall: "#c0ae8c", accent: "#8f4a36", glass: "#3a4a52", roof: "#68625d" },
+    admin:     { kind: "ribbon",  wall: "#cbc4b2", accent: "#8f4a36", glass: "#3a4a52", roof: "#6a6f73" },
+    service:   { kind: "large",   wall: "#a9a59a", accent: "#8e8a7e", glass: "#454f56", roof: "#5f6367" },
+    misc:      { kind: "punch",   wall: "#b4afa2", accent: "#9d9789", glass: "#454f56", roof: "#6a6f73" },
     other:     { kind: "punch",   wall: "#b6b1a5", accent: "#a49e90", glass: "#454f56", roof: "#6a6f73" }
   };
 
@@ -1439,6 +2057,7 @@
   var procedural = new THREE.Group();   // 程序化几何（GLB 加载成功后会被替换）
   scene.add(procedural);
   var roofDetailGroup = new THREE.Group();
+  var roofDetailDone = false;   // 屋顶绿化/设备只加一次
   procedural.add(roofDetailGroup);
 
   D.buildings.forEach(function (b) {
@@ -1522,6 +2141,14 @@
       }
     }
   });
+
+  // 北校区默认走程序化立面（不加载 GLB），屋顶绿化和屋顶设备要在这里补上，
+  // 否则会少一层细节。GLB 分支里已经调用过，用 roofDetailDone 防止重复添加。
+  if (CAMPUS === "north") {
+    addRoofGreenery();
+    addRoofClutter();
+    roofDetailDone = true;
+  }
 
   // 子建筑（八角楼）：母楼 GLB 已经把八边形挤出来了，这里只加一圈屋顶冠，
   // 让它在一片方盒子里一眼能认出来是"那栋八个角的楼"
@@ -1732,14 +2359,29 @@
     beam.position.set(0, 6.9, 0);
     gate.add(p1, p2, beam);
     gate.position.set(g.x, 0, g.z);
+    // 门楼要顺着边界切线摆：不旋转的话，落在南北向边界上的校门会横插进路里
+    var gAng = 0, gBest = Infinity;
+    (D.boundary || []).forEach(function (ring) {
+      for (var i = 0; i < ring.length; i++) {
+        var a = ring[i], b = ring[(i + 1) % ring.length];
+        var dx = b[0] - a[0], dz = b[1] - a[1];
+        var L2 = dx * dx + dz * dz || 1;
+        var t = ((g.x - a[0]) * dx + (g.z - a[1]) * dz) / L2;
+        t = Math.max(0, Math.min(1, t));
+        var d = Math.hypot(g.x - (a[0] + dx * t), g.z - (a[1] + dz * t));
+        if (d < gBest) { gBest = d; gAng = Math.atan2(-dz, dx); }
+      }
+    });
+    gate.rotation.y = gAng;
     gate.castShadow = true;
     scene.add(gate);
 
+    // 门前地面圆环：标出校门位置（原来是一块 4.8 m 高的实心粉色圆柱，近看像掉在地上的盒子）
     var disc = new THREE.Mesh(
-      new THREE.CylinderGeometry(2.4, 2.4, 0.6, 16),
-      new THREE.MeshBasicMaterial({ color: 0xff6b6b })
+      new THREE.CylinderGeometry(3.2, 3.2, 0.05, 24),
+      new THREE.MeshBasicMaterial({ color: col(0xb4553f), transparent: true, opacity: 0.5 })
     );
-    disc.position.set(g.x, 0.8, g.z);
+    disc.position.set(g.x, 0.64, g.z);
     scene.add(disc);
   });
 
@@ -1748,6 +2390,13 @@
   // ============================================================
   (function loadDetailedModel() {
     if (!THREE.GLTFLoader) { return; }
+    // 北校区：north_buildings.glb 是早期从平面图直接挤出的低模，屋顶三角面法线是坏的
+    // （俯视看每栋楼都有一块惨白的斜三角），立面也没有分层。这里默认用 north-data.js
+    // 里的轮廓走参数化立面，需要对比旧模型时加 ?glb=1。
+    if (CAMPUS === "north" && !/[?&]glb=1/.test(location.search)) {
+      window.__navDebug.mode = "procedural";
+      return;
+    }
     // 南北两个校区各有自己的 GLB；加载失败就保留程序化体块
     var glbUrl = (CAMPUS === "north")
       ? (window.GDUFS_NORTH_GLB_URL || "assets/north_buildings.glb")
@@ -1780,8 +2429,11 @@
       });
       scene.remove(procedural);
       scene.add(gltf.scene);
-      addRoofGreenery();
-      addRoofClutter();
+      if (!roofDetailDone) {
+        addRoofGreenery();
+        addRoofClutter();
+        roofDetailDone = true;
+      }
       renderer.shadowMap.needsUpdate = true;
       buildingMeshes.length = 0;
       gltf.scene.traverse(function (o) { if (o.isMesh && o.visible) { buildingMeshes.push(o); } });
@@ -2006,7 +2658,7 @@
     if (startPlace && startPlace !== myPlace) {
       var m1 = new THREE.Mesh(
         new THREE.TorusGeometry(4.5, 1.2, 8, 24),
-        new THREE.MeshBasicMaterial({ color: 0x4cff9a })
+        new THREE.MeshBasicMaterial({ color: col(0x4cff9a) })
       );
       m1.rotation.x = -Math.PI / 2;
       m1.position.set(startPlace.x, 1.4, startPlace.z);
@@ -2015,7 +2667,7 @@
     if (endPlace) {
       var m2 = new THREE.Mesh(
         new THREE.TorusGeometry(4.5, 1.2, 8, 24),
-        new THREE.MeshBasicMaterial({ color: 0xff5a4c })
+        new THREE.MeshBasicMaterial({ color: col(0xff5a4c) })
       );
       m2.rotation.x = -Math.PI / 2;
       m2.position.set(endPlace.x, 1.4, endPlace.z);
@@ -2124,12 +2776,12 @@
     // 相机 near=4 / far=14000，一千米外深度缓冲精度远小于 0.2 m，只靠抬高会被路面 z-fight 掉。
     var geoOuter = ribbonGeometry(pts, 5.4, 0.72, 12);
     pathGroup.add(new THREE.Mesh(geoOuter, new THREE.MeshBasicMaterial({
-      color: 0xb8430c, side: THREE.DoubleSide, transparent: true, opacity: 0.92,
+      color: col(0xb8430c), side: THREE.DoubleSide, transparent: true, opacity: 0.92,
       polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -12
     })));
     var geoInner = ribbonGeometry(pts, 3.4, 0.79, 12);
     pathGroup.add(new THREE.Mesh(geoInner, new THREE.MeshBasicMaterial({
-      color: 0xffa02e, side: THREE.DoubleSide,
+      color: col(0xffa02e), side: THREE.DoubleSide,
       polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -16
     })));
 
@@ -2157,7 +2809,7 @@
       if (cosang > 0.94) continue;
       var dot = new THREE.Mesh(
         new THREE.SphereGeometry(0.6, 10, 8),
-        new THREE.MeshBasicMaterial({ color: 0xffe08a })
+        new THREE.MeshBasicMaterial({ color: col(0xffe08a) })
       );
       // 贴地放：原来半径 1.8、离地 1.6 m，正好在漫游时的眼高上，
       // 相机会从球里穿过去，近裁剪面切出一个白色锯齿（第一人称下极明显）
@@ -2354,7 +3006,7 @@
     var disc = new THREE.Mesh(
       new THREE.CircleGeometry(acc, 48),
       new THREE.MeshBasicMaterial({
-        color: 0x2f6ea8, transparent: true, opacity: 0.18,
+        color: col(0x2f6ea8), transparent: true, opacity: 0.18,
         depthWrite: false, side: THREE.DoubleSide
       })
     );
@@ -2364,7 +3016,7 @@
 
     var ring = new THREE.Mesh(
       new THREE.TorusGeometry(Math.max(4.2, Math.min(acc * 0.3, 12)), 0.9, 8, 36),
-      new THREE.MeshBasicMaterial({ color: 0xffffff })
+      new THREE.MeshBasicMaterial({ color: col(0xffffff) })
     );
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(x, 0.8, z);
@@ -2372,7 +3024,7 @@
 
     var dot = new THREE.Mesh(
       new THREE.CircleGeometry(3.4, 24),
-      new THREE.MeshBasicMaterial({ color: 0x1b6ef3, depthWrite: false })
+      new THREE.MeshBasicMaterial({ color: col(0x1b6ef3), depthWrite: false })
     );
     dot.rotation.x = -Math.PI / 2;
     dot.position.set(x, 1.0, z);
@@ -2528,6 +3180,14 @@
     }
     var raw = normPlace(label);
     if (!raw) { return null; }
+
+    // 先按用户原话精确匹配一次。
+    // 原因：别称表里有「北门 → 正门」（南校把主校门口语叫北门），但北校有真的北门，
+    // 直接走别称会把「北门」解析成正门，路线和状态栏文案全错（实测 dist 1068 m 指到了正门）。
+    for (var q = 0; q < places.length; q++) {
+      if (normPlace(places[q].label) === raw) { return places[q]; }
+    }
+
     var n = normPlace(expandAlias(raw));
 
     // 简写补全：实验楼C → 实验楼C区；教学楼C → 教学楼C栋；C区 → 实验楼C区
