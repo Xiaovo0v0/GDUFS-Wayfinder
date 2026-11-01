@@ -51,16 +51,6 @@
       for (var y = 0; y < h; y += 80) g.fillRect(0, y, w, 3);
     });
 
-    var plazaTex = makeTex(512, 512, function (g, w, h) {
-      g.fillStyle = '#b56a4e'; g.fillRect(0, 0, w, h);
-      g.strokeStyle = 'rgba(240,225,210,0.28)'; g.lineWidth = 2;
-      for (var y = 0; y < h; y += 32) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
-      for (var x = 0; x < w; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
-      g.strokeStyle = 'rgba(245,235,220,0.5)'; g.lineWidth = 6;
-      g.beginPath(); g.arc(w / 2, h / 2, 130, 0, Math.PI * 2); g.stroke();
-      g.beginPath(); g.arc(w / 2, h / 2, 70, 0, Math.PI * 2); g.stroke();
-    });
-
     var clockTex = makeTex(256, 256, function (g, w, h) {
       g.clearRect(0, 0, w, h);
       g.fillStyle = '#f6f2e8'; g.beginPath(); g.arc(128, 128, 118, 0, Math.PI * 2); g.fill();
@@ -87,7 +77,6 @@
     });
     var facadeMat = new THREE.MeshStandardMaterial({ map: facadeTex, roughness: 0.78, metalness: 0.02, side: THREE.DoubleSide });
     var glassPanel = new THREE.MeshStandardMaterial({ map: glassTex, roughness: 0.2, metalness: 0.4, side: THREE.DoubleSide });
-    var plazaMat = new THREE.MeshStandardMaterial({ map: plazaTex, roughness: 0.92, metalness: 0.02, side: THREE.DoubleSide });
     var clockMat = new THREE.MeshBasicMaterial({ map: clockTex, transparent: true, side: THREE.DoubleSide });
 
     // ---------------------------------------------------------------- plan
@@ -180,13 +169,6 @@
       }
       if (window.mergeStaticGroup) window.mergeStaticGroup(wing);
     });
-
-    // courtyard plaza
-    var plaza = new THREE.Mesh(new THREE.PlaneGeometry(150, 130), plazaMat);
-    plaza.rotation.x = -Math.PI / 2;
-    plaza.position.set(0, 0.015, 0);
-    plaza.receiveShadow = true;
-    root.add(plaza);
 
     return root;
   };
