@@ -26,7 +26,7 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import unary_union
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from rebuild_roads import build_graph  # noqa: E402  复用南校的导航图构建
+from rebuild_roads import build_graph, DOOR_MAX  # noqa: E402  复用南校的导航图构建
 
 DATA = "gdufs-3d/north-data.js"
 VEC = "artifacts/north/roads_vec.json"
@@ -307,7 +307,11 @@ def main():
     # 矢量数据接管后不再叠栅格图层，避免双重描线
     D.pop("layers", None)
 
-    gb, repaired, comp, off_b, off_g = build_graph(D, new_roads, inner_m=10.0)
+    # 北校 highway 是按路宽猜的（14.6 m 的 secondary 其实是校内主路），不能套南校
+    # 「城市道路整条剔除」的口径，只能靠「裁剪到校区多边形以内」保证不出校。
+    # 2026-11-01 起 build_graph 的 inner_m 外扩被去掉（那正是路线跑到围墙外的根源）。
+    gb, repaired, comp, off_b, off_g = build_graph(
+        D, new_roads, door_max=DOOR_MAX, city_roads=set())
     D["graph"] = {
         "nodes": [[round(p[0], 1), round(p[1], 1)] for p in gb.nodes],
         "edges": gb.edges,

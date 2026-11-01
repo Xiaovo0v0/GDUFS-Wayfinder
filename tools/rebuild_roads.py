@@ -549,7 +549,7 @@ def choose_door(b, campus, gb, walls):
     return best
 
 
-def build_graph(D, roads, join_max=30.0, door_max=None):
+def build_graph(D, roads, join_max=30.0, door_max=None, city_roads=CITY_ROAD):
     """导航图 = 校区边界**以内**的步行路网。
 
     两条硬规则（2026-11 修订，之前用 boundary.buffer(6) 导致路线出校）：
@@ -558,6 +558,9 @@ def build_graph(D, roads, join_max=30.0, door_max=None):
     2. 其余道路只保留落在校区多边形内的部分（不再外扩 6 m，否则贴着围墙的
        外环路人行道会整段溜进图里，正是「北苑1栋→学生活动中心」绕校外的原因）。
     例外：地下隧道整条保留，它是生活区与教学区之间唯一的步行通道。
+
+    北校要传 `city_roads=set()`：那边的 `highway` 是按路宽猜的（14.6 m 的 secondary
+    其实是校内主路），照南校的口径整条剔了会把主路网剔空。
     """
     global DOOR_MAX
     if door_max:
@@ -567,7 +570,7 @@ def build_graph(D, roads, join_max=30.0, door_max=None):
     campus = unary_union(zones)
     lines = []
     for r in roads:
-        if not r.get("tunnel") and r.get("highway") in CITY_ROAD:
+        if not r.get("tunnel") and r.get("highway") in city_roads:
             continue
         for ln in r["lines"]:
             if len(ln) < 2:

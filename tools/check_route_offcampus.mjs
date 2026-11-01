@@ -1,13 +1,39 @@
 // 前端真机校验：算出来的路线到底有没有走出校区
-//   node tools/check_route_offcampus.mjs [baseUrl] [outPng]
+//   node tools/check_route_offcampus.mjs [baseUrl] [outPng] [north]
 // 走的是页面里真实的 route()：setPlaces 选起终点，再读 window.__lastRoute / __lastRouteDist，
-// 用 GDUFS_DATA.boundary 对折线逐 2 m 采样判内外，统计「校外长度」。
+// 用边界折线对折线逐 2 m 采样判内外，统计「校外长度」。
+// 第三个参数写 north 时校验北校（?campus=north，边界取 GDUFS_NORTH.boundary，无隧道豁免）。
 import { Browser } from './cdp.mjs';
 import fs from 'node:fs';
 
 const base = process.argv[2] || 'http://127.0.0.1:8080/';
 const out = process.argv[3] || '';
+const north = (process.argv[4] || '') === 'north';
+const url = north ? base + (base.includes('?') ? '&' : '?') + 'campus=north' : base;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const SOUTH_PAIRS = [
+  ['北苑1栋', '学生活动中心'],
+  ['北苑1栋', '图书馆'],
+  ['学生活动中心', '图书馆'],
+  ['正门', '学生活动中心'],
+  ['4号门', '北苑1栋'],
+  ['北苑1栋', '文采园（第一饭堂）'],
+  ['南苑13栋', '实验楼B区']
+];
+
+// 北校：旧图里出界最狠的几组 + 三个校门各一组
+const NORTH_PAIRS = [
+  ['第七教学楼', 'BBA教育中心'],
+  ['云山会堂', 'BBA教育中心'],
+  ['北门', '云山会堂'],
+  ['第七教学楼', '逸林酒店'],
+  ['正门', '第七教学楼'],
+  ['南门', '第七教学楼']
+];
+
+const pairs = north ? NORTH_PAIRS : SOUTH_PAIRS;
+const shotPair = north ? ['第七教学楼', 'BBA教育中心'] : ['北苑1栋', '学生活动中心'];
 
 // 页面里执行：返回每个起终点的距离、折线长度、校外长度、是否经隧道、状态栏文字
 const PROBE = `(() => {
@@ -19,9 +45,11 @@ const PROBE = `(() => {
     }
     return inside;
   };
-  const rings = (window.GDUFS_DATA && window.GDUFS_DATA.boundary) || [];
+  const NB = ${north ? 'true' : 'false'};
+  const src = NB ? window.GDUFS_NORTH : window.GDUFS_DATA;
+  const rings = (src && src.boundary) || [];
   const tb = (window.__navDebug && window.__navDebug.tunnelBox) || null;
-  const inTunnelBox = (x, z) => !!tb && x >= tb[0] - 8 && x <= tb[2] + 8 && z >= tb[1] - 8 && z <= tb[3] + 8;
+  const inTunnelBox = (x, z) => !NB && !!tb && x >= tb[0] - 8 && x <= tb[2] + 8 && z >= tb[1] - 8 && z <= tb[3] + 8;
   const inside = (x, z) => rings.some((r) => inRing(x, z, r)) || inTunnelBox(x, z);
   const offLen = (pts) => {
     let off = 0;
@@ -48,20 +76,12 @@ const PROBE = `(() => {
       dist: window.__lastRouteDist,
       polyline: Math.round(len),
       offcampus: Math.round(offLen(pts)),
-      tunnel: /隧道/.test(status.innerText || ''),
+      tunnel: /隧道|tunnel/i.test(status.innerText || ''),
       status: (status.innerText || '').replace(/\\s+/g, ' ').slice(0, 90),
       pts: pts.length
     };
   };
-  return [
-    one('北苑1栋', '学生活动中心'),
-    one('北苑1栋', '图书馆'),
-    one('学生活动中心', '图书馆'),
-    one('正门', '学生活动中心'),
-    one('4号门', '北苑1栋'),
-    one('北苑1栋', '文采园（第一饭堂）'),
-    one('南苑13栋', '实验楼B区')
-  ];
+  return ${JSON.stringify(pairs)}.map((p) => one(p[0], p[1]));
 })()`;
 
 const b = new Browser({ port: 9337 });
@@ -70,10 +90,13 @@ try {
   await b.send('Network.enable');
   await b.send('Network.setCacheDisabled', { cacheDisabled: true });
   await b.send('Emulation.setDeviceMetricsOverride', { width: 1576, height: 908, deviceScaleFactor: 1, mobile: false });
-  await b.send('Page.navigate', { url: base });
+  await b.send('Page.navigate', { url: url });
   await sleep(500);
   await b.send('Page.reload', { ignoreCache: true });
-  const ready = await b.waitFor('window.__navDebug && window.__navDebug.setPlaces && window.GDUFS_DATA', 60000).then(() => true).catch(() => false);
+  const ready = await b
+    .waitFor(`window.__navDebug && window.__navDebug.setPlaces && ${north ? 'window.GDUFS_NORTH' : 'window.GDUFS_DATA'}`, 60000)
+    .then(() => true)
+    .catch(() => false);
   if (!ready) throw new Error('页面未就绪');
   await sleep(2500);
 
@@ -81,8 +104,10 @@ try {
   for (const r of rows) console.log(JSON.stringify(r));
 
   if (out) {
-    // 回到第一条，截图留证
-    await b.eval(`window.__navDebug.setPlaces('北苑1栋','学生活动中心')`, { awaitPromise: false });
+    // 回到问题最严重的那组，截图留证
+    await b.eval(`window.__navDebug.setPlaces(${JSON.stringify(shotPair[0])},${JSON.stringify(shotPair[1])})`, {
+      awaitPromise: false
+    });
     await sleep(1500);
     fs.mkdirSync('artifacts/3d', { recursive: true });
     const shot = await b.shotClean(out);
