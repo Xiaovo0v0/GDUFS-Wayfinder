@@ -1,7 +1,7 @@
 // 中英双语（E 轨）
 //   用法：<span data-i18n="panel.title"></span>，切换时调用 applyLang()
 //   地名：tName('图书馆') → 'Library'（表在 name-en.js）
-//   语言写进 URL（?lang=en），校区切换会一起带上
+//   语言写进 URL（?lang=zh / ?lang=en），校区切换会一起带上
 (function () {
   var DICT = {
     zh: {
@@ -9,7 +9,7 @@
       "campus.south": "南校",
       "campus.north": "北校",
       "panel.title": "广外校园向导",
-      "panel.sub": "广东外语外贸大学 · 大学城校区<br>51 栋建筑 · LOD2 模型 · 步行路径规划",
+      "panel.sub": "广东外语外贸大学 · 大学城校区<br>52 栋建筑 · LOD2 模型 · 步行路径规划",
       "panel.sub.north": "广东外语外贸大学 · 白云山校区<br>42 栋建筑 · 官方平面图矢量化",
       "form.from": "起点",
       "form.to": "终点",
@@ -18,6 +18,9 @@
       "btn.roads": "道路",
       "btn.reset": "重置视角",
       "btn.walk": "走过去看看",
+      "btn.locate": "📍 我的位置",
+      "form.me": "📍 我的位置",
+      "me.label": "我的位置",
       "legend.teaching": "教学 / 实验",
       "legend.dorm": "学生宿舍",
       "legend.library": "图书馆",
@@ -26,6 +29,16 @@
       "legend.culture": "文化 / 会堂",
       "legend.clinic": "门诊",
       "legend.misc": "其他",
+      "sheet.legend": "图例",
+      "sheet.collapse": "收起",
+      "sheet.expand": "展开",
+      "mini.hint": "点这里展开，选起点和终点",
+      "mini.from": "起点：",
+      "mini.to": "终点：",
+      "mini.pickEnd": "再选终点",
+      "mini.pickStart": "再选起点",
+      "mini.about": "约",
+      "mini.meter": "米",
       "hint.body": "左键拖动旋转 · 滚轮缩放 · 右键平移<br>可直接点击建筑设置起点 / 终点。<br>生活区和教学区经 <b>地下隧道</b> 穿行。<br>名称/层数已按官方资料与规划验收合格证修正。",
       "hint.body.north": "左键拖动旋转 · 滚轮缩放 · 右键平移<br>可直接点击建筑查看信息。<br>轮廓来自学校《北校区平面图》矢量化；层数为按类型推定。",
       "ai.name": "语心",
@@ -51,7 +64,7 @@
       "campus.south": "South",
       "campus.north": "North",
       "panel.title": "GDUFS Campus Guide",
-      "panel.sub": "Guangdong University of Foreign Studies · Mega Center Campus<br>51 buildings · LOD2 models · walking routes",
+      "panel.sub": "Guangdong University of Foreign Studies · Mega Center Campus<br>52 buildings · LOD2 models · walking routes",
       "panel.sub.north": "Guangdong University of Foreign Studies · Baiyunshan Campus<br>42 buildings · vectorised from the official plan",
       "form.from": "From",
       "form.to": "To",
@@ -60,6 +73,9 @@
       "btn.roads": "Roads",
       "btn.reset": "Reset view",
       "btn.walk": "Walk through",
+      "btn.locate": "📍 My location",
+      "form.me": "📍 My location",
+      "me.label": "My location",
       "legend.teaching": "Teaching / Lab",
       "legend.dorm": "Dormitory",
       "legend.library": "Library",
@@ -68,6 +84,16 @@
       "legend.culture": "Culture / Hall",
       "legend.clinic": "Clinic",
       "legend.misc": "Others",
+      "sheet.legend": "Legend",
+      "sheet.collapse": "Hide",
+      "sheet.expand": "Expand",
+      "mini.hint": "Tap to plan a route",
+      "mini.from": "From: ",
+      "mini.to": "To: ",
+      "mini.pickEnd": "pick a destination",
+      "mini.pickStart": "pick a start",
+      "mini.about": "about",
+      "mini.meter": "m",
       "hint.body": "Drag to rotate · scroll to zoom · right-drag to pan<br>Click a building to set start / destination.<br>North and south halves are linked by the <b>underground tunnel</b>.<br>Names and floors verified against official sources.",
       "hint.body.north": "Drag to rotate · scroll to zoom · right-drag to pan<br>Click a building for details.<br>Footprints vectorised from the official campus plan; floors estimated by type.",
       "ai.name": "Yuxin",
@@ -93,7 +119,11 @@
   function detect() {
     var m = /[?&]lang=(en|zh)/.exec(location.search);
     if (m) return m[1];
-    try { return localStorage.getItem("gdufs_lang") || "zh"; } catch (e) { return "zh"; }
+    try {
+      // 只接受合法值，避免旧版本/手改的 localStorage 让语言卡在非法状态
+      var saved = localStorage.getItem("gdufs_lang");
+      return saved === "en" ? "en" : "zh";
+    } catch (e) { return "zh"; }
   }
 
   var lang = detect();
@@ -106,6 +136,7 @@
   // 地名翻译：英文缺失时退回中文
   function tName(name) {
     if (lang !== "en" || !name) return name;
+    if (name === "我的位置") return "My location";   // 定位生成的临时起点，不在 name-en.js 里
     var map = window.GDUFS_NAME_EN || {};
     return map[name] || name;
   }
@@ -125,6 +156,11 @@
     var phs = document.querySelectorAll("[data-i18n-ph]");
     for (var j = 0; j < phs.length; j++) {
       phs[j].setAttribute("placeholder", t(phs[j].getAttribute("data-i18n-ph")));
+    }
+    // 只显示图标的按钮也要有可读名称（手机端「语心」头像）
+    var ars = document.querySelectorAll("[data-i18n-aria]");
+    for (var a = 0; a < ars.length; a++) {
+      ars[a].setAttribute("aria-label", t(ars[a].getAttribute("data-i18n-aria")));
     }
     var pills = document.querySelectorAll("#langSwitch button");
     for (var k2 = 0; k2 < pills.length; k2++) {

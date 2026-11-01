@@ -134,12 +134,12 @@ workflow:
         isInIteration: false
         isInLoop: false
         sourceType: llm
-        targetType: variable-aggregator
-      id: nav_llm-source-agg-target
+        targetType: answer
+      id: nav_llm-source-ans_nav-target
       selected: false
       source: 'nav_llm'
       sourceHandle: 'source'
-      target: 'agg'
+      target: 'ans_nav'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -173,12 +173,12 @@ workflow:
         isInIteration: false
         isInLoop: false
         sourceType: llm
-        targetType: variable-aggregator
-      id: svc_llm-source-agg-target
+        targetType: answer
+      id: svc_llm-source-ans_svc-target
       selected: false
       source: 'svc_llm'
       sourceHandle: 'source'
-      target: 'agg'
+      target: 'ans_svc'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -199,12 +199,12 @@ workflow:
         isInIteration: false
         isInLoop: false
         sourceType: llm
-        targetType: variable-aggregator
-      id: wiki_llm-source-agg-target
+        targetType: answer
+      id: wiki_llm-source-ans_wiki-target
       selected: false
       source: 'wiki_llm'
       sourceHandle: 'source'
-      target: 'agg'
+      target: 'ans_wiki'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -212,25 +212,12 @@ workflow:
         isInIteration: false
         isInLoop: false
         sourceType: llm
-        targetType: variable-aggregator
-      id: chat_llm-source-agg-target
+        targetType: answer
+      id: chat_llm-source-ans_chat-target
       selected: false
       source: 'chat_llm'
       sourceHandle: 'source'
-      target: 'agg'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        isInLoop: false
-        sourceType: variable-aggregator
-        targetType: answer
-      id: agg-source-answer-target
-      selected: false
-      source: 'agg'
-      sourceHandle: 'source'
-      target: 'answer'
+      target: 'ans_chat'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -270,15 +257,20 @@ workflow:
         instruction: |-
           判断用户在问哪一类问题，只选一个类别。
 
-          导航：想从 A 去 B、问怎么走、某地在哪里、要多久。
-          办事：问办事流程、材料、去哪办、找哪个部门、电话、办公时间（成绩单、选课、报销、校园卡、借阅、宿舍报修等）。
-          百科：问某栋楼/某个食堂/某个校门是什么、几层、有什么特色。
+          导航：用户明确要从一个地方走到另一个地方——出现「怎么走」「怎么去」「带我」「路线」「多远」「多久到」，
+          或者「X 在哪」并且目的是走过去。注意：只要问题里没有「从哪到哪」的移动意图，就不要选导航。
+
+          百科：问事实——某栋楼/某个食堂/某个校门是什么、在哪、几层、几个、有哪些、什么时候建的、长什么样。
+          「一共有几个校门」「有几个食堂」「有哪些教学楼」这类数量问题属于百科，不是导航。
+
+          办事：办手续、要材料、找部门、要电话、上班时间（成绩单、选课、报销、校园卡、借阅、宿舍报修等）。
+
           闲聊：打招呼、与校园无关的问题。
         model:
           completion_params:
             temperature: 0
           mode: chat
-          name: DeepSeek-V4-Flash-0731
+          name: DeepSeek-V4-Flash-w8a8-mtp
           provider: langgenius/openai_api_compatible/openai_api_compatible
         query_variable_selector:
         - start
@@ -457,7 +449,7 @@ workflow:
             max_tokens: 900
             temperature: 0.2
           mode: chat
-          name: DeepSeek-V4-Flash-0731
+          name: DeepSeek-V4-Flash-w8a8-mtp
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: nav_llm-sys
@@ -715,7 +707,7 @@ workflow:
             max_tokens: 900
             temperature: 0.3
           mode: chat
-          name: DeepSeek-V4-Flash-0731
+          name: DeepSeek-V4-Flash-w8a8-mtp
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: svc_llm-sys
@@ -735,8 +727,10 @@ workflow:
             - 地点、材料、电话、办公时段一律以【结构化事实】为准；资料里与它冲突时以结构化事实为准
             - answer 必须以 status_text 的原句开头（例如"现在可以办理（17:10 下班）"或"今日已下班（下次开放 08:30）"），不要自己改写状态
             - place_here 为空而 place_other 有值，要明确说"这件事只能去另一个校区办"
+            - answer 只写 4 行、**不超过 120 字**：第 1 行状态、第 2 行部门+地点、第 3 行办理时间、第 4 行电话。
+              材料只列最关键的 2–3 条并加"等"，其余细节放进 card.desc。输出越短越好。
             - 只输出一个 JSON 对象，不要代码块、不要任何解释：
-            {"intent":"service","answer":"面向用户的完整回答：状态 + 部门、地点（校区+楼栋+房间）、办理时间、所需材料、电话","card":{"title":"事项名称","desc":"一句话说明"}}
+            {"intent":"service","answer":"4 行以内的简短回答","card":{"title":"事项名称","desc":"一句话说明 + 关键材料"}}
 
             两条来源都没有的信息就写"官网未公布"，绝不编造。
 
@@ -818,7 +812,7 @@ workflow:
             max_tokens: 900
             temperature: 0.3
           mode: chat
-          name: DeepSeek-V4-Flash-0731
+          name: DeepSeek-V4-Flash-w8a8-mtp
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: wiki_llm-sys
@@ -832,6 +826,7 @@ workflow:
             用户原话：{{#sys.query#}}
 
             依据资料回答，简洁准确。资料没有的就直说不知道。不要编造层数、面积、时间。
+            数量类问题（几个、多少、有哪些）先把数字说清楚，再逐条列出名字，一条一行。
 
             若用户使用英文提问，请用英文回答；地名写成「中文名 (English name)」。若用中文提问则用中文。
             若用户使用英文提问，请用英文回答；地名写成「中文名 (English name)」。若用中文提问则用中文。
@@ -873,7 +868,7 @@ workflow:
             max_tokens: 300
             temperature: 0.6
           mode: chat
-          name: DeepSeek-V4-Flash-0731
+          name: DeepSeek-V4-Flash-w8a8-mtp
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: chat_llm-sys
@@ -910,23 +905,37 @@ workflow:
       width: 242
       zIndex: 0
     - data:
+        answer: '{{#nav_llm.text#}}'
         desc: ''
-        output_type: string
         selected: false
-        title: 汇总
-        type: variable-aggregator
-        variables:
-        - - nav_llm
-          - text
-        - - svc_llm
-          - text
-        - - wiki_llm
-          - text
-        - - chat_llm
-          - text
+        title: 回答
+        type: answer
+        variables: []
       dragging: false
       height: 90
-      id: agg
+      id: ans_nav
+      position:
+        x: 1200
+        y: 120
+      positionAbsolute:
+        x: 1200
+        y: 120
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        answer: '{{#svc_llm.text#}}'
+        desc: ''
+        selected: false
+        title: 回答
+        type: answer
+        variables: []
+      dragging: false
+      height: 90
+      id: ans_svc
       position:
         x: 1200
         y: 300
@@ -940,7 +949,7 @@ workflow:
       width: 242
       zIndex: 0
     - data:
-        answer: '{{#agg.output#}}'
+        answer: '{{#wiki_llm.text#}}'
         desc: ''
         selected: false
         title: 回答
@@ -948,13 +957,35 @@ workflow:
         variables: []
       dragging: false
       height: 90
-      id: answer
+      id: ans_wiki
       position:
-        x: 1500
-        y: 300
+        x: 1200
+        y: 460
       positionAbsolute:
-        x: 1500
-        y: 300
+        x: 1200
+        y: 460
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        answer: '{{#chat_llm.text#}}'
+        desc: ''
+        selected: false
+        title: 回答
+        type: answer
+        variables: []
+      dragging: false
+      height: 90
+      id: ans_chat
+      position:
+        x: 1200
+        y: 620
+      positionAbsolute:
+        x: 1200
+        y: 620
       selected: false
       sourcePosition: right
       targetPosition: left

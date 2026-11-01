@@ -72,7 +72,7 @@ try {
     method: 'POST',
     body: {
       name: '广外校园百科',
-      description: '建筑/场馆/食堂/校门 的官方档案（61 条，Q&A 文本）',
+      description: '建筑/场馆/食堂/校门 的官方档案（101 条，Q&A 文本）',
       indexing_technique: 'high_quality',
       permission: 'only_me',
       provider: 'vendor',

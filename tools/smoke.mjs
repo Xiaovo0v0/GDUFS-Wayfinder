@@ -34,6 +34,8 @@ try {
   console.log(`\n冒烟测试 ${BASE}\n`);
   await browser.launch(BASE);
   await sleep(1500);
+  // GLB 变大后（南北各 ~500 KB）1.5 秒可能还没解析完，等它自己报到
+  await browser.waitFor('window.__navDebug && !!window.__navDebug.mode', 20000).catch(() => {});
 
   // 1. 页面与渲染器
   const canvas = await browser.eval('!!document.querySelector("#app canvas")');

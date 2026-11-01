@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const ROOT = 'C:/Users/86134/Desktop/gdufs/gdufs-3d';
+const ROOT = path.resolve('gdufs-3d');
 const OUT = path.join(ROOT, 'dist');
 fs.mkdirSync(OUT, { recursive: true });
 

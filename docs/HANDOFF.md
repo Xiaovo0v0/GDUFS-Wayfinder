@@ -1,5 +1,8 @@
 # 交接文档　尚行 · GDUFS Wayfinder
 
+> ⚠️ **本文是 2026-10-22 版，已被 [`HANDOFF-2026-10-31.md`](HANDOFF-2026-10-31.md) 取代**（中间还有一版 [`HANDOFF-2026-10-25.md`](HANDOFF-2026-10-25.md)）。
+> 新版补了南校路网重建、走道/车行道分级渲染、北校区全矢量重做；下面保留作历史对照。
+
 > 最后更新：2026-10-22　｜　对应提交：`65c1754`
 > 读者：接手这个项目的人（或下一个 AI 助手）。
 > 一句话现状：**作品本身已完工并逐项验证，初赛材料齐全；只差「团队信息」「收集表」「周五换模型」三件需要人操作的事。**
@@ -106,7 +109,8 @@ python tools/encode_video.py              # 重编视频（需要录屏帧，见
 | `node tools/check_fallback.mjs` | 拦截 Dify，验证降级 |
 | `node tools/check_paths.mjs` | 中文/空格路径兼容 |
 | `node tools/check_online_from_file.mjs` | 双击（file://）能否连智能体 |
-| `node tools/shot.mjs --url ... --out ...` | 截图（改 UI 后对照用） |
+| `node tools/shot.mjs --url ... --out ...` | 截图（改 UI 后对照用；`--mobile --w 430 --h 932` 手机模拟） |
+| `node tools/mobile_check.mjs` | 手机端适配验收（多尺寸截图 + 布局断言，改前端后重跑） |
 | `node tools/dify_list_apps.mjs` | 列出 Dify 上的应用 |
 | `node tools/dify_switch_model.mjs <模型>` | 一键换模型并重建 |
 | `node tools/verify_local_client.mjs` | 交货前必跑 |

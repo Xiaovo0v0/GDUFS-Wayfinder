@@ -74,7 +74,7 @@ d2.text((96, 500), "技术架构", font=font(26, True), fill=BLUE_D)
 lines = [
     "① 多智能体协同：意图路由 + 导航 / 办事 / 百科 三个专家分支",
     "② 多 Skill 集成：route-calc · place-lookup · office-hours · materials-check",
-    "③ 知识库 / RAG：办事指南 40 条 + 校园百科 61 条，混合检索 + 重排",
+    "③ 知识库 / RAG：办事指南 40 条 + 校园百科 101 条，混合检索 + 重排",
 ]
 yy = 548
 for ln in lines:

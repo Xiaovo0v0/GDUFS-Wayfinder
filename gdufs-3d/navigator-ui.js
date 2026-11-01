@@ -20,6 +20,26 @@
   var chips = document.getElementById("ai-chips");
   var panel = document.getElementById("ai");
   var head = document.getElementById("ai-head");
+  var aiOpenBtn = document.getElementById("ai-open");
+  var aiCloseBtn = document.getElementById("ai-close");
+
+  // 手机端：语心默认收起，从顶栏按钮打开成浮层；桌面端常驻，逻辑不参与
+  function phoneLayout() {
+    return window.matchMedia("(max-width: 760px)").matches;
+  }
+  function setAiOpen(open) {
+    if (!phoneLayout()) return;
+    panel.classList.toggle("open", !!open);
+    document.body.classList.toggle("ai-open", !!open);
+    if (aiOpenBtn) {
+      aiOpenBtn.classList.toggle("on", !!open);
+      aiOpenBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    if (open) {
+      // 展开后滚到最新一条，别让用户自己找
+      setTimeout(function () { body.scrollTop = body.scrollHeight; }, 60);
+    }
+  }
 
   var online = null; // null=未知 true=在线 false=离线
   // ?ai=off 强制走本地规则（现场网络不通时用来稳定演示，README 里有说明）
@@ -294,6 +314,10 @@
   // ---------------- 动作执行 ----------------
   function applyAction(a) {
     if (!a) return;
+    if (a.intent === "navigate" && lastHadLoc && a.to) {
+      // 问句里带"我这里/我的位置"：按前端的真实定位点重算，别从最近地标起步
+      a = { intent: a.intent, from: "我的位置", to: a.to, answer: a.answer, card: a.card };
+    }
     var place = a.intent === "navigate" ? (a.to || a.place || "") : (a.place || "");
     if (a.intent === "navigate" && (a.from || a.to)) {
       var r = nav.setPlaces(a.from || "", a.to || "");
@@ -318,6 +342,44 @@
     }
   }
 
+  // ---------------- 定位（"我的位置"） ----------------
+  var lastHadLoc = false;
+
+  function myPlaceInfo() {
+    return (nav && nav.getMyPosition) ? nav.getMyPosition() : null;
+  }
+  function locWords(q) {
+    return /我这里|我这儿|我这|我现在|我的位置|我在哪|我附近|我身边|离我/.test(q || "");
+  }
+  // 最近的、且不是问题里已经点到的那几个地名（避免"图书馆附近去图书馆"）
+  function nearLabelFor(q, exclude) {
+    var list = (nav && nav.nearbyPlaces) ? nav.nearbyPlaces(8) : [];
+    for (var i = 0; i < list.length; i++) {
+      var hit = (exclude || []).some(function (s) { return s === list[i].label; });
+      if (!hit) return list[i].label;
+    }
+    return null;
+  }
+  function myLocationText() {
+    var me = myPlaceInfo();
+    if (!me) return null;
+    var near = me.nearest || (nav.nearestPlace && nav.nearestPlace());
+    var list = (nav.nearbyPlaces ? nav.nearbyPlaces(4) : []).filter(function (p) {
+      return !near || p.label !== near.label;
+    });
+    var lines = [];
+    lines.push(near
+      ? "你现在在「" + near.label + "」附近，直线约 " + Math.round(near.dist) + " 米（定位精度 ±" + Math.round(me.accuracy) + " 米）。"
+      : "已定位到你的位置（精度 ±" + Math.round(me.accuracy) + " 米）。");
+    if (list.length) {
+      lines.push("附近还有：" + list.slice(0, 3).map(function (p) {
+        return p.label + " " + Math.round(p.dist) + " 米";
+      }).join("、"));
+    }
+    lines.push("说「去图书馆」，我就从你这里开始算路。");
+    return lines.join("\n");
+  }
+
   // ---------------- 在线：Dify ----------------
   function parseJson(text) {
     if (!text) return null;
@@ -332,25 +394,103 @@
     try { return JSON.parse(s); } catch (e) { return null; }
   }
 
-  function askDify(q) {
+  // 模型生成的是 {"intent":…,"answer":"…"} 这种 JSON 外壳，流式输出时外壳先到，
+  // 把 answer 字段的值边收边解出来，用户就能看到文字一个个冒出来，而不是干等 20 秒。
+  function partialAnswer(s) {
+    var t = String(s || "");
+    var head = t.replace(/^\s*```(?:json)?\s*/i, "");
+    if (head.charAt(0) !== "{") return head;        // 百科/闲聊分支是纯文本，直接流
+    var i = head.indexOf('"answer"');
+    if (i < 0) return "";
+    var j = head.indexOf(":", i);
+    if (j < 0) return "";
+    j++;
+    while (j < head.length && /\s/.test(head.charAt(j))) j++;
+    if (head.charAt(j) !== '"') return "";
+    j++;
+    var out = "", esc = false;
+    for (; j < head.length; j++) {
+      var c = head.charAt(j);
+      if (esc) { out += c === "n" ? "\n" : (c === "t" ? "  " : (c === "u" ? "" : c)); esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (c === '"') break;
+      out += c;
+    }
+    return out;
+  }
+
+  // 流式调用：onDelta(当前可见文本) 每收到一段就回调一次
+  window.__uiBuild = "stream-3";
+  function askDify(q, onDelta) {
     var ctrl = new AbortController();
-    var timer = setTimeout(function () { ctrl.abort(); }, CFG.timeout);
+    var timer = null;
+    var arm = function () {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () { ctrl.abort(); }, CFG.timeout);
+    };
+    arm();
+    var acc = "";
+
+    var feed = function (chunk) {
+      acc += chunk;
+      var vis = partialAnswer(acc);
+      if (vis && onDelta) onDelta(vis);
+    };
+
+    var parseBlock = function (block) {
+      var lines = block.split("\n");
+      var dataLine = null;
+      for (var k = 0; k < lines.length; k++) {
+        if (lines[k].indexOf("data:") === 0) { dataLine = lines[k].slice(5).trim(); break; }
+      }
+      if (!dataLine || dataLine === "[DONE]") return;
+      var ev;
+      try { ev = JSON.parse(dataLine); } catch (e) { return; }
+      if (ev.conversation_id) conversationId = ev.conversation_id;
+      // chatflow 的 message 事件把字段放在顶层，agent 模式放在 data 里，两种都要认
+      var d = ev.data || ev;
+      if (ev.event === "message" || ev.event === "agent_message") {
+        if (typeof d.answer === "string") feed(d.answer);
+      } else if (ev.event === "message_end" && (d.conversation_id || ev.conversation_id)) {
+        conversationId = d.conversation_id || ev.conversation_id || conversationId;
+      } else if (ev.event === "error") {
+        throw new Error(d.message || d.code || "dify error");
+      }
+    };
+
     return fetch(CFG.base + "/chat-messages", {
       method: "POST",
-      headers: { Authorization: "Bearer " + CFG.key, "Content-Type": "application/json" },
-      body: JSON.stringify({ inputs: {}, query: q, response_mode: "blocking", user: "web-gdufs", conversation_id: conversationId }),
+      headers: { Authorization: "Bearer " + CFG.key, "Content-Type": "application/json", Accept: "text/event-stream" },
+      body: JSON.stringify({ inputs: {}, query: q, response_mode: "streaming", user: "web-gdufs", conversation_id: conversationId }),
       signal: ctrl.signal,
     })
       .then(function (r) {
-        clearTimeout(timer);
         if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.json();
+        if (!r.body || !r.body.getReader) {
+          // 老浏览器不支持流：退回整段读
+          return r.text().then(function (all) {
+            clearTimeout(timer);
+            all.split("\n\n").forEach(parseBlock);
+            return acc;
+          });
+        }
+        var reader = r.body.getReader();
+        var dec = new TextDecoder("utf-8");
+        var buf = "";
+        var pump = function () {
+          return reader.read().then(function (res) {
+            if (res.done) { clearTimeout(timer); return acc; }
+            arm();
+            buf += dec.decode(res.value, { stream: true });
+            var parts = buf.split("\n\n");
+            buf = parts.pop();
+            for (var i = 0; i < parts.length; i++) parseBlock(parts[i]);
+            return pump();
+          });
+        };
+        return pump();
       })
-      .then(function (j) {
-        if (!j || typeof j.answer !== "string") throw new Error("bad payload");
-        if (j.conversation_id) conversationId = j.conversation_id;
-        return j.answer;
-      });
+      .catch(function (e) { clearTimeout(timer); throw e; });
   }
 
   // ---------------- 离线：本地规则 ----------------
@@ -381,6 +521,26 @@
   function localAnswer(q) {
     var spots = findPlaceInText(q);
     var navWords = /怎么去|怎么走|怎样去|如何到|路线|导航|多远|在哪|位置/.test(q);
+
+    // 「我在哪 / 附近有什么」：定位是前端的确定性事实，不用绕大模型
+    var me = myPlaceInfo();
+    if (me && /我在哪|我在什么位置|我的位置|我附近|附近有|身边有/.test(q) &&
+        !/怎么去|怎么走|路线|导航/.test(q)) {
+      return { text: myLocationText(), card: null };
+    }
+    // 「我这里怎么去 XX」：起点用真实定位点，而不是最近的那个地标
+    if (me && locWords(q) && spots.length === 1 && navWords) {
+      var rMe = nav.setPlaces("我的位置", spots[0]);
+      if (rMe && rMe.from && rMe.to) {
+        var tm = nav.findPlace(rMe.to);
+        if (tm) nav.flyTo((me.x + tm.x) / 2, (me.z + tm.z) / 2, 260, 520);
+        return {
+          text: "已从你现在的位置算到「" + rMe.to + "」：沿路步行约 " +
+            Math.round(window.__lastRouteDist || 0) + " 米（离线模式，按道路网络计算）。",
+          card: null
+        };
+      }
+    }
 
     if (spots.length >= 2) {
       var r = nav.setPlaces(spots[1], spots[0]);
@@ -471,10 +631,22 @@
   }
 
   // ---------------- 交互 ----------------
+  // 问题里带"我这里/我的位置"时，给 Dify 补一句"我现在在X附近"：
+  // 算路代码节点按出现顺序取前两个地名，于是 from=最近地标、to=用户说的目的地，
+  // Dify 那边一个节点都不用改，也不用把经纬度塞进提示词。
+  function withMyLocation(q) {
+    var me = myPlaceInfo();
+    if (!me || !locWords(q)) return q;
+    var near = nearLabelFor(q, findPlaceInText(q));
+    if (!near) return q;
+    return "我现在在" + near + "附近。" + q;
+  }
+
   function send(text) {
     var q = (text != null ? text : input.value).trim();
     if (!q || busy) return;
     lastQuery = q;
+    lastHadLoc = !!(myPlaceInfo() && locWords(q));
     addMsg("user", q);
     input.value = "";
     busy = true;
@@ -489,6 +661,20 @@
       }
     }, 1000);
 
+    // 流式：第一段文字到了就把等待条换成回答气泡，后面持续追加
+    var liveEl = null;
+    var onDelta = function (vis) {
+      if (pending) { pending.remove(); pending = null; }
+      if (!liveEl) {
+        liveEl = addMsg("bot", vis, null);
+      } else if (liveEl.firstChild) {
+        liveEl.firstChild.nodeValue = vis;
+      } else {
+        liveEl.textContent = vis;
+      }
+      body.scrollTop = body.scrollHeight;
+    };
+
     var finish = function (payload, isOnline) {
       busy = false;
       sendBtn.disabled = false;
@@ -499,7 +685,14 @@
       if (card && !card.service) {
         card.service = findService(card.title || "");
       }
-      addMsg("bot", payload.answer || payload.text, card);
+      var text = payload.answer || payload.text || "";
+      if (liveEl) {
+        liveEl.textContent = text;
+        if (card && (card.title || card.desc || card.service)) liveEl.appendChild(buildCard(card));
+        body.scrollTop = body.scrollHeight;
+      } else {
+        addMsg("bot", text, card);
+      }
       applyAction(payload);
     };
 
@@ -510,7 +703,7 @@
       return;
     }
 
-    askDify(q)
+    askDify(withMyLocation(q), onDelta)
       .then(function (raw) {
         online = true;
         setBadge();
@@ -535,8 +728,18 @@
   sendBtn.addEventListener("click", function () { send(); });
   input.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
   head.addEventListener("click", function () {
+    // 手机上「点头部 = 收起浮层」，和弹层习惯一致；桌面端仍保留折叠
+    if (phoneLayout()) { setAiOpen(false); return; }
     panel.classList.toggle("collapsed");
     document.getElementById("ai-toggle").textContent = panel.classList.contains("collapsed") ? "▸" : "▾";
+  });
+  if (aiOpenBtn) aiOpenBtn.addEventListener("click", function () { setAiOpen(true); });
+  if (aiCloseBtn) aiCloseBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    setAiOpen(false);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && panel.classList.contains("open")) setAiOpen(false);
   });
 
   var T = window.t || function (k) { return k; };
@@ -552,7 +755,10 @@
 
   // 头像与名字跟随语言
   var av = document.querySelector("#ai-head .avatar");
-  if (av) av.textContent = (window.GDUFS_LANG && window.GDUFS_LANG.get() === "en") ? "Y" : "语";
+  var enNow = window.GDUFS_LANG && window.GDUFS_LANG.get() === "en";
+  if (av) av.textContent = enNow ? "Y" : "语";
+  var avOpen = document.getElementById("ai-open-ava");
+  if (avOpen) avOpen.textContent = enNow ? "Y" : "语";
 
   addMsg("bot", NORTH ? T("ai.greet.north") : T("ai.greet"));
   if (FORCE_OFFLINE) online = false;
@@ -562,6 +768,8 @@
   var q0 = /[?&]q=([^&]+)/.exec(location.search);
   if (q0) {
     var text0 = decodeURIComponent(q0[1].replace(/\+/g, " "));
+    // 手机端进来就让用户看到这条问答，而不是藏在收起的面板里
+    setAiOpen(true);
     setTimeout(function () {
       var inp = document.querySelector("#ai-input");
       if (inp) inp.value = text0;

@@ -55,7 +55,7 @@ await withPage(base + '?lang=zh', 7000, async (b) => {
   })`);
   console.log('   ', JSON.stringify(s));
   s.mode === 'glb' ? pass('GLB 模型已加载（file:// 下）') : fail('模型未加载，mode=' + s.mode);
-  s.buildings === 51 ? pass('南校 51 栋建筑') : fail('建筑数 ' + s.buildings);
+  s.buildings === 52 ? pass('南校 52 条（51 栋 + 八角楼）') : fail('建筑数 ' + s.buildings);
   s.services === 40 ? pass('办事数据 40 条') : fail('办事数据 ' + s.services);
   s.trees > 500 ? pass('行道树 ' + s.trees + ' 棵') : fail('树太少');
   await b.shot(path.join(REPO, 'artifacts/3d/local_verify_south.png'));
@@ -103,11 +103,19 @@ await withPage(base + '?campus=north&ai=off', 7000, async (b) => {
   const s = await ev(b, `JSON.stringify({
     mode:(window.__navDebug||{}).mode,
     buildings:(window.GDUFS_NORTH||{buildings:[]}).buildings.length,
+    roads:((window.GDUFS_NORTH||{}).roads||[]).length,
+    walk:((window.GDUFS_NORTH||{}).roads||[]).filter(r=>['footway','path','steps','pedestrian','cycleway'].includes(r.highway)).length,
+    water:((window.GDUFS_NORTH||{}).waterPolygons||[]).length,
+    graphNodes:(((window.GDUFS_NORTH||{}).graph||{}).nodes||[]).length,
     layers:Object.keys((window.GDUFS_NORTH||{}).layers||{}) })`);
-  s.mode === 'glb' ? pass('北校 LOD2 模型已加载') : fail('北校仍是程序化体块 mode=' + s.mode);
   console.log('   ', JSON.stringify(s));
+  // 北校改用程序化建模（旧 north_buildings.glb 屋顶法线坏、立面没分层），?glb=1 仍可回退
+  s.mode === 'procedural' ? pass('北校程序化建模已启用') : fail('北校模式异常 mode=' + s.mode);
   s.buildings === 42 ? pass('北校 42 栋') : fail('北校建筑数 ' + s.buildings);
-  s.layers.includes('roads') ? pass('道路图层（data URI）') : fail('道路图层缺失');
+  s.roads >= 30 ? pass('北校矢量道路 ' + s.roads + ' 条（含步道 ' + s.walk + '）') : fail('北校道路数 ' + s.roads);
+  s.water >= 1 ? pass('北校水系矢量 ' + s.water + ' 处') : fail('北校水系缺失');
+  s.graphNodes > 100 ? pass('北校导航图 ' + s.graphNodes + ' 节点') : fail('北校导航图节点 ' + s.graphNodes);
+  s.layers.length === 0 ? pass('已移除栅格图层（全矢量）') : fail('仍有栅格图层：' + s.layers.join(','));
 
   await b.eval(`(() => { const i=document.querySelector('#ai-input'); i.value='成绩单在哪办';
     i.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('#ai-send').click(); })()`, { awaitPromise: false });

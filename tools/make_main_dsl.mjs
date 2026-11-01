@@ -200,8 +200,10 @@ const SVC_PROMPT = `你是「办事专家」，负责广外的办事指南。
 - 地点、材料、电话、办公时段一律以【结构化事实】为准；资料里与它冲突时以结构化事实为准
 - answer 必须以 status_text 的原句开头（例如"现在可以办理（17:10 下班）"或"今日已下班（下次开放 08:30）"），不要自己改写状态
 - place_here 为空而 place_other 有值，要明确说"这件事只能去另一个校区办"
+- answer 只写 4 行、**不超过 120 字**：第 1 行状态、第 2 行部门+地点、第 3 行办理时间、第 4 行电话。
+  材料只列最关键的 2–3 条并加"等"，其余细节放进 card.desc。输出越短越好。
 - 只输出一个 JSON 对象，不要代码块、不要任何解释：
-{"intent":"service","answer":"面向用户的完整回答：状态 + 部门、地点（校区+楼栋+房间）、办理时间、所需材料、电话","card":{"title":"事项名称","desc":"一句话说明"}}
+{"intent":"service","answer":"4 行以内的简短回答","card":{"title":"事项名称","desc":"一句话说明 + 关键材料"}}
 
 两条来源都没有的信息就写"官网未公布"，绝不编造。
 ${LANGFOLLOW}`;
@@ -351,6 +353,7 @@ const WIKI_PROMPT = `你是「校园百科专家」。
 用户原话：{{#sys.query#}}
 
 依据资料回答，简洁准确。资料没有的就直说不知道。不要编造层数、面积、时间。
+数量类问题（几个、多少、有哪些）先把数字说清楚，再逐条列出名字，一条一行。
 ${LANGFOLLOW}`;
 
 const CHAT_PROMPT = `你是「语心」，广东外语外贸大学校园向导。
@@ -376,15 +379,25 @@ const edges = [
   edge('qc', 'wiki_kr', 'question-classifier', 'knowledge-retrieval', '3'),
   edge('qc', 'chat_llm', 'question-classifier', 'llm', '4'),
   edge('nav_code', 'nav_llm', 'code', 'llm'),
-  edge('nav_llm', 'agg', 'llm', 'variable-aggregator'),
+  edge('nav_llm', 'ans_nav', 'llm', 'answer'),
   edge('svc_kr', 'svc_code', 'knowledge-retrieval', 'code'),
   edge('svc_code', 'svc_llm', 'code', 'llm'),
-  edge('svc_llm', 'agg', 'llm', 'variable-aggregator'),
+  edge('svc_llm', 'ans_svc', 'llm', 'answer'),
   edge('wiki_kr', 'wiki_llm', 'knowledge-retrieval', 'llm'),
-  edge('wiki_llm', 'agg', 'llm', 'variable-aggregator'),
-  edge('chat_llm', 'agg', 'llm', 'variable-aggregator'),
-  edge('agg', 'answer', 'variable-aggregator', 'answer'),
+  edge('wiki_llm', 'ans_wiki', 'llm', 'answer'),
+  edge('chat_llm', 'ans_chat', 'llm', 'answer'),
 ].join('\n');
+
+// 每路专家各自接一个回答节点：经过 variable-aggregator 的话 Dify 必须收齐整段才能输出，
+// 前端就只能干等十几秒；直接引用 LLM 的 text 才能逐 token 推流。
+const answerNode = (id, llm, x, y, title = '回答') => `    - data:
+        answer: '{{#${llm}.text#}}'
+        desc: ''
+        selected: false
+        title: ${title}
+        type: answer
+        variables: []
+${nodeTail(id, x, y)}`;
 
 const krNode = (id, title, x, y, ds) => `    - data:
         dataset_ids:
@@ -480,9 +493,14 @@ ${CLASSES.map((c) => `        - id: '${c.id}'
         instruction: |-
           判断用户在问哪一类问题，只选一个类别。
 
-          导航：想从 A 去 B、问怎么走、某地在哪里、要多久。
-          办事：问办事流程、材料、去哪办、找哪个部门、电话、办公时间（成绩单、选课、报销、校园卡、借阅、宿舍报修等）。
-          百科：问某栋楼/某个食堂/某个校门是什么、几层、有什么特色。
+          导航：用户明确要从一个地方走到另一个地方——出现「怎么走」「怎么去」「带我」「路线」「多远」「多久到」，
+          或者「X 在哪」并且目的是走过去。注意：只要问题里没有「从哪到哪」的移动意图，就不要选导航。
+
+          百科：问事实——某栋楼/某个食堂/某个校门是什么、在哪、几层、几个、有哪些、什么时候建的、长什么样。
+          「一共有几个校门」「有几个食堂」「有哪些教学楼」这类数量问题属于百科，不是导航。
+
+          办事：办手续、要材料、找部门、要电话、上班时间（成绩单、选课、报销、校园卡、借阅、宿舍报修等）。
+
           闲聊：打招呼、与校园无关的问题。
         model:
           completion_params:
@@ -535,30 +553,10 @@ ${llmNode('svc_llm', '办事专家', 1160, 300, SVC_PROMPT + LANGFOLLOW, { conte
 ${krNode('wiki_kr', '检索校园百科', 600, 460, WIKI_DS)}
 ${llmNode('wiki_llm', '百科专家', 900, 460, WIKI_PROMPT + LANGFOLLOW, { context: 'wiki_kr' })}
 ${llmNode('chat_llm', '闲聊', 900, 620, CHAT_PROMPT + LANGFOLLOW, { temperature: 0.6, maxTokens: 300 })}
-    - data:
-        desc: ''
-        output_type: string
-        selected: false
-        title: 汇总
-        type: variable-aggregator
-        variables:
-        - - nav_llm
-          - text
-        - - svc_llm
-          - text
-        - - wiki_llm
-          - text
-        - - chat_llm
-          - text
-${nodeTail('agg', 1200, 300)}
-    - data:
-        answer: '{{#agg.output#}}'
-        desc: ''
-        selected: false
-        title: 回答
-        type: answer
-        variables: []
-${nodeTail('answer', 1500, 300)}
+${answerNode('ans_nav', 'nav_llm', 1200, 120)}
+${answerNode('ans_svc', 'svc_llm', 1200, 300)}
+${answerNode('ans_wiki', 'wiki_llm', 1200, 460)}
+${answerNode('ans_chat', 'chat_llm', 1200, 620)}
     viewport:
       x: 0
       y: 0

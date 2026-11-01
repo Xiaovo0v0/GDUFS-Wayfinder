@@ -10,6 +10,44 @@ const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Playwright 自带的 chromium headless shell：在受限沙箱里它是唯一能稳定起来的
+// （完整版 chrome/edge 会因 crashpad 拿不到句柄而 self-terminate）。
+function findHeadlessShell() {
+  const roots = [
+    path.join(os.homedir(), 'AppData', 'Local', 'ms-playwright'),
+    path.join(os.homedir(), '.cache', 'ms-playwright'),
+  ];
+  for (const root of roots) {
+    let dirs = [];
+    try { dirs = fs.readdirSync(root).filter((d) => d.startsWith('chromium_headless_shell-')); } catch { continue; }
+    for (const d of dirs) {
+      const base = path.join(root, d);
+      const stack = [base];
+      while (stack.length) {
+        const cur = stack.pop();
+        let ents = [];
+        try { ents = fs.readdirSync(cur, { withFileTypes: true }); } catch { continue; }
+        for (const e of ents) {
+          const p = path.join(cur, e.name);
+          if (e.isDirectory()) stack.push(p);
+          else if (e.name === 'chrome-headless-shell.exe' || e.name === 'headless_shell.exe') return p;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function pickBrowser() {
+  if (process.env.GDUFS_BROWSER && fs.existsSync(process.env.GDUFS_BROWSER)) {
+    return { exe: process.env.GDUFS_BROWSER, shell: /headless[-_]shell/i.test(process.env.GDUFS_BROWSER) };
+  }
+  const hs = findHeadlessShell();
+  if (hs) return { exe: hs, shell: true };
+  if (fs.existsSync(EDGE)) return { exe: EDGE, shell: false };
+  return { exe: CHROME, shell: false };
+}
+
 async function httpJson(url, tries = 60) {
   for (let i = 0; i < tries; i++) {
     try {
@@ -26,6 +64,7 @@ export class Browser {
     this.port = opts.port || 9222;
     this.profile = opts.profile || path.resolve('C:/Users/86134/Desktop/gdufs/.browser-profile');
     this.visible = !!opts.visible;
+    this.attachOnly = !!opts.attach; // 连已在跑的调试端口，不自己拉进程
     this.proc = null;
     this.ws = null;
     this.id = 0;
@@ -36,19 +75,46 @@ export class Browser {
 
   async launch(url = 'about:blank') {
     fs.mkdirSync(this.profile, { recursive: true });
-    const exe = fs.existsSync(EDGE) ? EDGE : CHROME;
+    const pick = pickBrowser();
+    const exe = pick.exe;
+    const shell = pick.shell; // headless shell 自己就是 headless，不能再传 --headless=new
     const args = [
       `--remote-debugging-port=${this.port}`,
       `--user-data-dir=${this.profile}`,
       '--no-first-run',
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-breakpad',
+      '--disable-crash-reporter',
       '--no-default-browser-check',
       '--disable-features=Translate,OptimizationHints',
       '--window-size=1600,1000',
-      ...(this.visible ? [] : ['--headless=new', '--disable-gpu']),
+      ...(this.visible || shell ? [] : ['--headless=new', '--disable-gpu']),
       url,
     ];
-    this.proc = spawn(exe, args, { stdio: 'ignore', detached: false });
-    const ver = await httpJson(`http://127.0.0.1:${this.port}/json/version`);
+    if (!this.attachOnly) {
+      this.proc = spawn(exe, args, { stdio: 'ignore', detached: false });
+    }
+    let ver;
+    try {
+      ver = await httpJson(`http://127.0.0.1:${this.port}/json/version`);
+    } catch (e) {
+      // 某些沙箱会拦掉子进程建命名管道（Edge 起不来）。退一步用 PowerShell
+      // Start-Process 起（它不走 node 的进程树），再连。
+      if (this.attachOnly) throw e;
+      try {
+        const q = args.map((a) => `'${String(a).replace(/'/g, "''")}'`).join(',');
+        spawn('powershell', ['-NoProfile', '-Command',
+          `Start-Process -FilePath '${exe}' -ArgumentList ${q} -WindowStyle Hidden`],
+          { stdio: 'ignore', detached: true }).unref();
+        await sleep(2500);
+        ver = await httpJson(`http://127.0.0.1:${this.port}/json/version`);
+      } catch (e2) {
+        throw new Error('浏览器起不来：' + (e2.message || e2) +
+          '\n如果是沙箱环境，先手动开：msedge --remote-debugging-port=' + this.port +
+          ' --user-data-dir=... --headless=new --no-sandbox，再用 {attach:true} 连。');
+      }
+    }
     this.wsUrl = ver.webSocketDebuggerUrl;
     await this.connect();
     await this.send('Target.setDiscoverTargets', { discover: true });
@@ -167,7 +233,18 @@ export class Browser {
   }
 
   async close() {
+    // 先走 CDP 的 Browser.close 让浏览器自己退，再按进程树强杀。
+    // 只 kill 启动器（msedge.exe 的 stub）会留下渲染/GPU 子进程，
+    // 攒多了会让下一次启动直接失败（mojo 命名管道拿不到）。
+    try { await this.send('Browser.close'); } catch { /* noop */ }
     try { if (this.ws) this.ws.close(); } catch { /* noop */ }
-    try { if (this.proc) this.proc.kill(); } catch { /* noop */ }
+    if (this.proc && this.proc.pid) {
+      try {
+        spawn('taskkill', ['/PID', String(this.proc.pid), '/T', '/F'], { stdio: 'ignore' });
+      } catch { /* noop */ }
+      try { this.proc.kill(); } catch { /* noop */ }
+    }
+    await sleep(400);
   }
 }
+

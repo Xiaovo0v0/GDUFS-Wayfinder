@@ -1,4 +1,4 @@
-# 尚行 · 广外校园向导 —— 一键起内网服务
+﻿# 尚行 · 广外校园向导 —— 一键起内网服务
 #
 #   .\serve.ps1              开发版：服务 gdufs-3d/（GLB 走 http 才会加载）
 #   .\serve.ps1 -Dist        交付版：服务 gdufs-3d/dist/（单文件 + routes 图）
@@ -85,7 +85,12 @@ Write-Host '  按 Ctrl+C 停止。' -ForegroundColor DarkGray
 Write-Host ''
 
 try {
-    python -m http.server $Port --bind 0.0.0.0 --directory $root
+    # 兼容没有 python 别名、只有 py 启动器的机器（Windows 商店版 python.exe 是占位符）
+    if (Get-Command py -ErrorAction SilentlyContinue) {
+        & py -m http.server $Port --bind 0.0.0.0 --directory $root
+    } else {
+        & python -m http.server $Port --bind 0.0.0.0 --directory $root
+    }
 } finally {
     if ($sleepGuard) { [SleepGuard]::Release() }
 }
