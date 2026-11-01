@@ -8,7 +8,9 @@
  *   z = (lat - lat0) * 110540
  *
  * 前提：
- *   - 南校区已配准（meta.origin_wgs84）；北校区按官方平面图矢量化，没有经纬度，按钮不可用
+ *   - 两个校区都已配准（各自 meta.origin_wgs84）：南校区来自 OSM/UTM，亚米级；
+ *     北校区由公开卫星影像 + OSM 路网拟合而来（2026-11-01，残差中位数约 39 m，
+ *     因为官方平面图本身是示意图）。详见 north-data.js 的 meta.georef
  *   - 定位 API 只在「安全上下文」可用：HTTPS / localhost / file://（双击本地 HTML 可以）
  *     手机用局域网 IP 的 http://192.168.x.x 打开会被浏览器拦掉，演示要换成 HTTPS 或隧道
  *
@@ -20,7 +22,7 @@
   "use strict";
 
   var EN = window.GDUFS_LANG && window.GDUFS_LANG.get() === "en";
-  // 南北校区各有一套数据：北校按官方平面图矢量化，meta.origin_wgs84 为 null（没有经纬度）
+  // 南北校区各有一套数据，各自带 meta.origin_wgs84（北校是 2026-11 用公开底图配准的）
   var CAMPUS = (function () {
     var m = /[?&]campus=(north|south)/.exec(location.search);
     return m ? m[1] : "south";
@@ -89,7 +91,7 @@
       slow: "还在定位…室内或地下车库收不到 GPS，到窗边/室外会快很多",
       nohttps: "拿不到定位：浏览器的定位只在 HTTPS 或本机页面（file://、localhost）可用。用局域网 IP 的 http 地址打开会被拦。",
       nolocate: "这个浏览器没有定位能力（navigator.geolocation 不存在）。",
-      north: "北校区地图按官方平面图矢量化，还没配到经纬度，暂不支持定位。",
+      north: "这个校区的地图还没有配到经纬度，暂不支持定位。",
       denied: "定位权限被拒绝：点地址栏左侧图标 → 允许「位置」，再点一次「我的位置」。",
       unavailable: "拿不到位置：系统定位关着，或附近没有 GPS/基站信息。",
       timeout: "定位超时，到室外再试一次。",
@@ -101,7 +103,7 @@
       slow: "Still locating… indoors or underground you may not get a GPS fix; try near a window.",
       nohttps: "No location: the Geolocation API only works on HTTPS or local pages (file://, localhost). Opening over a LAN http:// address is blocked.",
       nolocate: "This browser has no geolocation support.",
-      north: "The Baiyunshan campus map is vectorised from the official plan and is not georeferenced yet, so positioning is unavailable.",
+      north: "This campus map is not georeferenced yet, so positioning is unavailable.",
       denied: "Location permission denied. Allow “Location” from the address-bar icon and try again.",
       unavailable: "Position unavailable: system location may be off, or there is no GPS/cell data.",
       timeout: "Locating timed out. Try again outdoors.",
