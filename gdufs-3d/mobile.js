@@ -105,8 +105,12 @@
 
     if (from && to) {
       text = from + " → " + to;
+      // 距离优先读 #status[data-dist]（app.js setStatus 的第二个参数写的结构化副本）。
+      // 正则只是兜底：它依赖票据 HTML 里「1234 米」的字面写法，改一句文案就静默失效。
+      var dv = statusEl && statusEl.dataset ? statusEl.dataset.dist : "";
       // 中文「820 米」后面是空格，米不是 \w，不能加 \b
-      var m = /([\d,]+)\s*(米|m)/i.exec(statusEl ? statusEl.textContent : "");
+      var m = (/^\d+$/.test(dv || "") ? [dv, dv, "米"] : null) ||
+        /([\d,]+)\s*(米|m)/i.exec(statusEl ? statusEl.textContent : "");
       if (m) {
         text += " · " + T("mini.about", "约") + " " + m[1] + " " +
           (m[2].toLowerCase() === "m" ? "m" : T("mini.meter", "米"));

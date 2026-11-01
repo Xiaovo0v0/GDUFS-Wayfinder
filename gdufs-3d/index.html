@@ -57,11 +57,11 @@
 
   /* ---------- 顶部品牌条 ---------- */
   #topbar {
-    position: fixed; top: 16px; left: 16px; z-index: 20;
-    display: flex; align-items: center; gap: 10px;
-    height: 44px; padding: 0 12px 0 8px;
-    background: var(--surface); border: 1px solid var(--line);
-    border-radius: var(--r-m); box-shadow: var(--sh-1);
+    position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+    display: flex; align-items: center; gap: 10px; box-sizing: border-box;
+    height: 40px; padding: 0 20px;
+    background: var(--paper); border: 0; border-bottom: 1px solid var(--rule-2);
+    border-radius: 0; box-shadow: none;
   }
   #logo {
     width: 30px; height: 30px; border-radius: 50%;
@@ -120,12 +120,12 @@
   /* 桌面端只是把面板与建筑卡包一层，display:contents 不产生任何盒子 */
   #dock { display: contents; }
   #panel {
-    position: fixed; top: 74px; left: 16px; z-index: 10;
-    background: var(--surface); color: var(--ink-900);
-    border-radius: var(--r-l); width: 302px;
-    border: 1px solid var(--line);
-    box-shadow: var(--sh-2);
-    max-height: calc(100vh - 96px);
+    position: fixed; top: 56px; right: 20px; left: auto; z-index: 10;
+    background: var(--paper); color: var(--ink-900);
+    border-radius: 0; width: 300px;
+    border: 1px solid var(--rule-2); border-top: 3px solid var(--ink-900);
+    box-shadow: none;
+    max-height: calc(100vh - 76px);
     display: flex; flex-direction: column; overflow: hidden;
   }
   #panel .panel-head {
@@ -323,7 +323,7 @@
     display: block; height: 100%; width: 0;
     background: var(--gw-blue-700); transition: width .12s linear;
   }
-  body.walking #panel, body.walking #ai, body.walking #topbar {
+  body.walking #panel, body.walking #ai, body.walking #topbar, body.walking #index {
     opacity: 0; pointer-events: none; transition: opacity .2s;
   }
   body.walking #bcard { opacity: 0; pointer-events: none; }
@@ -373,7 +373,7 @@
     #dock > * { pointer-events: auto; }
 
     #panel {
-      position: relative; top: auto; left: auto; width: auto;
+      position: relative; top: auto; left: auto; right: auto; width: auto;
       max-height: 60vh; max-height: 60dvh;
       padding: 8px 14px 10px; border-radius: 16px;
       flex: 0 1 auto; min-height: 0;
@@ -385,7 +385,7 @@
 
     /* 收起态：只留标题 + 一行摘要 + 展开箭头 */
     #panel.collapsed .panel-scroll { display: none; }
-    #panel.collapsed #panelToggle { display: none; }
+    #panel.collapsed #panelToggle { display: inline-flex; }
     #panel.collapsed .mini-summary { display: block; }
     #panelCollapse {
       display: inline-flex; align-items: center; justify-content: center;
@@ -515,6 +515,383 @@
     font-size: 11.5px; padding: 4px 9px; border-radius: 999px; cursor: pointer;
   }
   .card .act:hover { background: var(--gw-blue-100); border-color: var(--gw-blue-500); }
+
+  /* ============================================================
+     方向 B「图纸 / Survey Atlas」
+     ------------------------------------------------------------
+     参照物是测绘图纸与校园图册，不是 SaaS 后台：
+       纸面 #f7f3e8 · 墨 #22201b · 发丝线 #d5cdb8
+       无圆角、无投影、无毛玻璃，靠线与字距分层
+       标题走宋体，数字与注记走等宽
+       唯一的重色是路线橙 #c2410c —— 与地图上那条路线同源
+     桌面：40px 抬头条 + 右上「路线票」+ 左下索引 + 右下细线指北针
+     ============================================================ */
+  :root {
+    --paper: #f7f3e8;
+    --paper-2: #efe9d9;
+    --rule: #d5cdb8;
+    --rule-2: #b9ae94;
+    --route: #c2410c;
+
+    /* 覆盖原变量：底色、文字、线、圆角、投影一次换掉 */
+    --surface: #f7f3e8;
+    --surface-2: #efe9d9;
+    --line: #d5cdb8;
+    --ink-900: #22201b;
+    --ink-700: #3b362c;
+    --ink-500: #4f4a3c;
+    --ink-300: #6b6553;
+    --gw-blue-900: #22201b;
+    --gw-blue-700: #22201b;
+    --gw-blue-500: #8a8471;
+    --gw-blue-100: #efe9d9;
+    --gw-red: #a8341b;
+    --gw-red-soft: #f3e2d9;
+    --r-s: 0;
+    --r-m: 0;
+    --r-l: 0;
+    --sh-1: none;
+    --sh-2: none;
+
+    --serif: "Noto Serif SC", "Songti SC", "STSong", SimSun, serif;
+    --mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", "Noto Sans Mono", monospace;
+  }
+
+  /* ---------- 路线结果：票据中间那块大字 + 折线条 ---------- */
+  #status { font-size: 12px; line-height: 1.6; color: var(--ink-700); }
+  .res__num { display: flex; align-items: baseline; gap: 5px; }
+  .res__num b {
+    font-family: var(--mono); font-size: 46px; font-weight: 400; line-height: .92;
+    letter-spacing: -.035em; color: var(--ink-900); font-variant-numeric: tabular-nums;
+  }
+  .res__num i { font-style: normal; font-size: 12px; color: var(--ink-500); }
+  .res__pt {
+    margin-left: auto; font-family: var(--mono); font-size: 9px;
+    letter-spacing: .14em; color: var(--ink-300);
+  }
+  .res__meta { font-size: 12px; color: var(--ink-500); margin-top: 5px; }
+  .res__strip { display: block; width: 100%; height: 46px; margin-top: 12px; }
+  .res__label {
+    font-family: var(--mono); font-size: 9px; letter-spacing: .12em;
+    color: var(--ink-300); margin-top: 3px;
+  }
+  .res__from { font-size: 12px; color: var(--ink-700); margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--rule); }
+  .res__note { margin-top: 4px; font-size: 11px; color: var(--ink-500); }
+  .res__note .ok { color: var(--ink-900); }
+
+  /* ---------- 索引卡 ---------- */
+  #index {
+    position: fixed; left: 20px; bottom: 20px; z-index: 10;
+    width: 268px; padding: 12px 14px;
+    background: var(--paper); border: 1px solid var(--rule-2); border-top: 3px solid var(--ink-900);
+  }
+  #index .ix-head { display: flex; align-items: baseline; justify-content: space-between; }
+  #index .ix-head b { font-family: var(--serif); font-size: 13px; font-weight: 600; letter-spacing: .12em; color: var(--ink-900); }
+  #index .ix-head span { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; color: var(--ink-300); }
+  .legend { display: block; margin-top: 10px; font-size: 11.5px; color: var(--ink-700); }
+  .lg {
+    display: grid; grid-template-columns: 20px 16px 1fr; align-items: center; gap: 7px;
+    padding: 3.5px 0; border-bottom: 1px dotted var(--rule);
+  }
+  .lg:last-child { border-bottom: 0; }
+  .lg .no { font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; color: var(--ink-300); }
+  .sw { width: 15px; height: 7px; border-radius: 0; border: 0; }
+  #index .hint {
+    margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--rule);
+    font-size: 10.5px; line-height: 1.75; color: var(--ink-300);
+  }
+  #index .hint b { color: var(--ink-700); font-weight: 600; }
+  #index .ix-foot {
+    margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 9px; line-height: 1.6; letter-spacing: .04em; color: var(--ink-300);
+  }
+  #index .ix-foot span { display: block; }
+
+  /* ============================================================
+     桌面（≥761px）：抬头条 + 路线票 + 索引卡
+     ============================================================ */
+  @media (min-width: 761px) {
+    /* ---------- 抬头条 ---------- */
+    #topbar {
+      top: 0; left: 0; right: 0; height: 40px;
+      padding: 0 20px; gap: 12px;
+      background: var(--paper); border: 0; border-bottom: 1px solid var(--rule-2);
+      border-radius: 0; box-shadow: none;
+    }
+    #logo {
+      width: 22px; height: 22px; border-radius: 0;
+      background: transparent; color: var(--ink-900); border: 1px solid var(--ink-900);
+      font-family: var(--serif); font-size: 12px; font-weight: 600;
+    }
+    #brand b { font-family: var(--serif); font-size: 13.5px; letter-spacing: .18em; color: var(--ink-900); }
+    #brand span { font-family: var(--mono); font-size: 9px; letter-spacing: .18em; color: var(--ink-300); }
+    .head-campus {
+      font-size: 11px; color: var(--ink-500); letter-spacing: .08em;
+      padding-left: 12px; border-left: 1px solid var(--rule);
+    }
+    #topbar .sep { background: var(--rule); height: 16px; margin: 0 4px; }
+    .pill { border: 0; background: transparent; border-radius: 0; padding: 0; gap: 10px; }
+    .pill button {
+      border: 0; background: transparent; border-radius: 0; padding: 0;
+      font-size: 11px; letter-spacing: .06em; color: var(--ink-300);
+    }
+    .pill button.on {
+      background: transparent; color: var(--ink-900);
+      border-bottom: 1px solid var(--ink-900); padding-bottom: 1px;
+    }
+    #ai-open {
+      display: none; margin-left: auto; height: auto; padding: 0; gap: 6px;
+      border: 0; background: transparent; box-shadow: none; border-radius: 0;
+      font-size: 11px; color: var(--ink-500); letter-spacing: .06em;
+    }
+    #ai-open .ava {
+      width: 18px; height: 18px; border-radius: 0; background: transparent;
+      border: 1px solid var(--rule-2); color: var(--ink-900); font-size: 9px;
+    }
+    #ai-open.on { border: 0; background: transparent; }
+
+    /* ---------- 路线票 ---------- */
+    #panel {
+      top: 56px; left: auto; right: 20px; width: 300px;
+      background: var(--paper); border: 1px solid var(--rule-2); border-top: 3px solid var(--ink-900);
+      border-radius: 0; box-shadow: none;
+      max-height: calc(100vh - 76px);
+    }
+    #panel .panel-head { padding: 11px 16px 0; align-items: center; }
+    #panel h1 {
+      font-family: var(--serif); font-size: 13.5px; font-weight: 600;
+      letter-spacing: .1em; color: var(--ink-900); margin: 0;
+    }
+    #panel .tk-no {
+      font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em;
+      color: var(--ink-300); flex: 0 0 auto;
+    }
+    #panel .panel-scroll { padding: 0 16px 14px; }
+    #panel .sub { display: none; }
+    #panel .row { margin: 12px 0 0; position: relative; }
+    #panel .row label {
+      display: flex; align-items: baseline; gap: 6px;
+      font-size: 10px; letter-spacing: .16em; color: var(--ink-500); margin-bottom: 2px;
+    }
+    #panel .row label i {
+      font-style: normal; font-family: var(--mono); font-size: 8.5px;
+      letter-spacing: .14em; color: var(--ink-300);
+    }
+    html[lang="en"] #panel .row label i { display: none; }
+    select {
+      width: 100%; border: 0; border-bottom: 1px solid var(--rule-2); border-radius: 0;
+      background: transparent; color: var(--ink-900);
+      padding: 5px 18px 5px 0; font-size: 14.5px; font-family: var(--serif);
+      appearance: none; -webkit-appearance: none; cursor: pointer;
+    }
+    select:focus { outline: none; border-bottom-color: var(--ink-900); background: transparent; }
+    #panel .row::after {
+      content: ""; position: absolute; right: 3px; bottom: 13px;
+      width: 5px; height: 5px;
+      border-right: 1px solid var(--ink-500); border-bottom: 1px solid var(--ink-500);
+      transform: rotate(45deg); pointer-events: none;
+    }
+    #status {
+      margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--rule); min-height: 0;
+    }
+
+    /* ---------- 票据底部的动作：一个主键 + 四条字链 ---------- */
+    .btns {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px;
+      margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--rule);
+    }
+    .btns button {
+      border: 0; background: transparent; border-radius: 0; padding: 6px 0;
+      font-size: 11px; letter-spacing: .04em; color: var(--ink-500); text-align: left;
+    }
+    .btns button:hover { color: var(--ink-900); border: 0; }
+    .btns button.on { background: transparent; border: 0; color: var(--ink-900); }
+    #btnLabels::before, #btnRoads::before { content: "□ "; font-size: 9px; }
+    #btnLabels.on::before, #btnRoads.on::before { content: "■ "; }
+    #btnWalk {
+      grid-column: 1 / -1; order: -1; margin-bottom: 8px; padding: 11px 0;
+      background: var(--ink-900); color: var(--paper);
+      text-align: center; font-size: 12.5px; letter-spacing: .2em;
+    }
+    #btnWalk:hover { background: #000; color: var(--paper); }
+
+    /* ---------- 指北针 ---------- */
+    #compass {
+      right: 20px; bottom: 20px; width: 52px; height: 52px; border-radius: 50%;
+      background: var(--paper); border: 1px solid var(--rule-2); box-shadow: none;
+    }
+    #needle {
+      position: absolute; left: 0; right: 0; top: 7px; bottom: auto;
+      display: block; text-align: center; line-height: 1;
+      color: var(--ink-900); font-size: 12px; padding: 0;
+    }
+    #compass .n {
+      position: absolute; left: 0; right: 0; bottom: 7px; top: auto;
+      display: block; text-align: center; line-height: 1;
+      font-family: var(--mono); font-size: 8px; letter-spacing: .1em;
+      color: var(--ink-300); padding: 0;
+    }
+
+    /* ---------- 语心：默认收成一行 ---------- */
+    #ai {
+      right: 20px; bottom: 86px; left: auto; width: 340px;
+      background: var(--paper); border: 1px solid var(--rule-2); border-radius: 0; box-shadow: none;
+    }
+    #ai.collapsed { width: 142px; }
+    #ai.collapsed #ai-head { padding: 8px 10px; }
+    #ai.collapsed #ai-badge { display: none; }
+    #ai-head { padding: 9px 10px; border-bottom: 1px solid var(--rule); }
+    #ai-head .avatar {
+      width: 20px; height: 20px; border-radius: 0; background: transparent;
+      border: 1px solid var(--rule-2); color: var(--ink-900); font-size: 10px;
+    }
+    #ai-head b { font-family: var(--serif); font-size: 12.5px; letter-spacing: .08em; color: var(--ink-900); }
+    #ai-badge {
+      border-radius: 0; font-family: var(--mono); font-size: 8.5px;
+      background: transparent; border: 1px solid var(--rule-2); color: var(--ink-500);
+    }
+    #ai-badge.off { background: transparent; border-color: var(--gw-red); color: var(--gw-red); }
+    #ai-toggle { color: var(--ink-500); font-size: 10px; }
+    .msg.user { border-radius: 0; background: var(--ink-900); color: var(--paper); }
+    .msg.bot { border-radius: 0; background: var(--paper-2); border-color: var(--rule); }
+    .msg.sys { font-family: var(--mono); font-size: 9.5px; color: var(--ink-300); }
+    .card { border-radius: 0; background: var(--paper); border-color: var(--rule); }
+    .chip { border-radius: 0; background: transparent; border-color: var(--rule); color: var(--ink-700); }
+    .chip:hover { background: var(--paper-2); border-color: var(--ink-900); color: var(--ink-900); }
+    .ai-input { border-top: 1px solid var(--rule); }
+    .ai-input input { border-radius: 0; background: transparent; border-color: var(--rule); }
+    .ai-input input:focus { border-color: var(--ink-900); background: transparent; }
+    .ai-input button { border-radius: 0; background: var(--ink-900); border-color: var(--ink-900); }
+
+    /* ---------- 建筑卡、漫游条 ---------- */
+    #bcard {
+      background: var(--paper); border: 1px solid var(--rule-2); border-top: 3px solid var(--ink-900);
+      border-radius: 0; box-shadow: none;
+    }
+    #bcard h2 { font-family: var(--serif); letter-spacing: .06em; }
+    #walkbar { background: var(--paper); border-color: var(--rule-2); border-radius: 0; box-shadow: none; }
+    #walkbar button { border-radius: 0; background: transparent; }
+    #walkbar #walk-progress { background: var(--rule); }
+    #walkbar #walk-progress i { background: var(--ink-900); }
+  }
+
+  /* ============================================================
+     建筑标注：从白胶囊改成图纸上的纸片注记
+     ============================================================ */
+  #labels .lbl {
+    background: rgba(247, 243, 232, .93);
+    border: 1px solid var(--rule);
+    border-radius: 0; box-shadow: none;
+    color: var(--ink-700); font-size: 10.5px; letter-spacing: .02em;
+    padding: 1px 4px;
+  }
+  #labels .lbl.gate {
+    color: #8f2b1c; border-color: #d3a79a;
+    background: rgba(250, 240, 234, .95);
+  }
+  /* 选中/悬停：纸面注记只用一条墨线强调，不换底色 */
+  #labels .lbl.on { color: var(--ink-900); border-color: var(--ink-900); }
+
+  /* ============================================================
+     手机（≤760px）：同一套纸面语言，布局沿用抽屉
+     ============================================================ */
+  @media (max-width: 760px) {
+    #topbar {
+      background: var(--paper); border-bottom: 1px solid var(--rule-2);
+      box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+    }
+    #panel {
+      border-radius: 0; border: 1px solid var(--rule-2); border-top: 3px solid var(--ink-900);
+      background: var(--paper);
+    }
+    #panel h1 { font-family: var(--serif); letter-spacing: .06em; }
+    .head-campus {
+      font-size: 11px; letter-spacing: .04em; white-space: nowrap;
+      padding-left: 8px; margin-left: 2px;
+    }
+    /* 校区/语言切换：不用胶囊，改成抬头条上的文字链，当前项压一条墨下划线 */
+    .pill { border: 0; background: none; border-radius: 0; padding: 0; gap: 3px; }
+    .pill button { font-size: 11.5px; padding: 3px 5px; border-radius: 0; color: var(--ink-500); }
+    .pill button.on {
+      background: none; color: var(--ink-900);
+      box-shadow: inset 0 -1px 0 var(--ink-900);
+    }
+    #ai-open {
+      height: 28px; padding: 0 2px 0 2px; border-radius: 0;
+      border: 0; background: none; box-shadow: none;
+      color: var(--ink-700); font-size: 11.5px;
+    }
+    #ai-open .ava { display: none; }
+    #panelToggle {
+      display: inline-flex; align-items: center; padding: 3px 0;
+      border: 0; background: none; font-family: var(--mono);
+      font-size: 9.5px; letter-spacing: .14em; color: var(--ink-500);
+    }
+    #panel.expanded #panelToggle { color: var(--ink-900); box-shadow: inset 0 -1px 0 var(--ink-900); }
+    /* 收/展箭头：去掉原胶囊圆，改成纸面上的一枚小三角 */
+    #panelCollapse {
+      width: 24px; height: 24px; border: 0; border-radius: 0;
+      background: none; color: var(--ink-500); font-size: 11px;
+    }
+    #panel.collapsed #panelCollapse { color: var(--ink-900); }
+    #panel .mini-summary {
+      font-size: 12.5px; line-height: 1.5; color: var(--ink-700);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    /* 收起态只留两站与距离，R-01 让位给摘要 */
+    #panel.collapsed .tk-no { display: none; }
+    /* 票据字段：手机上压成「起点 ─────」一行两列，省高度 */
+    #panel .row {
+      display: flex; align-items: center; gap: 10px; margin: 9px 0 0;
+      position: relative;
+    }
+    #panel .row label { width: 34px; flex: 0 0 34px; font-size: 10px; letter-spacing: .12em; margin: 0; }
+    #panel .row label i { display: none; }
+    #panel .row select {
+      flex: 1 1 auto; min-width: 0; font-size: 13.5px; padding: 5px 20px 5px 0;
+      border: 0; border-bottom: 1px solid var(--rule-2); border-radius: 0; background: none;
+      appearance: none; -webkit-appearance: none;
+    }
+    #panel .row::after {
+      content: ""; position: absolute; right: 3px; top: 50%; margin-top: -3px;
+      width: 5px; height: 5px;
+      border-right: 1px solid var(--ink-500); border-bottom: 1px solid var(--ink-500);
+      transform: rotate(45deg); pointer-events: none;
+    }
+    #index { display: none; }
+    #index.show {
+      display: block; position: fixed; z-index: 60;
+      left: 8px; right: 8px; top: calc(58px + env(safe-area-inset-top)); bottom: auto;
+      width: auto; padding: 12px 14px; max-height: 62vh; overflow-y: auto;
+      border: 1px solid var(--rule-2); border-top: 3px solid var(--ink-900);
+      background: var(--paper);
+    }
+    #compass { border-radius: 50%; background: var(--paper); border-color: var(--rule-2); }
+    #needle {
+      position: absolute; left: 0; right: 0; top: 6px; bottom: auto;
+      display: block; text-align: center; line-height: 1; font-size: 12px; padding: 0;
+      color: var(--ink-900);
+    }
+    #compass .n {
+      position: absolute; left: 0; right: 0; bottom: 6px; top: auto;
+      display: block; text-align: center; line-height: 1; font-size: 8px; padding: 0;
+      color: var(--ink-300);
+    }
+    #ai { border-radius: 0; background: var(--paper); }
+    .btns button { border-radius: 0; }
+    /* 开关不用实心块抢主键：■/□ + 墨色字，只有「走过去看看」是实心 */
+    .btns button.on {
+      background: transparent; border-color: var(--rule-2); color: var(--ink-900);
+    }
+    #btnLabels::before, #btnRoads::before { content: "□ "; font-size: 9px; }
+    #btnLabels.on::before, #btnRoads.on::before { content: "■ "; }
+    #btnWalk { background: var(--ink-900); border-color: var(--ink-900); color: var(--paper); }
+    .res__num b { font-size: 34px; line-height: 1; }
+    .res__num i { font-size: 11px; }
+    .res__strip { height: 34px; margin-top: 8px; }
+    .res__meta { font-size: 11px; margin-top: 3px; }
+    .res__from { margin-top: 8px; padding-top: 6px; font-size: 11px; }
+  }
 </style>
 </head>
 <body>
@@ -529,6 +906,7 @@
     <span>GDUFS Wayfinder</span>
   </div>
   <div class="sep"></div>
+  <span class="head-campus" id="headCampus">广外 · 大学城校区</span>
   <div class="pill" id="campusSwitch">
     <button data-campus="south" class="on" data-i18n="campus.south">南校</button>
     <button data-campus="north" data-i18n="campus.north">北校</button>
@@ -550,7 +928,7 @@
     <span id="ai-toggle">▾</span>
     <button id="ai-close" type="button" aria-label="关闭语心" title="关闭">✕</button>
   </div>
-  <div id="ai-body"></div>
+  <div id="ai-body" class="ai-body"></div>
   <div class="chips" id="ai-chips"></div>
   <div class="ai-input">
     <input id="ai-input" data-i18n-ph="ai.input" placeholder="问：从文采园怎么去图书馆？" autocomplete="off" />
@@ -573,7 +951,8 @@
         <h1 data-i18n="panel.title">广外校园向导</h1>
         <div class="mini-summary" id="miniSummary">点这里展开，选起点和终点</div>
       </div>
-      <button id="panelToggle" type="button" aria-expanded="false" aria-controls="panelExtra">
+      <span class="tk-no" aria-hidden="true">R-01</span>
+      <button id="panelToggle" type="button" aria-expanded="false" aria-controls="index">
         <span data-i18n="sheet.legend">图例</span>
       </button>
       <button id="panelCollapse" type="button" aria-expanded="true" aria-label="收起校园向导" title="收起校园向导">
@@ -587,11 +966,11 @@
       </p>
 
       <div class="row">
-        <label data-i18n="form.from">起点</label>
+        <label><span data-i18n="form.from">起点</span><i>/ FROM</i></label>
         <select id="startSelect"></select>
       </div>
       <div class="row">
-        <label data-i18n="form.to">终点</label>
+        <label><span data-i18n="form.to">终点</span><i>/ TO</i></label>
         <select id="endSelect"></select>
       </div>
 
@@ -602,30 +981,39 @@
         <button id="btnRoads" class="on" data-i18n="btn.roads">道路</button>
         <button id="btnReset" data-i18n="btn.reset">重置视角</button>
         <button id="btnWalk" data-i18n="btn.walk">走过去看看</button>
-        <button id="btnLocate" data-i18n="btn.locate">📍 我的位置</button>
+        <button id="btnLocate" data-i18n="btn.locate">◎ 我的位置</button>
       </div>
 
-      <div class="panel-extra" id="panelExtra">
-        <div class="legend">
-          <div class="lg"><span class="sw" style="background:#c4bba8"></span><span data-i18n="legend.teaching">教学 / 实验</span></div>
-          <div class="lg"><span class="sw" style="background:#cbbd9f"></span><span data-i18n="legend.dorm">学生宿舍</span></div>
-          <div class="lg"><span class="sw" style="background:#854b39"></span><span data-i18n="legend.library">图书馆</span></div>
-          <div class="lg"><span class="sw" style="background:#a4644c"></span><span data-i18n="legend.canteen">食堂</span></div>
-          <div class="lg"><span class="sw" style="background:#b3bfc7"></span><span data-i18n="legend.sports">体育场馆</span></div>
-          <div class="lg"><span class="sw" style="background:#b9a684"></span><span data-i18n="legend.culture">文化 / 会堂</span></div>
-          <div class="lg"><span class="sw" style="background:#cfd6da"></span><span data-i18n="legend.clinic">门诊</span></div>
-          <div class="lg"><span class="sw" style="background:#b6b1a5"></span><span data-i18n="legend.misc">其他</span></div>
-        </div>
-
-        <div class="hint" id="panelHint" data-i18n="hint.body">
-          左键拖动旋转 · 滚轮缩放 · 右键平移<br>
-          可直接点击建筑设置起点 / 终点。<br>
-          生活区和教学区经 <b>地下隧道</b> 穿行（图中青色）。<br>
-          名称/层数已按官方资料与规划验收合格证修正；立面为程序化生成，非测绘成果。
-        </div>
-      </div>
     </div>
   </div>
+
+</div>
+
+<!-- 图例索引卡：独立于 #dock 定位（放在 #dock 内会被 display:contents + fixed 的子元素合成出画布空洞） -->
+<div id="index">
+  <div class="ix-head">
+    <b data-i18n="sheet.legend">图例</b>
+    <span>INDEX / 08</span>
+  </div>
+  <div class="legend">
+    <div class="lg"><span class="no">01</span><span class="sw" style="background:#c4bba8"></span><span data-i18n="legend.teaching">教学 / 实验</span></div>
+    <div class="lg"><span class="no">02</span><span class="sw" style="background:#cbbd9f"></span><span data-i18n="legend.dorm">学生宿舍</span></div>
+    <div class="lg"><span class="no">03</span><span class="sw" style="background:#854b39"></span><span data-i18n="legend.library">图书馆</span></div>
+    <div class="lg"><span class="no">04</span><span class="sw" style="background:#a4644c"></span><span data-i18n="legend.canteen">食堂</span></div>
+    <div class="lg"><span class="no">05</span><span class="sw" style="background:#b3bfc7"></span><span data-i18n="legend.sports">体育场馆</span></div>
+    <div class="lg"><span class="no">06</span><span class="sw" style="background:#b9a684"></span><span data-i18n="legend.culture">文化 / 会堂</span></div>
+    <div class="lg"><span class="no">07</span><span class="sw" style="background:#cfd6da"></span><span data-i18n="legend.clinic">门诊</span></div>
+    <div class="lg"><span class="no">08</span><span class="sw" style="background:#b6b1a5"></span><span data-i18n="legend.misc">其他</span></div>
+  </div>
+
+  <div class="hint" id="panelHint" data-i18n="hint.body">
+    左键拖动旋转 · 滚轮缩放 · 右键平移<br>
+    可直接点击建筑设置起点 / 终点。<br>
+    生活区和教学区经 <b>地下隧道</b> 穿行（图中青色）。<br>
+    名称/层数已按官方资料与规划验收合格证修正；立面为程序化生成，非测绘成果。
+  </div>
+
+  <div class="ix-foot" data-i18n="index.foot">底图：官方平面图 + OSM 道路 · 橙色为本次规划路线</div>
 </div>
 
 <!-- Three.js r128（UMD，本地 vendor，完全离线可双击打开） -->
@@ -702,6 +1090,52 @@
   if (window.GDUFS_LANG) window.GDUFS_LANG.apply(curLang);
   var cn = document.getElementById("compassN");
   if (cn) cn.textContent = curLang === "en" ? "N" : "北";
+
+  // 抬头条上的校区名（跟当前校区与语言一致；手机上换成短名，避免 40px 抬头折行）
+  var hc = document.getElementById("headCampus");
+  var phoneMQ = window.matchMedia("(max-width: 760px)");
+  var headCampusLabel = function () {
+    if (!hc) { return; }
+    var phone = phoneMQ.matches;
+    if (curCampus === "north") {
+      hc.textContent = curLang === "en"
+        ? (phone ? "GDUFS · Baiyun" : "GDUFS · Baiyunshan")
+        : (phone ? "广外 · 白云山" : "广外 · 白云山校区");
+    } else {
+      hc.textContent = curLang === "en"
+        ? (phone ? "GDUFS · South" : "GDUFS · South Campus")
+        : (phone ? "广外 · 大学城" : "广外 · 大学城校区");
+    }
+  };
+  headCampusLabel();
+  if (phoneMQ.addEventListener) { phoneMQ.addEventListener("change", headCampusLabel); }
+
+  // 语心：桌面端默认收成一行（不与导航抢地图），点抬头条右侧的「语心」展开
+  if (window.innerWidth > 760) {
+    var aiPanel = document.getElementById("ai");
+    if (aiPanel) { aiPanel.classList.add("collapsed"); }
+  }
+  var aiEntry = document.getElementById("ai-open");
+  if (aiEntry) {
+    aiEntry.addEventListener("click", function () {
+      var p = document.getElementById("ai");
+      if (!p) { return; }
+      p.classList.remove("collapsed");
+      var inp = document.getElementById("ai-input");
+      if (inp) { setTimeout(function () { inp.focus(); }, 60); }
+    });
+  }
+
+  // 图例索引卡：手机端跟随 #panel 的展开态（桌面端常驻，靠 CSS 的 min-width 媒体查询）
+  var ixCard = document.getElementById("index");
+  var ixPanel = document.getElementById("panel");
+  if (ixCard && ixPanel && window.MutationObserver) {
+    var syncIndex = function () {
+      ixCard.classList.toggle("show", ixPanel.classList.contains("expanded"));
+    };
+    new MutationObserver(syncIndex).observe(ixPanel, { attributes: true, attributeFilter: ["class"] });
+    syncIndex();
+  }
 })();
 </script>
 </body>
