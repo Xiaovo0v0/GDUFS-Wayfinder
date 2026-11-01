@@ -3,7 +3,7 @@
 广外校园导航与办事指南 —— 3D 校园地图 + Dify 智能体，南北双校区、中英双语、断网可用。
 
 > 仓库：<https://github.com/Xiaovo0v0/GDUFS-Wayfinder>　｜　参赛作品：广东外语外贸大学第二届 AI 应用创新大赛（初赛·生活服务）
-> **接手项目先读 [`docs/HANDOFF-2026-10-31.md`](docs/HANDOFF-2026-10-31.md)** —— 现状、还差什么、关键决策都在那里（10-25 与 10-22 两版保留作历史对照）。
+> **接手项目先读 [`docs/HANDOFF-2026-11-01.md`](docs/HANDOFF-2026-11-01.md)** —— 现状、还差什么、关键决策都在那里（10-31、10-25 与 10-22 三版保留作历史对照）。
 
 ---
 
@@ -21,7 +21,7 @@ http://127.0.0.1:8080/
 **先跑一遍自检，确认环境没问题：**
 
 ```bash
-node tools/smoke.mjs                  # 前端冒烟 10 项
+node tools/smoke.mjs                  # 前端冒烟（11~12 项，配了 ai-config 时多一项 AI 问答）
 node tools/verify_local_client.mjs    # 安装包验收 5 项
 ```
 
@@ -55,7 +55,7 @@ window.GDUFS_AI_LOCAL = {
 |---|---|
 | `gdufs-3d/` | 3D 前端源码（Three.js，无构建步骤） |
 | `tools/` | 生成与验证脚本（Python + Node） |
-| `docs/` | 文档；`HANDOFF-2026-10-31.md` 是入口，`15-提交清单` 是交付清单 |
+| `docs/` | 文档；`HANDOFF-2026-11-01.md` 是入口，`15-提交清单` 是交付清单；`GEO-LOCK-2026-11-01.md` 是两校区坐标，`BUILDINGS-2026-11-01.md` 是楼名名录 |
 | `skills/` | 4 个技能的定义（Dify DSL 与 SKILL.md） |
 | `data/` | 官方原始资料（平面图矢量化、办事数据源） |
 | `artifacts/blender/` | 重建 3D 模型所需的输入 |
