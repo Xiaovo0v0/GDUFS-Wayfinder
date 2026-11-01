@@ -69,7 +69,8 @@ await withPage(base + '?lang=zh', 7000, async (b) => {
       status: document.querySelector('#status').innerText.replace(/\\s+/g,' ').slice(0,50) });
   })()`);
   console.log('   ', JSON.stringify(s));
-  Math.abs(s.dist - 820) < 30 ? pass('算路 ' + s.dist + ' 米') : fail('算路距离异常 ' + s.dist);
+  // 2026-11-01 重建导航图（只收校内道路）后，文采园→图书馆 由 821 米（绕校外）变成 719 米（经隧道）
+  Math.abs(s.dist - 719) < 30 ? pass('算路 ' + s.dist + ' 米') : fail('算路距离异常 ' + s.dist);
   s.pts > 15 ? pass('折线 ' + s.pts + ' 个点') : fail('折线点太少');
 });
 

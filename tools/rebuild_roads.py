@@ -475,15 +475,100 @@ def project(pts, p):
     return best
 
 
-def build_graph(D, roads, inner_m=6.0):
-    """导航图只用人行道/校内道路建：环路虽然在渲染里画出来，但它是城市道路，
-    不该出现在「从校门走到图书馆」的步行路线里（否则路线会绕到校区外面）。
-    例外：地道（tunnel）整条保留，它是南北两片校区之间唯一的步行通道。"""
+CITY_ROAD = {"primary", "primary_link", "secondary", "secondary_link",
+             "tertiary", "tertiary_link", "trunk", "trunk_link",
+             "motorway", "motorway_link"}
+DOOR_MAX = 40.0      # 门口到校内路网的接驳上限（m）
+
+
+def nearest_edge(gb, p, roads_only=False):
+    """点到导航图最近边：返回 (距离, 最近点)。
+
+    roads_only=True 时跳过 connector（建筑/校门的接驳边）。挑门点时必须这样：
+    接驳边是「上一次挑出来的门」留下的，拿它参与打分会让门点自我强化、每次重建
+    在 OSM 门点和校区顶点之间来回翻（实测 17 栋每次都翻）。
+    """
+    best = None
+    for e in gb.edges:
+        if roads_only and e.get("connector"):
+            continue
+        d, si, t, q = project(e["pts"], p)
+        if best is None or d < best[0]:
+            best = (d, q)
+    return best
+
+
+def choose_door(b, campus, gb, walls):
+    """给一栋楼挑「导航接驳门口」。
+
+    为什么不能直接用 OSM 的 entrance：不少楼的门点落在临街（围墙外环路）那一面，
+    它离校外马路 4–9 m，`connect_point` 会高高兴兴接到城市道路上，于是路线一出
+    门就顺着校外马路走。这里把候选点扩到「门点 + 外墙所有顶点」，按
+    「接驳长度 + 出界长度×3 + 穿楼×60 + 钻进自己楼里」打分，挑最像校内可达的那个。
+    """
+    bid = id(b)
+    own = None
+    if b.get("rings"):
+        own = Polygon(b["rings"][0]).buffer(0)
+    cands = []
+    osm_door = b.get("entrance_osm") or b.get("access")
+    cur = b.get("access")
+    if osm_door:
+        cands.append((osm_door[0], osm_door[1], True))
+    if cur and (not osm_door or abs(cur[0] - osm_door[0]) > 0.2 or abs(cur[1] - osm_door[1]) > 0.2):
+        cands.append((cur[0], cur[1], False))
+    for ring in b.get("rings") or []:
+        for p in ring:
+            cands.append((p[0], p[1], False))
+    if not cands:
+        return None
+    best = None
+    for x, z, is_osm in cands:
+        pt = Point(x, z)
+        if campus.distance(pt) > 3.0:
+            continue
+        d, q = nearest_edge(gb, (x, z), roads_only=True)
+        if d > DOOR_MAX:
+            continue
+        seg = LineString([(x, z), q])
+        out = seg.difference(campus).length
+        if out > 2.0:
+            continue
+        cross = 0
+        for wid, w in walls:
+            if wid == bid:
+                continue
+            if seg.intersection(w).length > 0.5:
+                cross += 1
+        self_len = own.intersection(seg).length if own is not None else 0.0
+        score = d + 3.0 * out + 60.0 * cross + 4.0 * max(0.0, self_len - 0.6)
+        if is_osm:
+            score -= 20.0                     # 平手时宁可保留 OSM 门点（差 20 m 以内不换）
+        if best is None or score < best[0]:
+            best = (score, (x, z), d, out, cross)
+    return best
+
+
+def build_graph(D, roads, join_max=30.0, door_max=None):
+    """导航图 = 校区边界**以内**的步行路网。
+
+    两条硬规则（2026-11 修订，之前用 boundary.buffer(6) 导致路线出校）：
+    1. 城市道路（primary/secondary/tertiary 及其 link）整条剔除——它们是校外的
+       环路/中环东路/贝岗村大街，校园向导不该走；
+    2. 其余道路只保留落在校区多边形内的部分（不再外扩 6 m，否则贴着围墙的
+       外环路人行道会整段溜进图里，正是「北苑1栋→学生活动中心」绕校外的原因）。
+    例外：地下隧道整条保留，它是生活区与教学区之间唯一的步行通道。
+    """
+    global DOOR_MAX
+    if door_max:
+        DOOR_MAX = door_max
     gb = GraphBuilder()
     zones = [Polygon(r).buffer(0) for r in D["boundary"]]
-    inner = unary_union(zones).buffer(inner_m)
+    campus = unary_union(zones)
     lines = []
     for r in roads:
+        if not r.get("tunnel") and r.get("highway") in CITY_ROAD:
+            continue
         for ln in r["lines"]:
             if len(ln) < 2:
                 continue
@@ -491,9 +576,9 @@ def build_graph(D, roads, inner_m=6.0):
             if r.get("tunnel"):
                 lines.append(ls)
                 continue
-            if not ls.intersects(inner):
+            if not ls.intersects(campus):
                 continue
-            cut = ls.intersection(inner)
+            cut = ls.intersection(campus)
             lines += [g for g in parts_of(cut) if g.length >= 2.0]
     merged = linemerge(unary_union(lines))
     segs = [merged] if merged.geom_type == "LineString" else list(merged.geoms)
@@ -507,14 +592,28 @@ def build_graph(D, roads, inner_m=6.0):
         pts = [[round(x, 1), round(z, 1)] for (x, z) in coords]
         gb.edges.append({"a": a, "b": b, "len": round(poly_len(pts), 1), "pts": pts})
 
-    # 建筑接驳（沿用已有 access 门口点）
+    # 建筑接驳：门口必须落在校区内侧，接驳线不许出界、不许穿别的楼
+    walls = [(id(b), Polygon(b["rings"][0]).buffer(0))
+             for b in D["buildings"] if b.get("rings")]
     for b in D["buildings"]:
         if not b.get("name"):
             continue
-        door = b.get("access")
-        if not door:
-            ring = b["rings"][0]
-            door = [sum(p[0] for p in ring) / len(ring), sum(p[1] for p in ring) / len(ring)]
+        pick = choose_door(b, campus, gb, walls)
+        if pick is None:
+            door = b.get("access")
+            if not door:
+                ring = b["rings"][0]
+                door = [sum(p[0] for p in ring) / len(ring), sum(p[1] for p in ring) / len(ring)]
+        else:
+            door = [round(pick[1][0], 1), round(pick[1][1], 1)]
+            old = b.get("access")
+            if old and (abs(old[0] - door[0]) > 0.2 or abs(old[1] - door[1]) > 0.2):
+                # 只记第一次的真实 OSM 门点。若每次都覆盖，entrance_osm 会变成
+                # 「上一轮挑出来的门」，下一轮就拿着它当 OSM 门点给 -20 分，
+                # 于是每次重建都在两个门点之间来回翻。
+                if not b.get("entrance_osm"):
+                    b["entrance_osm"] = [round(old[0], 1), round(old[1], 1)]
+            b["access"] = door
         node, d = gb.connect_point((door[0], door[1]))
         b["node"] = node
         b["access_dist"] = round(d, 1)
@@ -549,7 +648,7 @@ def build_graph(D, roads, inner_m=6.0):
 
     # 连通分量缝合：只在两片路网离得很近（<= JOIN_MAX）时才补一条接驳边，
     # 绝不为了「凑成一个连通分量」拉几百米的直线（那会让导航路线穿过草坪）。
-    JOIN_MAX = 30.0
+    JOIN_MAX = join_max
     repaired = 0
     comp, main = recompute()
     while len(comp) > 1:
