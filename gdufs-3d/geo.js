@@ -156,7 +156,7 @@
   function setBtn(on) {
     if (!btn) { return; }
     btn.classList.toggle("on", !!on);
-    btn.textContent = on ? msg("clear") : (window.t ? window.t("btn.locate") : "📍 我的位置");
+    btn.textContent = on ? msg("clear") : (window.t ? window.t("btn.locate") : "◎ 我的位置");
     btn.title = on ? (EN ? "Click to clear the location" : "再点一次取消定位") : "";
   }
 

@@ -2675,8 +2675,14 @@
     }
   }
 
-  function setStatus(html) {
-    document.getElementById("status").innerHTML = html;
+  // html 之外还可以带第二参数 dist：路线距离的结构化副本，写到 #status[data-dist]。
+  // 收起态摘要（mobile.js 的 updateMini）读它，而不是从票据 HTML 里正则抠数字 ——
+  // 那种隐式契约改一句文案就静默断掉：不报错，只是「约 xx 米」不见了。
+  function setStatus(html, dist) {
+    var el = document.getElementById("status");
+    el.innerHTML = html;
+    if (dist == null) { el.removeAttribute("data-dist"); }
+    else { el.dataset.dist = String(Math.round(dist)); }
   }
 
   // 距离牌：白底蓝字小胶囊，始终朝向相机
@@ -2727,6 +2733,58 @@
     ring.rotation.x = -Math.PI / 2;
     g.add(ring);
     return g;
+  }
+
+  // 路线示意条：把真实折线压进票据里那条窄带（z→横轴、x→纵轴）。
+  // 不是等比缩略图，所以票据上标注「路线示意 · 真实路径」，形状取自 __lastRoute。
+  function routeStrip(pts) {
+    var W = 268, H = 46, pad = 4;
+    var minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (var i = 0; i < pts.length; i++) {
+      if (pts[i][0] < minX) minX = pts[i][0];
+      if (pts[i][0] > maxX) maxX = pts[i][0];
+      if (pts[i][1] < minZ) minZ = pts[i][1];
+      if (pts[i][1] > maxZ) maxZ = pts[i][1];
+    }
+    var dx = Math.max(1e-6, maxX - minX), dz = Math.max(1e-6, maxZ - minZ);
+    var sx = (W - pad * 2) / dz, sy = (H - pad * 2) / dx;
+    var px = function (z) { return pad + (z - minZ) * sx; };
+    var py = function (x) { return pad + (x - minX) * sy; };
+
+    var d = "";
+    for (var k = 0; k < pts.length; k++) {
+      d += (k ? "L" : "M") + px(pts[k][1]).toFixed(1) + " " + py(pts[k][0]).toFixed(1) + " ";
+    }
+    var a = pts[0], b = pts[pts.length - 1];
+    return '<svg class="res__strip" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" aria-hidden="true">' +
+      '<path d="' + d + '" fill="none" stroke="#c2410c" stroke-width="1.6" ' +
+        'stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<circle cx="' + px(a[1]).toFixed(1) + '" cy="' + py(a[0]).toFixed(1) + '" r="3" fill="#c2410c"/>' +
+      '<rect x="' + (px(b[1]) - 3).toFixed(1) + '" y="' + (py(b[0]) - 3).toFixed(1) +
+        '" width="6" height="6" fill="#22201b"/>' +
+      "</svg>";
+  }
+
+  // 规划完把镜头框到整条路线上：821 米这类长途路线在「全校园」机位下
+  // 只剩一根头发丝，橙线看不出走向，票据里的折线也就失去了对照。
+  // 只在起终点「这一对」第一次出结果时推一次，手机 GPS 连续重算不会抢视角。
+  var lastRouteKey = "";
+  function frameRoute(pts) {
+    var minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i];
+      if (p[0] < minX) { minX = p[0]; }
+      if (p[0] > maxX) { maxX = p[0]; }
+      if (p[1] < minZ) { minZ = p[1]; }
+      if (p[1] > maxZ) { maxZ = p[1]; }
+    }
+    var span = Math.max(maxX - minX, maxZ - minZ, 140);
+    if (window.__navDebug && window.__navDebug.flyTo) {
+      window.__navDebug.flyTo(
+        (minX + maxX) / 2, (minZ + maxZ) / 2,
+        span * 0.46 + 130, span * 0.62 + 165
+      );
+    }
   }
 
   function route() {
@@ -2830,19 +2888,32 @@
 
     var _e = window.GDUFS_LANG && window.GDUFS_LANG.get() === "en";
     var _n = window.tName || function (x) { return x; };
+    var _t = window.t || function (k) { return k; };
+    var mins = Math.max(1, Math.round(res.dist / 75));   // 约 1.25 m/s 的步行速度
     var mine = (startPlace === myPlace && myMeta)
-      ? (_e
-        ? '<br><span class="ok">from my location · ±' + Math.round(myMeta.accuracy) + ' m</span>'
-        : '<br><span class="ok">起点为我的位置 · 精度 ±' + Math.round(myMeta.accuracy) + ' 米</span>')
+      ? '<div class="res__note">' + (_e
+        ? '<span class="ok">from my location · ±' + Math.round(myMeta.accuracy) + ' m</span>'
+        : '起点为我的位置 · 精度 ±' + Math.round(myMeta.accuracy) + ' 米') + '</div>'
       : "";
     setStatus(
-      '<b>' + _n(startPlace.label) + '</b> → <b>' + _n(endPlace.label) + '</b><br>' +
-      (_e
-        ? 'Walk about <span class="ok">' + Math.round(res.dist) + ' m</span> · ' + pts.length + ' waypoints' +
-          (viaTunnel ? '<br><span class="ok">via the underground tunnel</span>' : '')
-        : '沿道路步行约 <span class="ok">' + Math.round(res.dist) + ' 米</span> · 途经 ' + pts.length + ' 个路点' +
-          (viaTunnel ? '<br><span class="ok">经地下隧道穿行</span>' : '')) + mine
+      '<div class="res">' +
+        '<div class="res__num"><b>' + Math.round(res.dist) + '</b><i>' + (_e ? "m" : "米") + '</i>' +
+          '<span class="res__pt">' + pts.length + " / PT</span></div>" +
+        '<div class="res__meta">' + _t("status.walk") + " " + mins + " " + _t("status.min") +
+          (viaTunnel ? " · " + _t("status.tunnel") : "") + "</div>" +
+        routeStrip(pts) +
+        '<div class="res__label">' + _t("status.strip") + "</div>" +
+        '<div class="res__from">' + _n(startPlace.label) + " → " + _n(endPlace.label) + "</div>" +
+        mine +
+      "</div>",
+      res.dist
     );
+
+    var routeKey = startPlace.label + ">" + endPlace.label;
+    if (routeKey !== lastRouteKey && startPlace !== myPlace) {
+      lastRouteKey = routeKey;
+      frameRoute(pts);
+    }
   }
 
   // ============================================================
@@ -2852,7 +2923,7 @@
     var html = '<option value="-1">' + (window.t ? window.t("form.select") : "请选择…") + '</option>';
     // 定位过之后，起点下拉里多一项「我的位置」（value=-2，不对应 places 的下标）
     if (withMe && myPlace) {
-      html += '<option value="-2">' + (window.t ? window.t("form.me") : "📍 我的位置") + '</option>';
+      html += '<option value="-2">' + (window.t ? window.t("form.me") : "◎ 我的位置") + '</option>';
     }
     places.forEach(function (p, i) {
       var lb = window.tName ? window.tName(p.label) : p.label;

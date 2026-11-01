@@ -1,0 +1,4 @@
+# Git Bash 会跑 tools/git-hooks/ 里的脚本；CRLF 会让它报
+# `$'\r': command not found`（Windows 上 autocrlf=true 时默认就是 CRLF）。
+tools/git-hooks/* text eol=lf
+*.sh text eol=lf
