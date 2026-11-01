@@ -62,6 +62,12 @@ try {
   const m = /(\d{2,4})\s*米/.exec(status || '');
   check('路线距离已算出', !!m, m ? m[0] : (status || '').slice(0, 40));
 
+  // app.js setStatus 会把距离同时写到 #status[data-dist]，mobile.js 的收起态摘要读它。
+  // 这条断言守住两者一致：只改票据文案、忘了 dataset，摘要会静默丢掉「约 xx 米」。
+  const distAttr = await browser.eval('document.querySelector("#status").getAttribute("data-dist") || ""');
+  check('#status 的 data-dist 与文案距离一致', !!m && distAttr === m[1].replace(/,/g, ''),
+    `data-dist=${distAttr || '(空)'} 文案=${m ? m[1] : '(无)'}`);
+
   // 4. 建筑信息卡
   await browser.eval('window.__onBuildingClick && window.__onBuildingClick(window.GDUFS_DATA.buildings[0])', { awaitPromise: false });
   await sleep(300);
@@ -96,10 +102,10 @@ try {
     check('AI 问答返回', !!got, '通道：' + badge);
   }
 
-  // 截图存档
+  // 截图存档（shotClean：软件渲染下浮层下方会丢块，存档图要拼过才可信）
   fs.mkdirSync(SHOT_DIR, { recursive: true });
   const shot = path.join(SHOT_DIR, 'smoke.png');
-  await browser.shot(shot);
+  await browser.shotClean(shot);
   console.log(`\n  截图：${shot}`);
 } catch (err) {
   check('冒烟脚本自身未崩溃', false, String(err.message).slice(0, 120));

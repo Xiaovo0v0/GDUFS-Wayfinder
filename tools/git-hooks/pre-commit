@@ -1,0 +1,39 @@
+#!/bin/sh
+# pre-commit：只跑便宜且确定的检查（几百毫秒）。需要浏览器的 lint_ui / smoke
+# 太慢，不进 hook，改完 UI 手动跑（见 AGENTS.md）。
+#
+# 装上：git config core.hooksPath tools/git-hooks
+# 临时绕过：git commit --no-verify
+set -e
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: PATH 里没有 node，跳过检查（这不是通过，是没查）" >&2
+  exit 0
+fi
+
+# 1) 编码：U+FFFD / 非法 UTF-8 / GBK 乱码，只查本次暂存的文件
+CHECK_ENCODING_QUIET=1 node tools/check_encoding.mjs --staged || {
+  echo "pre-commit: 编码检查未通过（见上）。" >&2
+  exit 1
+}
+
+# 2) 语法：暂存的 js/mjs/cjs 逐个 node --check（能拦住白屏级错误）
+files=$(git diff --cached --name-only --diff-filter=ACMR)
+bad=0
+oldifs=$IFS
+IFS='
+'
+for f in $files; do
+  case "$f" in
+    *.js|*.mjs|*.cjs)
+      if [ -f "$f" ]; then
+        node --check "$f" || { echo "pre-commit: 语法错误 $f" >&2; bad=1; }
+      fi
+      ;;
+  esac
+done
+IFS=$oldifs
+[ "$bad" -eq 0 ] || exit 1
+
+exit 0

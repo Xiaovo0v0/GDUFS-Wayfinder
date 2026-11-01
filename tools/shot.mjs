@@ -6,10 +6,19 @@
 //   --mobile --dpr 3                       手机模拟（触摸 + 高 DPR），配合 --w 390 --h 844
 //   --js  "window.__navDebug.setPlaces('文采园','图书馆')"   截图前执行
 //   --nohud                                隐藏左上/右下 HUD（只看 3D）
+//   --compose                              软件渲染丢块时补洞（见下）
 //
 // 每次都禁用缓存并重新导航，避免改完代码还在看旧画面。
+//
+// ⚠ 关于 --compose：这台机器没有 GPU，Edge 和 playwright headless shell 都走
+// 软件光栅，fixed 不透明浮层（#panel/#topbar 等）下方会丢块，截出来是透明像素。
+// 换浏览器、换 captureScreenshot 参数都修不掉（fromSurface:false 会整页空白）。
+// 唯一的做法是截两张再合成：① 正常截（浮层齐）② 用 CSS 藏掉浮层截纯场景
+// ③ 在 Node 里把场景补进 ① 的透明处（tools/png.mjs）。默认会对普通截图做
+// 透明像素检测并在命中时给出告警 —— 否则这种丢失是完全静默的。
 
 import { Browser } from './cdp.mjs';
+import { decodePng, countTransparent } from './png.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -25,7 +34,11 @@ const H = Number(argOf('--h', '908'));
 const jsBefore = argOf('--js', '');
 const noHud = has('--nohud');
 const isMobile = has('--mobile');
+const compose = has('--compose');
 const dpr = Number(argOf('--dpr', isMobile ? '3' : '1'));
+
+// 所有 fixed 浮层。--compose 会临时把它们藏掉再截一张纯场景（列表在 cdp.mjs 的
+// shotClean 里，这里不重复维护）。
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -57,7 +70,19 @@ try {
   }
 
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  await b.shot(out);
+
+  if (compose) {
+    const r = await b.shotClean(out);
+    console.log(`compose: 用纯场景补掉 ${r.holes} 个透明像素（${r.size[0]}x${r.size[1]}）`);
+  } else {
+    await b.shot(out);
+    const img = decodePng(fs.readFileSync(out));
+    const holes = countTransparent(img);
+    if (holes > 0) {
+      const pct = ((holes / (img.width * img.height)) * 100).toFixed(2);
+      console.log(`WARN 截图含 ${holes} 个透明像素（${pct}%）：软件渲染在 fixed 浮层下方丢块。加 --compose 重拍。`);
+    }
+  }
 
   const evalExpr = argOf('--eval', '');
   if (evalExpr) {

@@ -1,6 +1,7 @@
 # CDP 浏览器临时配置（每次运行都会变）
 .browser-profile/
 .chrome-profile/
+.bp2/
 
 # Blender 安装包（380 MB，重装时可再下载）
 tools/dist/

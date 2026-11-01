@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { decodePng, encodePng, countTransparent, composeOver } from './png.mjs';
 
 const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
@@ -195,6 +196,14 @@ export class Browser {
     return false;
   }
 
+  // 截图。注意：**没有 GPU 的机器（软件光栅）上，这个调用会静默丢块** ——
+  // fixed 不透明浮层（#panel/#topbar/#bcard…）下方的像素会变成 alpha=0，
+  // 浏览器不报错，PNG 看起来"就是少了些东西"。换 Edge、换 headless shell、
+  // 换 captureScreenshot 参数（captureBeyondViewport / fromSurface…
+  // 其中 fromSurface:false 会把整页截成空白）都修不掉。
+  // 需要完整画面请用 `node tools/shot.mjs --compose`（截两张再合成）。
+  // 这里不做自动补洞：本类保持无依赖、无像素假设，检测留给调用方
+  // （tools/png.mjs 的 countTransparent）。
   async shot(file, { fullPage = false } = {}) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     let params = { format: 'png', captureBeyondViewport: fullPage };
@@ -207,6 +216,35 @@ export class Browser {
     const r = await this.send('Page.captureScreenshot', params);
     fs.writeFileSync(file, Buffer.from(r.data, 'base64'));
     return file;
+  }
+
+  // 补洞版截图（shot 的完整版）：① 正常截 ② 用 CSS 藏掉浮层截纯场景
+  // ③ 把场景补进 ① 的透明处。软件渲染下 fixed 浮层下方必丢块，
+  // 而 canvas 层永远是全的，所以这样拼出来才是"眼睛看到的那一帧"。
+  // hide：要临时藏掉的浮层选择器。返回 { holes, size } 便于日志。
+  async shotClean(file, opts = {}) {
+    const hide = opts.hide || ['#topbar', '#panel', '#index', '#ai', '#compass', '#labels', '#bcard', '#walkbar'];
+    const settle = opts.settle ?? 900;
+    const grab = async () =>
+      decodePng(Buffer.from((await this.send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+
+    const base = await grab();
+    const holes = countTransparent(base);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    if (!holes) {
+      fs.writeFileSync(file, encodePng(base));
+      return { holes: 0, size: [base.width, base.height] };
+    }
+    await this.eval(`(() => {
+      let s = document.getElementById('__compose');
+      if (!s) { s = document.createElement('style'); s.id = '__compose'; document.head.appendChild(s); }
+      s.textContent = ${JSON.stringify(hide.join(',') + '{display:none !important}')};
+      return 1;
+    })()`, { awaitPromise: false });
+    await sleep(settle);
+    const scene = await grab();
+    fs.writeFileSync(file, encodePng(composeOver(base, scene)));
+    return { holes, size: [base.width, base.height] };
   }
 
   async click(x, y) {
