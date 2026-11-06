@@ -32,10 +32,6 @@ artifacts/video/seq/
 # ============ 协作仓库策略（2026-10-22）============
 # 1) 密钥：真实 Dify 密钥只放本地，不进仓库
 gdufs-3d/ai-config.local.js
-deploy/.env
-# frp 配置里有 token，模板进仓库，实际文件留在服务器
-deploy/frp/frps.toml
-deploy/frp/frpc.toml
 
 # 2) 构建产物：dist 由 tools/build_single_file.mjs 生成
 gdufs-3d/dist/
