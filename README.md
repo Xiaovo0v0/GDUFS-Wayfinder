@@ -14,7 +14,7 @@
 
 | 步骤 | 怎么看 | 应该看到 |
 |---|---|---|
-| ① 打开 | 解压 Release 里的 `尚行-本地客户端.zip`，双击 `尚行-广外校园向导.html`（或在本仓库跑 `python -m http.server 8080 --directory gdufs-3d`） | 3D 校园地图、楼名标注、图例，可直接拖动缩放 |
+| ① 打开 | 解压 `deliverables/尚行-本地客户端.zip`，双击 `尚行-广外校园向导.html`（或在本仓库跑 `python -m http.server 8080 --directory gdufs-3d`） | 3D 校园地图、楼名标注、图例，可直接拖动缩放 |
 | ② 问路 | 在右侧面板选起点「文采园（第一饭堂）」、终点「图书馆」，点「走过去看看」 | 路线画在道路上：**719 米 / 24 个路径点 / 步行约 10 分钟**，提示「经地下隧道穿行」 |
 | ③ 看楼 | 点任意一栋楼 | 信息卡：层数、层高、基底面积、职能、建成年份、**官方来源**与置信度 |
 | ④ 进去走 | 点「第一人称漫游」 | 相机降到人眼高度，沿真实道路行走 |
@@ -95,11 +95,11 @@
 | [`gdufs-3d/`](gdufs-3d/) | 产品源码（Three.js，无构建步骤），打开 `index.html` 即可运行 |
 | [`data/`](data/) | 官方原始资料：平面图、验收合格证、办事数据源（含来源与置信度）、Dify 语料 |
 | [`skills/`](skills/) | 4 个技能的定义（Dify DSL 与 SKILL.md），可导入复现智能体 |
-| [`deliverables/`](deliverables/) | 成品：设计方案 DOCX、交付说明、架构图、海报、logo、演示视频、客户端 zip |
+| [`deliverables/`](deliverables/) | 成品：初赛设计方案 DOCX、架构图、本地客户端（含单文件网页）与打包 zip |
 | [`docs/`](docs/) | 过程记录：交接、Dify 搭建、评分自评、建模与路网的复盘 |
 | [`artifacts/blender/`](artifacts/blender/) | 重建 3D 模型所需的输入（楼宇几何与贴图） |
 
-演示视频（89 秒）与两个打包 zip 因体积放在 GitHub Release。
+两个打包 zip 体积较大，可在 GitHub Release 下载；仓库内保留了客户端源码目录。
 
 ---
 
@@ -126,10 +126,9 @@ python -m http.server 8080 --directory gdufs-3d
 | 文件 | 说明 |
 |---|---|
 | [`deliverables/广外校园向导-初赛设计方案.docx`](deliverables/广外校园向导-初赛设计方案.docx) | 按官方模板填写，7 页，含技术架构图与两张界面实拍 |
-| [`deliverables/交付说明.md`](deliverables/交付说明.md) | 交付清单、在线地址、3 分钟验收、作品边界 |
-| GitHub Release 里的 `尚行-本地客户端.zip` | 独立安装包：单文件网页 + 启动.cmd + README + 架构图 |
-| `deliverables/演示视频.mp4` | 89 秒：导航 → 漫游 → 办事卡片 → 北校区环绕 → 英文问答（视频走 GitHub Release） |
-| [`deliverables/架构图.png`](deliverables/架构图.png) · [`deliverables/海报.png`](deliverables/海报.png) | 技术架构与宣传物料 |
+| `deliverables/尚行-本地客户端.zip` | 独立安装包：单文件网页 + 启动.cmd + README + 架构图 |
+| `deliverables/广外校园向导-交付包.zip` | 提交用合并包：初赛设计方案 + 客户端 zip + 架构图 |
+| [`deliverables/架构图.png`](deliverables/架构图.png) | 六层技术架构图 |
 
 ---
 
