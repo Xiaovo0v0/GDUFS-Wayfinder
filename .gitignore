@@ -50,6 +50,12 @@ artifacts/*.png
 artifacts/*
 !artifacts/blender/
 !artifacts/blender/**
+# blender 目录里的渲染图、.blend 工程与中间 glb 只是过程产物，保留 json 与 tex/
+artifacts/blender/*.blend
+artifacts/blender/*.blend1
+artifacts/blender/*.glb
+artifacts/blender/*.png
+artifacts/blender/roads_*.json
 
 # 数据重建前的备份（tools/*.py 生成）
 gdufs-3d/*.before-*

@@ -398,6 +398,11 @@
   // 把 answer 字段的值边收边解出来，用户就能看到文字一个个冒出来，而不是干等 20 秒。
   function partialAnswer(s) {
     var t = String(s || "");
+    // Qwen3.8-27B 这类推理模型边写边吐 <think>…</think>，思考过程不能当正文流给用户
+    t = t.replace(/<think[^>]*>[\s\S]*?<\/think>/gi, "");
+    var open = t.search(/<think[^>]*>/i);
+    if (open >= 0) t = t.slice(0, open);
+    t = t.replace(/<\/think>/gi, "");
     var head = t.replace(/^\s*```(?:json)?\s*/i, "");
     if (head.charAt(0) !== "{") return head;        // 百科/闲聊分支是纯文本，直接流
     var i = head.indexOf('"answer"');
@@ -429,7 +434,7 @@
   }
 
   // 流式调用：onDelta(当前可见文本) 每收到一段就回调一次
-  window.__uiBuild = "stream-4";
+  window.__uiBuild = "stream-5";
   function askDify(q, onDelta) {
     var ctrl = new AbortController();
     var timer = null;

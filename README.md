@@ -3,7 +3,8 @@
 广外校园导航与办事指南 —— 3D 校园地图 + Dify 智能体，南北双校区、中英双语、断网可用。
 
 > 仓库：<https://github.com/Xiaovo0v0/GDUFS-Wayfinder>　｜　参赛作品：广东外语外贸大学第二届 AI 应用创新大赛（初赛·生活服务）
-> **接手项目先读 [`docs/HANDOFF-2026-11-01.md`](docs/HANDOFF-2026-11-01.md)** —— 现状、还差什么、关键决策都在那里（10-31、10-25 与 10-22 三版保留作历史对照）。
+> **接手项目先读 [`docs/HANDOFF-2026-11-01.md`](docs/HANDOFF-2026-11-01.md)** —— 现状、还差什么、关键决策都在那里；
+> 2026-11-03 的推理服务故障复盘见 [`docs/HANDOFF-2026-11-03.md`](docs/HANDOFF-2026-11-03.md)（10-31、10-25 与 10-22 三版保留作历史对照）。
 
 ---
 
@@ -63,11 +64,35 @@ window.GDUFS_AI_LOCAL = {
 
 ---
 
+## 源码与佐证（给评审）
+
+本仓库即初赛「完整源码 / 佐证材料」提交物：3D 前端、Dify 智能体编排（`skills/` 的 DSL 与 SKILL.md）、
+生成与验收脚本（`tools/`）、官方原始资料（`data/`）、过程记录（`docs/`）全在其中。
+成品文档与打包在 `deliverables/`，演示视频与 zip 因体积走 GitHub Release。
+
+**从源码复现（无需构建工具、无 npm 依赖）**
+
+```bash
+python -m http.server 8080 --directory gdufs-3d   # 1) 起服务，打开 http://127.0.0.1:8080/
+node tools/build_single_file.mjs                  # 2) 生成单文件网页（约 2.7 MB）
+node tools/smoke.mjs                              # 3) 自检 11 项（需 8080 已起）
+node tools/verify_local_client.mjs                # 4) 安装包验收 5 项
+```
+
+**原创与可复核**
+
+- 提交历史按时间记录每一次建模、算路、办事数据与界面改动（意图路由、动作契约、断网降级的迭代都在里面）
+- `data/official/` 是学校官方平面图与建设工程规划验收合格证原件；`tools/` 里的矢量化、Blender 建模、
+  截图脚本可复核每一步产物的来源
+- `docs/` 记录决策与故障复盘（例如 2026-11-03 推理服务故障的完整证据链），根目录的调研报告为选题依据
+
+---
+
 ## 常用命令
 
 | 命令 | 作用 |
 |---|---|
-| `node tools/build_single_file.mjs` | 打包成单文件网页（内联 GLB 与两校数据，约 2.6 MB） |
+| `node tools/build_single_file.mjs` | 打包成单文件网页（内联 GLB 与两校数据，约 2.7 MB） |
 | `node tools/mobile_check.mjs` | 手机端适配验收（多尺寸/多状态截图 + 布局断言：收起/展开、算路、建筑卡、语心、漫游） |
 | `node tools/check_locate.mjs [--file]` | 定位「我的位置」验收 17 项（CDP 伪 GPS，含 file:// 双击场景） |
 | `node tools/shot.mjs --url ... --out ...` | 截图（加 `--mobile --w 430 --h 932` 可手机模拟） |
@@ -80,7 +105,7 @@ window.GDUFS_AI_LOCAL = {
 
 ## 协作约定
 
-- 提交前跑 `node tools/smoke.mjs`，必须 10/10
+- 提交前跑 `node tools/smoke.mjs`，必须 11/11
 - **不要把密钥、`dist/`、视频、打包 zip 提交进仓库**（已在 `.gitignore`）
 - 详细的分工与发布流程见 [`docs/18-Git协作指南.md`](docs/18-Git协作指南.md)
 
