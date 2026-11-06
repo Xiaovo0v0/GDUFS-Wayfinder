@@ -6,7 +6,9 @@
 // 那个文件在页面里紧跟本文件加载，由它自己把值覆盖进来；
 // 没有这个文件时 key 为空，前端自动降级为本地规则问答（地图与办事功能不受影响）。
 window.GDUFS_AI = {
-  base: "http://172.17.1.46/v1",
+  // 校内 Dify 已开域名（https）：同校内网 IP 172.17.1.46 一套后端，
+  // 走 https 可避免公网页面调用 http 接口时的混合内容拦截。
+  base: "https://dify.gdufs.edu.cn/v1",
   key: "",
   model: "",
   appId: "",
