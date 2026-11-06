@@ -1854,13 +1854,31 @@
           if (inAnyRing(ox, oz)) d = -1;
           if (d > worst) worst = d;
         });
+        // 白条沿 vx 排开，每一根的自身四角都可能探出路面——首尾两根的检查
+        // 不够：斜置路口的中部白条恰好落在两幅路之间的分隔缝上（实测压出
+        // 0.27 m）。逐根查（26 根 × 4 角，量级很小），不干净整条删。
+        var nBars = Math.max(3, Math.round((span - 0.5) / PITCH));
+        var pitch2 = nBars > 1 ? Math.min(PITCH, (span - BAR) / (nBars - 1)) : 0;
+        var len2 = (nBars - 1) * pitch2;
+        for (var bb = 0; bb < nBars; bb++) {
+          var offB = -len2 / 2 + bb * pitch2;
+          for (var su = -1; su <= 1; su += 2) {
+            for (var sv = -1; sv <= 1; sv += 2) {
+              var ox = bx + vx2 * offB + ux * DEPTH / 2 * su + vx2 * BAR / 2 * sv;
+              var oz = bz + vz2 * offB + uz * DEPTH / 2 * su + vz2 * BAR / 2 * sv;
+              var d = roadOverhang(ox, oz);
+              if (inAnyRing(ox, oz)) d = -1;
+              if (d > worst) worst = d;
+            }
+          }
+        }
         if (worst > 0.15) return;
         // 垫层：条与条之间的缝里不能露出中心线/虚线（用户 m01505）。
         var bh = (GAP + DEPTH) / 2 + 0.05;
         rect(baseVerts, Y_BASE, bx + ux * 0.05, bz + uz * 0.05, ux, uz, bh, span / 2 + 0.15);
-        var n = Math.max(3, Math.round((span - 0.5) / PITCH));
-        var pitch = n > 1 ? Math.min(PITCH, (span - BAR) / (n - 1)) : 0;
-        var len = (n - 1) * pitch;
+        var n = nBars;
+        var pitch = pitch2;
+        var len = len2;
         for (var b = 0; b < n; b++) {
           var off = -len / 2 + b * pitch;
           rect(verts, Y, bx + vx * off, bz + vz * off, ux, uz, DEPTH / 2, BAR / 2);
