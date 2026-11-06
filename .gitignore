@@ -3,9 +3,6 @@
 .chrome-profile/
 .bp2/
 
-# Blender 安装包（380 MB，重装时可再下载）
-tools/dist/
-
 # 已解压的第三方技能包
 artifacts/mattpocock/
 
@@ -20,7 +17,6 @@ temp/
 # 录屏中间帧（体积大，可重新生成）
 artifacts/video/**/frames/
 artifacts/video/norm/
-tools/bin/
 
 # 团队个人信息，不进仓库
 deliverables/team.json
@@ -33,17 +29,17 @@ artifacts/video/seq/
 # 1) 密钥：真实 Dify 密钥只放本地，不进仓库
 gdufs-3d/ai-config.local.js
 
-# 2) 构建产物：dist 由 tools/build_single_file.mjs 生成
+# 2) 构建产物：单文件网页的 dist 目录
 gdufs-3d/dist/
 
 # 3) 大体积成品：视频与打包 zip 走 GitHub Release，不进仓库
 deliverables/*.mp4
 deliverables/*.zip
 
-# 4) 打包生成、且内嵌了密钥的单文件网页（由 tools/build_single_file.mjs 生成）
+# 4) 打包生成、且内嵌了密钥的单文件网页
 deliverables/local-client/*.html
 
-# 5) 截图与验证产物（tools/shot.mjs、verify_local_client 生成）
+# 5) 截图与验证产物
 artifacts/*.png
 
 # 6) artifacts 下只保留 blender 输入（重建模型用），其余都是跑脚本生成的
@@ -57,5 +53,5 @@ artifacts/blender/*.glb
 artifacts/blender/*.png
 artifacts/blender/roads_*.json
 
-# 数据重建前的备份（tools/*.py 生成）
+# 数据重建前的备份
 gdufs-3d/*.before-*

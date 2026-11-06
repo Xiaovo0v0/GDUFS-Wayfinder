@@ -1,7 +1,7 @@
-﻿# 尚行 · 广外校园向导 —— 一键起内网服务
+# 尚行 · 广外校园向导 —— 一键起内网服务
 #
 #   .\serve.ps1              开发版：服务 gdufs-3d/（GLB 走 http 才会加载）
-#   .\serve.ps1 -Dist        交付版：服务 gdufs-3d/dist/（单文件 + routes 图）
+#   .\serve.ps1 -Dist        成品版：服务 deliverables/（单文件网页 + 架构图）
 #   .\serve.ps1 -Port 8080   指定端口
 #
 # 作用：
@@ -16,11 +16,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repo = $PSScriptRoot
-$root = if ($Dist) { Join-Path $repo 'gdufs-3d\dist' } else { Join-Path $repo 'gdufs-3d' }
+$root = if ($Dist) { Join-Path $repo 'deliverables' } else { Join-Path $repo 'gdufs-3d' }
 
-if (-not (Test-Path (Join-Path $root 'index.html'))) {
-    Write-Host "找不到 index.html：$root" -ForegroundColor Red
-    if ($Dist) { Write-Host '先跑 node tools/build_single_file.mjs 生成 dist/' -ForegroundColor Yellow }
+if (-not (Test-Path (Join-Path $root 'index.html')) -and -not (Test-Path (Join-Path $root '尚行-广外校园向导.html'))) {
+    Write-Host "找不到入口文件：$root" -ForegroundColor Red
     exit 1
 }
 

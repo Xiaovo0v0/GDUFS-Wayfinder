@@ -62,12 +62,12 @@ Three.js 已放在 `vendor/`，**完全离线可用**，不依赖 CDN。
 - 可以直接上传到任何静态托管（GitHub Pages / Vercel / 校内服务器），当成"可公开访问的作品链接"；
 - AI 面板仍然优先连 Dify，连不上自动回落本地规则。
 
-重新打包：`node tools/build_single_file.mjs`（改完源码后跑一次）。
+单文件版已随交付包提供（`../deliverables/尚行-广外校园向导.html`）；仓库里只有源码，`dist/` 不进版本库。
 
 ### 建筑信息卡
 
 点击任意建筑，底部弹出信息卡：类型、层数、高度、基底面积、功能、建成年份、位置、**官方来源链接**和置信度。
-数据来自 `info-data.js`（由官方档案 + 体块数据合并生成，可用 `node tools/make_info_data.mjs` 重建）。
+数据来自 `info-data.js`（由官方档案 + 体块数据合并生成，每条都带来源与置信度）。
 
 重建 GLB 的流程见 [`../docs/03-Blender-LOD2建模流程.md`](../docs/03-Blender-LOD2建模流程.md)。
 
@@ -122,7 +122,7 @@ Three.js 已放在 `vendor/`，**完全离线可用**，不依赖 CDN。
 - 多边形用 shapely 简化到 0.4 m 容差，闭合环校验通过；
 - 输出 `gdufs-data.js`（约 86 KB）。
 
-**名称/层数/高度修正**：`../tools/patch_data.mjs`（幂等，可重跑）。依据见
+**名称/层数/高度修正**：以 `data/official/` 的官方档案为准，逐条记录在 `info-data.js` 的 `source` 字段。依据见
 `../docs/02-三维模型修正与视觉升级.md` 与 `../data/official/`。
 
 ## 寻路原理（沿道路网络 + 隧道唯一跨路）
