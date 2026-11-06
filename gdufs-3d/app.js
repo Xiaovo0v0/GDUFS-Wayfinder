@@ -1408,8 +1408,11 @@
   // 不去偏移中心线，就不会在急弯内侧折出「鱼尾」；路口也不用裁，
   // 沥青的 polygonOffset 比人行道靠前，压过去自然盖住。
   // 只有双幅路的中央分隔带是真的没被沥青盖住，那里才把带子断开。
-  function roadSidewalk(pts, w, self, level) {
+  // idx：每条路一个微小高差——两条交叉路的步道带在路口象限完全共面，
+  // 同材质同 offset 会逐像素闪烁（z-fighting），错开 1 mm 级就稳了。
+  function roadSidewalk(pts, w, self, level, idx) {
     var band = w + 6.0;
+    var eps = (idx % 9) * 0.0011;
     var rs = resampleLine(pts, 2.0);
     var P = rs.pts;
     if (P.length < 2) return;
@@ -1425,20 +1428,21 @@
       var len = 0;
       for (var j = 0; j < run.length - 1; j++) len += Math.hypot(run[j + 1][0] - run[j][0], run[j + 1][1] - run[j][1]);
       if (len < 6.0) return;
-      var sw = new THREE.Mesh(ribbonGeometry(run, band, 0.57, 2, 0, 1.2), walkMat);
+      var sw = new THREE.Mesh(ribbonGeometry(run, band, 0.57 + eps, 2, 0, 1.2), walkMat);
       sw.name = "sidewalk:" + level;
       sw.receiveShadow = true;
       roadGroup.add(sw);
-      var cb = new THREE.Mesh(ribbonGeometry(run, band + 0.6, 0.545, 2, 0, 1.2), walkEdgeMat);
+      var cb = new THREE.Mesh(ribbonGeometry(run, band + 0.6, 0.545 + eps, 2, 0, 1.2), walkEdgeMat);
       cb.name = "curb:" + level;
       roadGroup.add(cb);
     });
   }
 
-  D.roads.forEach(function (r) {
+  D.roads.forEach(function (r, ri) {
     if (r.tunnel) return;
     var level = r.highway || "service";
     var isWalk = !!WALK_KIND[level];
+    var eps = (ri % 9) * 0.0011;
     r.lines.forEach(function (pts) {
       if (pts.length < 2) return;
 
@@ -1447,10 +1451,10 @@
         var pw = PATH_W[level] || 2.0;
         // 北校区的步行道是从平面图量出来的，宽度更贴近真实（3~6 m）
         if (r.width && r.width > 1.5) pw = Math.min(r.width, 7.0);
-        var pe = new THREE.Mesh(ribbonGeometry(pts, pw + 0.8, 0.545, 2, pw / 2), walkEdgeMat);
+        var pe = new THREE.Mesh(ribbonGeometry(pts, pw + 0.8, 0.545 + eps, 2, pw / 2), walkEdgeMat);
         pe.name = "walkEdge";
         roadGroup.add(pe);
-        var pm = new THREE.Mesh(ribbonGeometry(pts, pw, 0.6, 2, pw / 2), walkMat);
+        var pm = new THREE.Mesh(ribbonGeometry(pts, pw, 0.6 + eps, 2, pw / 2), walkMat);
         pm.name = "walk:" + level;
         pm.receiveShadow = true;
         roadGroup.add(pm);
@@ -1463,7 +1467,7 @@
       // 免得把广场量出来的 20 m 直接画成 20 m 宽的路。
       if (r.width && r.width > 2.5) w = Math.max(3.0, Math.min(r.width, 13.0));
       if (MAIN_ROAD[level]) {
-        roadSidewalk(pts, w, r, level);
+        roadSidewalk(pts, w, r, level, ri);
       }
       var rm = new THREE.Mesh(ribbonGeometry(pts, w, 0.6, 12, w / 2), roadMaterial(level));
       rm.name = "road:" + level;
@@ -1480,10 +1484,10 @@
   // 两条路之上：穿过路口的中心线/双黄线被自然切断——真实路口就是这样，
   // 而不是两条路的标线叠在一起。
   //
-  // 路口里**不画**斑马线 / 停止线：多岔、斜交、双幅路路口上，横道线很难
-  // 摆正，几条臂的横道线挤在路口四周，看起来正是「指示线叠在一起」
-  // （用户 m03417 / m03959 两次反馈的就是这个）。现在只保留「各条路的
-  // 标线在路口边缘干净收住」这一种表达。
+  // 路口里只给「4 臂、正交 ±20°、单幅路（臂宽 ≤ 8.5 m）」的口子画斑马线，
+  // 每腿一条，位置从补面边界往外让 1 m（见下面的 renderCrosswalks）。多岔、
+  // 斜交、双幅主路仍然不画——用户 m03417 / m03959 两次反馈的「指示线叠在
+  // 一起」就是那种情况，别一刀切地铺满。
   (function renderJunctions() {
     var list = D.junctions || [];
     if (!list.length) return;
@@ -1508,6 +1512,530 @@
     roadGroup.userData.junctionMeshes = nMesh;
     roadGroup.userData.crosswalks = 0;
     roadGroup.userData.stoplines = 0;
+  })();
+
+  // —— 人行横道（斑马线）——
+  // 只覆盖「4 臂、正交 ±20°、单幅（臂宽 ≤ 8.5 m）」的路口，每腿一条。
+  // 位置不拿臂点硬摆：从路口中心沿该腿方向打到补面边界，再往外让 1 m，
+  // 斜交或补面不规则时也不会压进路口里。条带平行于车流方向（真实斑马线
+  // 就是这样），条数按路宽算，整段合批成一个 BufferGeometry。
+  (function renderCrosswalks() {
+    var TAU = Math.PI * 2, TOL = 20 * Math.PI / 180, GROUP_R = 16;
+    var GAP = 1.0, DEPTH = 3.4, BAR = 0.45, PITCH = 1.0, MAXW = 13.0;
+    var Y = 0.607, Y_BASE = 0.6055, Y_COVER = 0.6045;
+    var verts = [], baseVerts = [], coverVerts = [];
+
+    // 从 (cx,cz) 沿 (dx,dz) 打到多边形边界，返回最近的正交距离
+    function edgeT(poly, cx, cz, dx, dz) {
+      var best = Infinity;
+      for (var i = 0; i < poly.length; i++) {
+        var a = poly[i], b = poly[(i + 1) % poly.length];
+        var ex = b[0] - a[0], ez = b[1] - a[1];
+        var den = dx * ez - dz * ex;
+        if (Math.abs(den) < 1e-9) continue;
+        var ax = a[0] - cx, az = a[1] - cz;
+        var t = (ax * ez - az * ex) / den;
+        var u = (ax * dz - az * dx) / den;
+        if (t > 0.05 && u >= -1e-6 && u <= 1 + 1e-6 && t < best) best = t;
+      }
+      return best;
+    }
+    // 三角形一律逆时针（从 +Y 俯视）：WebGL 的正面是 CCW，写反了会整块被
+    // 当成背面，DoubleSide 下法线翻向下，只剩环境光——看起来就是一块黑的。
+    function rect2(arr, y, a, b, c) {
+      arr.push(a[0], y, a[1], c[0], y, c[1], b[0], y, b[1]);
+    }
+    function rect(arr, y, cx, cz, ux, uz, hl, hw) {
+      var vx = -uz, vz = ux;
+      var p = [
+        [cx + ux * hl - vx * hw, cz + uz * hl - vz * hw],
+        [cx + ux * hl + vx * hw, cz + uz * hl + vz * hw],
+        [cx - ux * hl + vx * hw, cz - uz * hl + vz * hw],
+        [cx - ux * hl - vx * hw, cz - uz * hl - vz * hw]
+      ];
+      var tri = [0, 2, 1, 0, 3, 2];
+      for (var i = 0; i < 6; i++) arr.push(p[tri[i]][0], y, p[tri[i]][1]);
+    }
+    function cr(o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }
+    function convexHull(pts) {
+      var p = pts.slice().sort(function (u, v) { return u[0] - v[0] || u[1] - v[1]; });
+      var n = p.length;
+      if (n < 3) return null;
+      var lo = [], up = [], i;
+      for (i = 0; i < n; i++) {
+        while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p[i]) <= 0) lo.pop();
+        lo.push(p[i]);
+      }
+      for (i = n - 1; i >= 0; i--) {
+        while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p[i]) <= 0) up.pop();
+        up.push(p[i]);
+      }
+      lo.pop(); up.pop();
+      return lo.concat(up);
+    }
+    // 点是否在多边形里（射线法，奇偶）
+    function inPoly(poly, x, z) {
+      var inside = false;
+      for (var i = 0, n = poly.length; i < n; i++) {
+        var a = poly[i], b = poly[(i + 1) % n];
+        if ((a[1] > z) !== (b[1] > z) &&
+            x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+      }
+      return inside;
+    }
+    function inAnyRing(x, z) {
+      for (var i = 0; i < ringList.length; i++) if (inPoly(ringList[i], x, z)) return true;
+      return false;
+    }
+
+    // 贴地件的兜底闸门：整块矩形四角都得压在沥青上，否则会像贴纸一样
+    // 盖到人行道/草地上（双幅路两侧的盘互相「连」出来的那种）。
+    var ringList = [];
+    function onAsphalt(x, z, e) {
+      if (onOtherRoad(x, z, null, e || 0.25)) return true;
+      for (var i = 0; i < ringList.length; i++) if (inPoly(ringList[i], x, z)) return true;
+      return false;
+    }
+    function cornersOnAsphalt(cx, cz, ux, uz, hl, hw, e) {
+      var vx = -uz, vz = ux;
+      return onAsphalt(cx + ux * hl - vx * hw, cz + uz * hl - vz * hw, e) &&
+             onAsphalt(cx + ux * hl + vx * hw, cz + uz * hl + vz * hw, e) &&
+             onAsphalt(cx - ux * hl + vx * hw, cz - uz * hl - vz * hw, e) &&
+             onAsphalt(cx - ux * hl - vx * hw, cz - uz * hl - vz * hw, e);
+    }
+    // 路面外沿余量：点离最近车行道中心线的距离 − 半宽。>0 就是在路外面，
+    // 数值就是压出去多深。横道整条验证用它，比布尔判定多带出「压多深」，
+    // 能把「探出 0.1 m 的边角」（可容忍）和「整块漂在草上 4 m」（必须删）分开。
+    function roadOverhang(x, z) {
+      var CELL = roadIndex.CELL;
+      var gx = Math.floor(x / CELL), gz = Math.floor(z / CELL);
+      var best = Infinity;
+      for (var dx = -1; dx <= 1; dx++) {
+        for (var dz = -1; dz <= 1; dz++) {
+          var ids = roadIndex.cells[(gx + dx) + ":" + (gz + dz)];
+          if (!ids) continue;
+          for (var i = 0; i < ids.length; i++) {
+            var s = roadIndex.list[ids[i]];
+            var d = pointSegDist(x, z, s.ax, s.az, s.bx, s.bz) - s.hw;
+            if (d < best) best = d;
+          }
+        }
+      }
+      return best === Infinity ? 1e9 : best;
+    }
+
+    var list = (D.junctions || []).filter(function (j) {
+      return j.arms && j.arms.length === 4 && j.rings && j.rings.length;
+    });
+    // 盖面分组不能只看「4 臂盘」：T 口（2 臂）、多岔（6/8 臂）的盘也会和
+    // 4 臂盘挨在一起，同样存在「盘间露标线」的问题（验收器 36 处空隙里
+    // 有 20 处涉及非 4 臂盘或组距 >16 m 的盘对）。所以分组用全部盘，画
+    // 横道时再限定 4 臂正交。
+    var allJ = (D.junctions || []).filter(function (j) { return j.rings && j.rings.length; });
+    var par = allJ.map(function (_, i) { return i; });
+    function find(i) { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; }
+    for (var i = 0; i < allJ.length; i++) {
+      for (var k = i + 1; k < allJ.length; k++) {
+        var dc = Math.hypot(allJ[i].cx - allJ[k].cx, allJ[i].cz - allJ[k].cz);
+        if (dc < GROUP_R) par[find(i)] = find(k);
+        // 盘心距 16~34 m、但两盘有臂互相指向对方（臂向差 <8° 或反向差 <8°
+        // 且臂端距 <18 m）：同一处路口被拆成的两个盘（双幅主路口臂宽 15 m，
+        // 盘径大，16 m 圈不到另一盘；实测臂端距 16.5 m 仍是一家）。并组，
+        // 否则盘间空隙露标线。
+        else if (dc < 34) {
+          var linked = false;
+          allJ[i].arms.forEach(function (a) {
+            if (linked) return;
+            allJ[k].arms.forEach(function (b) {
+              if (linked) return;
+              var da = Math.abs(((b.a - a.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+              var dn = Math.min(da, Math.abs(da - Math.PI));
+              if (dn > 8 * Math.PI / 180) return;
+              if (Math.hypot(a.x - b.x, a.z - b.z) < 18) linked = true;
+            });
+          });
+          if (linked) par[find(i)] = find(k);
+        }
+      }
+    }
+    var groups = {};
+    allJ.forEach(function (j, idx) {
+      var r = find(idx);
+      if (!(j.arms && j.arms.length === 4)) return;   // 非 4 臂盘只参与「被盖」，不当组代表
+      (groups[r] || (groups[r] = [])).push(j);
+    });
+    // 记录每个 4 臂组实际应覆盖的全部盘（含并入的非 4 臂盘）
+    var groupExtra = {};
+    allJ.forEach(function (j, idx) {
+      if (j.arms && j.arms.length === 4) return;
+      var r = find(idx);
+      if (groups[r]) (groupExtra[r] || (groupExtra[r] = [])).push(j);
+    });
+
+    // 组级斜交检测（供调试/后续用）：双幅路在数据里拆成 2~4 个盘，单看每个
+    // 盘都是「4 臂正交」，但整组拼起来可能是两条斜交路（X 形错位）。在那种
+    // 组里画横道，矩形四个角会全落在草地/人行道上（验收器实测 8 条整条压草，
+    // 全在这类组）。真正可靠的剔除是下面画横道前的 cornersOnAsphalt 整条
+    // 逐顶点闸门——双幅×双幅组与斜交组在「臂轴交点距离」上区分不开。
+    function groupIsSkewed(g) {
+      var axes = [];
+      g.forEach(function (j) {
+        j.arms.forEach(function (a) {
+          if (!a.open) return;
+          axes.push({ j: j, dx: Math.cos(a.a), dz: Math.sin(a.a) });
+        });
+      });
+      if (axes.length < 2) return true;
+      for (var i = 0; i < axes.length; i++) {
+        for (var k = i + 1; k < axes.length; k++) {
+          var A = axes[i], B = axes[k];
+          var den = A.dx * B.dz - A.dz * B.dx;
+          if (Math.abs(den) < 0.34) continue;      // 接近平行（<20°）不算交
+          var wx = B.j.cx - A.j.cx, wz = B.j.cz - A.j.cz;
+          var t = (wx * B.dz - wz * B.dx) / den;   // 沿 A 到交点的距离
+          if (t <= 0) continue;
+          var px = A.j.cx + A.dx * t, pz = A.j.cz + A.dz * t;
+          if (Math.hypot(px - A.j.cx, pz - A.j.cz) > MAXW ||
+              Math.hypot(px - B.j.cx, pz - B.j.cz) > MAXW) return true;
+        }
+      }
+      return false;
+    }
+
+    var bands = 0;
+    Object.keys(groups).forEach(function (gid) {
+      var g = groups[gid].concat(groupExtra[gid] || []);   // 盖面盖全组（含非 4 臂盘）
+      var fourArms = groups[gid];
+      var pts = [];
+      ringList = [];
+      g.forEach(function (j) { j.rings.forEach(function (r) { ringList.push(r); }); });
+      g.forEach(function (j) {
+        j.rings.forEach(function (ring) { ring.forEach(function (p) { pts.push(p); }); });
+      });
+      var hull = g.length > 1 ? convexHull(pts) : null;
+      // 盖面：每个路口盘各自铺一块，**不用整组凸包**。双幅×双幅的路口，四个盘
+      // 的凸包是一个 40 m 见方的大广场，中间的空地全被涂成沥青；按盘铺，盘与
+      // 盘之间本来就该是车行道和中央分隔带。
+      var gc = { x: 0, z: 0 };
+      g.forEach(function (j) { gc.x += j.cx; gc.z += j.cz; });
+      gc.x /= g.length; gc.z /= g.length;
+      g.forEach(function (j) {
+        if (!j.rings || !j.rings.length) return;
+        var pts2 = [];
+        j.rings.forEach(function (ring) { ring.forEach(function (p) { pts2.push(p); }); });
+        var h2 = convexHull(pts2);
+        if (!h2 || h2.length < 3) return;
+        var cx2 = 0, cz2 = 0;
+        h2.forEach(function (p) { cx2 += p[0]; cz2 += p[1]; });
+        cx2 /= h2.length; cz2 /= h2.length;
+        var inner2 = h2.map(function (p) {
+          var dx2 = p[0] - cx2, dz2 = p[1] - cz2, d2 = Math.hypot(dx2, dz2) || 1;
+          return [p[0] - dx2 / d2 * 0.6, p[1] - dz2 / d2 * 0.6];
+        });
+        for (var t2 = 1; t2 < inner2.length - 1; t2++) {
+          rect2(coverVerts, Y_COVER, inner2[0], inner2[t2], inner2[t2 + 1]);
+        }
+      });
+      // 盘与盘之间那块空地：双幅路的中央分隔带到路口就断了，中间应该是整块
+      // 沥青。老做法是「盘心凸包外扩 5.5 m」，双幅路外侧留 1~9 m 空隙，黄线
+      // 从缝里穿出来（验收器 36 处盘间空隙）。改成整组 rings 的凸包（真外缘）
+      // 向内收 CLIP_IN —— 不会盖到草地（凸包 ⊆ 沥青并集），又把缝全填上。
+      // 注意四条腿之间的「草地尖角」：凸包会把它圈进来。靠 padding 方向
+      // 过滤兜底——尖角在盘心连线的外侧方向（d·out 分量大），跳过那些顶点。
+      var CLIP_IN = 0.35, PAD = 1.6;
+      if (g.length >= 2 && hull) {
+        var x3 = 0, z3 = 0;
+        hull.forEach(function (p) { x3 += p[0]; z3 += p[1]; });
+        x3 /= hull.length; z3 /= hull.length;
+        var ex = hull.map(function (p) {
+          var dxc = p[0] - x3, dzc = p[1] - z3, dcn = Math.hypot(dxc, dzc) || 1;
+          return [p[0] - dxc / dcn * CLIP_IN, p[1] - dzc / dcn * CLIP_IN];
+        });
+        // 凸包顶点若离所有盘心都远（> 盘半径 + PAD），那是两条腿之间的草地尖角
+        var kept = ex.filter(function (p) {
+          return g.some(function (j) {
+            return Math.hypot(p[0] - j.cx, p[1] - j.cz) < Math.max.apply(null,
+              j.rings.reduce(function (acc, ring) {
+                return acc.concat(ring.map(function (q) { return Math.hypot(q[0] - j.cx, q[1] - j.cz); }));
+              }, [0])) + PAD;
+          });
+        });
+        if (kept.length >= 3) {
+          // kept 顶点可能不再按凸包序（过滤保序，凸包过滤后仍是序），扇形连接
+          for (var t3 = 1; t3 < kept.length - 1; t3++) {
+            rect2(coverVerts, Y_COVER, kept[0], kept[t3], kept[t3 + 1]);
+          }
+        }
+      }
+
+      // 收腿：每个盘每条开着的臂都算一条腿，记下它到本盘边界的距离。
+      // （斜交/错位组不在这里筛——双幅×双幅的四个盘在彼此轴线上交点距离
+      // 天然超过盘径，和真斜交区分不开；越界横道由下面的逐顶点越界闸门
+      // 精确剔除。只有 4 臂盘收腿，并入的非 4 臂盘不画横道。）
+      var legs = [];
+      fourArms.forEach(function (j) {
+        var arms = j.arms, rings = j.rings, maxW = 0;
+        arms.forEach(function (a) { maxW = Math.max(maxW, a.w || 3.5); });
+        if (maxW > MAXW) return;                       // 双幅主路：整条路都是平行带，跳过
+        var ang = arms.map(function (a) { return ((a.a % TAU) + TAU) % TAU; })
+                      .sort(function (p, q) { return p - q; });
+        for (var q = 0; q < 4; q++) {
+          var d = ang[(q + 1) % 4] - ang[q];
+          if (q === 3) d += TAU;
+          if (Math.abs(d - Math.PI / 2) > TOL) return; // 斜交路口：横道会互相咬
+        }
+        arms.forEach(function (a) {
+          if (!a.open) return;                         // 断头路（口子外 6 m 内就断）
+          var dx = Math.cos(a.a), dz = Math.sin(a.a);
+          var t0 = Infinity;
+          rings.forEach(function (ring) { t0 = Math.min(t0, edgeT(ring, j.cx, j.cz, dx, dz)); });
+          if (!isFinite(t0)) t0 = Math.hypot(a.x - j.cx, a.z - j.cz);
+          // 这条腿指向组内另一个路口盘 → 是「内腿」（两条车道之间），不画。
+          if (hull && inPoly(hull, j.cx + dx * (t0 + GAP), j.cz + dz * (t0 + GAP))) return;
+          var mx = j.cx + dx * (t0 + GAP + DEPTH / 2);
+          var mz = j.cz + dz * (t0 + GAP + DEPTH / 2);
+          var hit = onOtherRoad(mx, mz, null, 0.4);
+          if (!hit) return;
+          // 北校的 `w` 是含人行道在内的规划宽度（11~13 m），照它铺会压到路缘石。
+          var w = Math.min(Math.max(3.0, Math.min(a.w || 3.5, MAXW)), hit.hw * 2 - 0.2);
+          legs.push({ x: j.cx, z: j.cz, ux: dx, uz: dz, t0: t0, w: w, a: ((a.a % TAU) + TAU) % TAU });
+        });
+      });
+
+      // 按「进近方向」聚类：双幅路的左右两幅各算一条腿，它们平行、并排，会落
+      // 进同一簇，合成一条跨全宽的横道（照片里那种）。横道放在整组路口的最外
+      // 缘——各盘沿该方向能走到多远取最大值；每个盘各退一截的话，横道会跑到
+      // 路口中间去。
+      var axUsed = {};
+      legs.forEach(function (L, i) {
+        if (axUsed[i]) return;
+        axUsed[i] = 1;
+        var cl = [i];
+        legs.forEach(function (M, k) {
+          if (axUsed[k]) return;
+          var da = Math.abs((M.a - L.a + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+          if (da > 0.21) return;                       // 12°
+          axUsed[k] = 1;
+          cl.push(k);
+        });
+        var ux = L.ux, uz = L.uz, vx = -uz, vz = ux;
+        var out = -Infinity, lo = Infinity, hi = -Infinity;
+        cl.forEach(function (k) {
+          var M = legs[k];
+          out = Math.max(out, (M.x - gc.x) * ux + (M.z - gc.z) * uz + M.t0);
+          var s = (M.x - gc.x) * vx + (M.z - gc.z) * vz;
+          lo = Math.min(lo, s - M.w / 2);
+          hi = Math.max(hi, s + M.w / 2);
+        });
+        var mid = out + GAP + DEPTH / 2;
+        // 横道两端不能压到人行道上：从外侧往回收，收到真正落在沥青上为止。
+        // （进口道在路口附近会变宽/变窄，按中点算出来的跨度经常多出半米。）
+        function onRoadAt(s) {
+          return onOtherRoad(gc.x + ux * mid + vx * s, gc.z + uz * mid + vz * s, null, 0.45);
+        }
+        var guard = 0;
+        while (guard++ < 14 && !onRoadAt(hi)) hi -= 0.5;
+        guard = 0;
+        while (guard++ < 14 && !onRoadAt(lo)) lo += 0.5;
+        var span = hi - lo;
+        if (span < 2.5) return;
+        var ctr = (hi + lo) / 2;
+        var bx = gc.x + ux * mid + vx * ctr, bz = gc.z + uz * mid + vz * ctr;
+        // 整条横道的每个角（含垫层外沿）都不能探出路面 0.15 m——中点落在
+        // 路上不代表四角也落在路上（斜交组踩过：整条横道漂在草坪上 4 m）。
+        // 允许 0.15 m 的贴边余量：路缘本身有圆角、量测有半米噪声，压边
+        // 0.1 m 在俯视图里看不出来，而斜交组那种动辄 4 m 的越界整条删。
+        var hl2 = (GAP + DEPTH) / 2 + 0.05, hw2 = span / 2 + 0.15;
+        var vx2 = -uz, vz2 = ux;
+        var worst = 0;
+        [[hl2, hw2], [hl2, -hw2], [-hl2, hw2], [-hl2, -hw2], [hl2, 0], [-hl2, 0], [0, hw2], [0, -hw2]].forEach(function (pp) {
+          var ox = bx + ux * pp[0] + vx2 * pp[1], oz = bz + uz * pp[0] + vz2 * pp[1];
+          var d = roadOverhang(ox, oz);
+          if (inAnyRing(ox, oz)) d = -1;
+          if (d > worst) worst = d;
+        });
+        // 白条沿 vx 排开，每一根的自身四角都可能探出路面——首尾两根的检查
+        // 不够：斜置路口的中部白条恰好落在两幅路之间的分隔缝上（实测压出
+        // 0.27 m）。逐根查（26 根 × 4 角，量级很小），不干净整条删。
+        var nBars = Math.max(3, Math.round((span - 0.5) / PITCH));
+        var pitch2 = nBars > 1 ? Math.min(PITCH, (span - BAR) / (nBars - 1)) : 0;
+        var len2 = (nBars - 1) * pitch2;
+        for (var bb = 0; bb < nBars; bb++) {
+          var offB = -len2 / 2 + bb * pitch2;
+          for (var su = -1; su <= 1; su += 2) {
+            for (var sv = -1; sv <= 1; sv += 2) {
+              var ox = bx + vx2 * offB + ux * DEPTH / 2 * su + vx2 * BAR / 2 * sv;
+              var oz = bz + vz2 * offB + uz * DEPTH / 2 * su + vz2 * BAR / 2 * sv;
+              var d = roadOverhang(ox, oz);
+              if (inAnyRing(ox, oz)) d = -1;
+              if (d > worst) worst = d;
+            }
+          }
+        }
+        if (worst > 0.15) return;
+        // 垫层：条与条之间的缝里不能露出中心线/虚线（用户 m01505）。
+        var bh = (GAP + DEPTH) / 2 + 0.05;
+        rect(baseVerts, Y_BASE, bx + ux * 0.05, bz + uz * 0.05, ux, uz, bh, span / 2 + 0.15);
+        var n = nBars;
+        var pitch = pitch2;
+        var len = len2;
+        for (var b = 0; b < n; b++) {
+          var off = -len / 2 + b * pitch;
+          rect(verts, Y, bx + vx * off, bz + vz * off, ux, uz, DEPTH / 2, BAR / 2);
+        }
+        bands++;
+      });
+    });
+
+    function meshOf(arr, y, material, name) {
+      if (!arr.length) return;
+      var geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(arr, 3));
+      var n = arr.length, nrm = new Float32Array(n), uv = new Float32Array(n / 3 * 2);
+      for (var i = 0; i < n; i += 3) {
+        nrm[i + 1] = 1;
+        uv[(i / 3) * 2] = arr[i] / 12;
+        uv[(i / 3) * 2 + 1] = arr[i + 2] / 12;
+      }
+      geo.setAttribute("normal", new THREE.BufferAttribute(nrm, 3));
+      geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+      var m = new THREE.Mesh(geo, material);
+      m.name = name;
+      m.receiveShadow = true;
+      roadGroup.add(m);
+    }
+    // 和路口补面用同一个材质实例：贴图、uv 标定（1 贴图 = 12 m）、polygonOffset
+    // 全都一致，盖面叠在补面上时看不出接缝，颜色也就和正常路面一样。
+    // （之前整块发黑是三角形绕序反了导致的背面法线，不是贴图的问题。）
+    var coverMat = juncMat;
+    meshOf(coverVerts, Y_COVER, coverMat, "junctionCover");
+    meshOf(baseVerts, Y_BASE, coverMat, "crosswalkBase");
+    var barMat = new THREE.MeshLambertMaterial({
+      color: col(0xeef1f1), side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -24, polygonOffsetUnits: -48
+    });
+    meshOf(verts, Y, barMat, "crosswalks");
+    roadGroup.userData.crosswalks = bands;
+  })();
+
+  // —— 路口转角圆弧（路缘半径）——
+  // 人行道/路缘沿每条路各画一条带，路口转角是方角；真实路口的沥青边界
+  // 是一段路缘半径圆弧，弧和方角之间是人行道扇面。这里按每对相邻臂求
+  // 两条路缘线的交点 P，取半径 R 的圆弧切两边线，把「弧与 P 之间的弧
+  // 三角」铺成人行道、沿弧压一条路缘色带——从俯视看沥青边界就是圆弧。
+  // 覆盖层序：路口补面(-16) < 弧三角(-19) < 路缘带(-20) < 白条(-24)。
+  (function renderJunctionCorners() {
+    var TAU2 = Math.PI * 2;
+    var YF = 0.6047, YC = 0.6053;
+    var vertsF = [], vertsC = [];
+    var cornerWalkMat = new THREE.MeshLambertMaterial({
+      map: walkTex, side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -19, polygonOffsetUnits: -38
+    });
+    var cornerCurbMat = new THREE.MeshLambertMaterial({
+      color: col(0x8b8878), side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -20, polygonOffsetUnits: -40
+    });
+    function tri(arr, y, p, q, r) {
+      arr.push(p[0], y, p[1], r[0], y, r[1], q[0], y, q[1]);
+    }
+    function quadStrip(arr, y, a1, a2, b1, b2) {
+      tri(arr, y, a1, a2, b1);
+      tri(arr, y, a2, b2, b1);
+    }
+    var count = 0;
+    (D.junctions || []).forEach(function (j) {
+      if (!j.arms || !j.rings || !j.rings.length) return;
+      var arms = j.arms.slice().sort(function (a, b) { return a.a - b.a; });
+      var n = arms.length;
+      for (var q = 0; q < n; q++) {
+        var A = arms[q], B = arms[(q + 1) % n];
+        var dang = ((B.a - A.a) % TAU2 + TAU2) % TAU2;
+        if (dang < 50 * Math.PI / 180 || dang > 150 * Math.PI / 180) continue;
+        if (!A.open || !B.open) continue;            // 断头臂的转角几何不可靠
+        var wA = Math.min(Math.max(3.0, A.w || 3.5), 13.0) / 2;
+        var wB = Math.min(Math.max(3.0, B.w || 3.5), 13.0) / 2;
+        var uAx = Math.cos(A.a), uAz = Math.sin(A.a);
+        var uBx = Math.cos(B.a), uBz = Math.sin(B.a);
+        // A 的「B 侧」法向与 B 的「A 侧」法向（dang∈(0,π)，B 在 A 的 +90° 一侧）
+        var nAx = -uAz, nAz = uAx;
+        var nBx = uBz, nBz = -uBx;
+        // P = O + nA·wA + t·uA = O + nB·wB + s·uB（wA/wB 已是半宽）
+        var den = uAx * (-uBz) - (-uBx) * uAz;
+        if (Math.abs(den) < 0.3) continue;
+        var dx = nBx * wB - nAx * wA, dz = nBz * wB - nAz * wA;
+        var t = (dx * (-uBz) - dz * (-uBx)) / den;
+        if (t < -1 || t > 30) continue;
+        var px = j.cx + nAx * wA + uAx * t, pz = j.cz + nAz * wA + uAz * t;
+        if (Math.hypot(px - j.cx, pz - j.cz) > 30) continue;
+        // 从 P 出发、背离盘心的两条边线射线（转角张口方向）
+        var dA = (px - j.cx) * uAx + (pz - j.cz) * uAz;
+        var dB = (px - j.cx) * uBx + (pz - j.cz) * uBz;
+        if (!dA || !dB) continue;
+        var rAx = uAx * (dA > 0 ? 1 : -1), rAz = uAz * (dA > 0 ? 1 : -1);
+        var rBx = uBx * (dB > 0 ? 1 : -1), rBz = uBz * (dB > 0 ? 1 : -1);
+        var phi = Math.acos(Math.max(-1, Math.min(1, rAx * rBx + rAz * rBz)));
+        if (phi < 50 * Math.PI / 180 || phi > 150 * Math.PI / 180) continue;
+        // 切点必须真的落在沥青上：双幅路内臂的「转角」落在中央分隔带，
+        // 这里会被剔掉（分隔带是草地，不是路面）
+        var t1x = px + rAx * 0.2, t1z = pz + rAz * 0.2;
+        var t2x = px + rBx * 0.2, t2z = pz + rBz * 0.2;
+        if (!onOtherRoad(t1x, t1z, null, 0.5) || !onOtherRoad(t2x, t2z, null, 0.5)) continue;
+        var R = Math.max(0.8, Math.min(2.8, 0.35 * Math.min(wA, wB) * 2));
+        var ttan = Math.min(3.5, R / Math.tan(phi / 2));
+        var T1 = [px + rAx * ttan, pz + rAz * ttan];
+        var T2 = [px + rBx * ttan, pz + rBz * ttan];
+        var bl = Math.hypot(rAx + rBx, rAz + rBz) || 1;
+        var bix = (rAx + rBx) / bl, biz = (rAz + rBz) / bl;
+        var cc = R / Math.sin(phi / 2);
+        var C = [px + bix * cc, pz + biz * cc];
+        // 弧采样：从 T1 到 T2 走经过「最靠近 P 点」的那段短弧
+        var a1 = Math.atan2(T1[1] - C[1], T1[0] - C[0]);
+        var a2 = Math.atan2(T2[1] - C[1], T2[0] - C[0]);
+        var am = Math.atan2(pz - C[1], px - C[0]);
+        function nn(a) { return ((a % TAU2) + TAU2) % TAU2; }
+        var d12 = nn(a2 - a1), d1m = nn(am - a1);
+        var SEG = 7, arc = [];
+        for (var si = 0; si <= SEG; si++) {
+          var f = si / SEG;
+          var ang = d1m <= d12 ? a1 + d12 * f : a1 - ((TAU2 - d12) * f);
+          arc.push([C[0] + Math.cos(ang) * R, C[1] + Math.sin(ang) * R]);
+        }
+        // 弧三角：P → T1 → 弧 → T2（绕序交给 tri 的约定）
+        for (var fi = 0; fi < SEG; fi++) {
+          tri(vertsF, YF, [px, pz], arc[fi], arc[fi + 1]);
+        }
+        // 路缘带：沿弧外侧 0.45 m 一圈深色收边
+        for (var ci = 0; ci < SEG; ci++) {
+          var c1a = Math.atan2(arc[ci][1] - C[1], arc[ci][0] - C[0]);
+          var c1b = Math.atan2(arc[ci + 1][1] - C[1], arc[ci + 1][0] - C[0]);
+          var o1 = [C[0] + Math.cos(c1a) * (R + 0.45), C[1] + Math.sin(c1a) * (R + 0.45)];
+          var o2 = [C[0] + Math.cos(c1b) * (R + 0.45), C[1] + Math.sin(c1b) * (R + 0.45)];
+          quadStrip(vertsC, YC, arc[ci], arc[ci + 1], o1, o2);
+        }
+        count++;
+      }
+    });
+    function meshOf2(arr, y, material, name) {
+      if (!arr.length) return;
+      var geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(arr, 3));
+      var nn = arr.length, nrm = new Float32Array(nn), uv = new Float32Array(nn / 3 * 2);
+      for (var i = 0; i < nn; i += 3) {
+        nrm[i + 1] = 1;
+        uv[(i / 3) * 2] = arr[i] / 2;          // walkTex 一贴图 = 2 m
+        uv[(i / 3) * 2 + 1] = arr[i + 2] / 2;
+      }
+      geo.setAttribute("normal", new THREE.BufferAttribute(nrm, 3));
+      geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+      var m = new THREE.Mesh(geo, material);
+      m.name = name;
+      m.receiveShadow = true;
+      roadGroup.add(m);
+    }
+    meshOf2(vertsF, YF, cornerWalkMat, "cornerFillets");
+    meshOf2(vertsC, YC, cornerCurbMat, "cornerCurbs");
+    roadGroup.userData.cornerFillets = count;
   })();
   scene.add(roadGroup);
 

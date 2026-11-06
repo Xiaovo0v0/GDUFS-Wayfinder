@@ -2,12 +2,14 @@ import { Browser } from './cdp.mjs';
 
 const EMAIL = '20241003008@gdufs.edu.cn';
 const PASS = '19876699213';
+// 控制台页面由 172.17.1.46 提供，但 API base 是 dify.gdufs.edu.cn；在 172.17.1.46 上登录永远失败
+export const DIFY_BASE = 'https://dify.gdufs.edu.cn';
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function openDify(port = 9340) {
   const b = new Browser({ port, visible: false });
-  await b.launch('http://172.17.1.46/signin');
+  await b.launch(DIFY_BASE + '/signin');
   await sleep(2500);
 
   async function login() {
@@ -33,7 +35,7 @@ export async function openDify(port = 9340) {
   async function api(path, { method = 'GET', body = null, headers = {} } = {}) {
     const payload = body == null ? 'null' : JSON.stringify(body);
     return b.eval(`(async () => {
-      const m = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
+      const m = document.cookie.match(/(?:^|; )__Host-csrf_token=([^;]+)/) || document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
       const csrf = m ? decodeURIComponent(m[1]) : '';
       const opt = { method: ${JSON.stringify(method)}, credentials: 'include', headers: Object.assign({ 'x-csrf-token': csrf }, ${JSON.stringify(headers)}) };
       const body = ${payload};
@@ -53,7 +55,7 @@ export async function openDify(port = 9340) {
 // 带 csrf 的原始请求（下载 DSL / 文件）
 export async function rawText(b, path, options = {}) {
   return b.eval(`(async () => {
-    const m = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
+    const m = document.cookie.match(/(?:^|; )__Host-csrf_token=([^;]+)/) || document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
     const csrf = m ? decodeURIComponent(m[1]) : '';
     const res = await fetch(${JSON.stringify(path)}, Object.assign({ credentials: 'include', headers: { 'x-csrf-token': csrf } }, ${JSON.stringify(options)}));
     return { status: res.status, text: await res.text() };

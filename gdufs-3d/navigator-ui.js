@@ -419,8 +419,17 @@
     return out;
   }
 
+  // 把 Dify 那串 PluginInvokeError 压成一句人话（原文太长，气泡里放不下）
+  function shortErr(e) {
+    var s = typeof e === "string" ? e : JSON.stringify(e == null ? "" : e);
+    if (/Connection refused/i.test(s)) return "模型服务连不上（Connection refused）";
+    if (/timed? ?out|timeout/i.test(s)) return "模型服务超时";
+    if (/status code 5\d\d/.test(s)) return "模型服务返回 5xx";
+    return s.replace(/\s+/g, " ").slice(0, 80);
+  }
+
   // 流式调用：onDelta(当前可见文本) 每收到一段就回调一次
-  window.__uiBuild = "stream-3";
+  window.__uiBuild = "stream-4";
   function askDify(q, onDelta) {
     var ctrl = new AbortController();
     var timer = null;
@@ -449,6 +458,11 @@
       if (ev.conversation_id) conversationId = ev.conversation_id;
       // chatflow 的 message 事件把字段放在顶层，agent 模式放在 data 里，两种都要认
       var d = ev.data || ev;
+      // chatflow 失败时 Dify 只发 workflow_finished(status=failed)，不发 error 事件；
+      // 旧代码把它当成“回答为空”静默收尾 —— 用户看到的就是“问了没反应”。这里必须抛。
+      if (ev.event === "workflow_finished" && (d.status === "failed" || ev.status === "failed")) {
+        if (!acc.trim()) throw new Error("Dify 工作流失败：" + shortErr(d.error || ev.error));
+      }
       if (ev.event === "message" || ev.event === "agent_message") {
         if (typeof d.answer === "string") feed(d.answer);
       } else if (ev.event === "message_end" && (d.conversation_id || ev.conversation_id)) {
@@ -707,6 +721,9 @@
       .then(function (raw) {
         online = true;
         setBadge();
+        // 200 但一个字都没解析出来（工作流失败/模型没响应）时也当失败处理，
+        // 否则会渲染一个空气泡，用户看到的就是“问了没反应”。
+        if (!String(raw || "").trim()) throw new Error("Dify 返回空内容（模型服务未响应）");
         var obj = parseJson(raw);
         if (!obj) {
           // 模型没按契约回 JSON（例如推理模型把答案写在 <think> 里），
