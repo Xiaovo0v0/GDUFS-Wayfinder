@@ -108,7 +108,7 @@ chip(580, y2 + 20, 900, y2 + 62, "第一人称漫游 · 1.4 m/s", GREEN, GREEN_L
 chip(920, y2 + 20, 1240, y2 + 62, "路线绘制 · 100 m 距离牌", GREEN, GREEN_L)
 chip(1260, y2 + 20, 1600, y2 + 62, "办事卡片 · 四按钮联动", GREEN, GREEN_L)
 d.text((212, y2 + 82), "南校区 51 栋 + 北校区 42 栋，同一套 Blender 管线导出 LOD2　·　"
-                       "路网 220 节点 / 239 边　·　断网自动降级本地规则",
+                       "路网 147 节点 / 156 边　·　断网自动降级本地规则",
        font=font(18), fill=MUTED)
 
 # ---------- ③ 智能层 ----------
@@ -147,7 +147,7 @@ band(60, y4, 1740, y4 + 130, "技能层", PURPLE, PURPLE_L)
 d.text((212, y4 + 12), "4 个独立 Skill 工作流（各自有输入/输出契约，可单独发布为工具）",
        font=font(19, True), fill=PURPLE)
 skills = [
-    ("route-calc", "算路 820 m 实测"),
+    ("route-calc", "算路 719 m 实测"),
     ("place-lookup", "地名 → 坐标"),
     ("office-hours", "现在能办吗"),
     ("materials-check", "材料 / 电话 / 地点"),
