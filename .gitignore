@@ -40,17 +40,13 @@ gdufs-3d/dist/
 deliverables/*.mp4
 deliverables/*.zip
 
-# 4) 早期整理版资料包（已被 data/ 与 gdufs-3d/ 取代）
-gdufs-south-campus/
-
-# 5) 打包生成、且内嵌了密钥的单文件网页（由 tools/build_single_file.mjs 生成）
+# 4) 打包生成、且内嵌了密钥的单文件网页（由 tools/build_single_file.mjs 生成）
 deliverables/local-client/*.html
 
-# 6) 截图与验证产物（tools/shot.mjs、verify_local_client 生成）
-artifacts/3d/
+# 5) 截图与验证产物（tools/shot.mjs、verify_local_client 生成）
 artifacts/*.png
 
-# 7) artifacts 下只保留 blender 输入（重建模型用），其余都是跑脚本生成的
+# 6) artifacts 下只保留 blender 输入（重建模型用），其余都是跑脚本生成的
 artifacts/*
 !artifacts/blender/
 !artifacts/blender/**

@@ -39,7 +39,6 @@
 - `gdufs-3d/mobile.js` —— 手机端收起态摘要与抽屉让位。
 - `tools/` —— 全部脚本，Node 内置模块，无第三方依赖（`cdp.mjs` 是 CDP 驱动，`png.mjs` 是 PNG 编解码）。
 - `docs/HANDOFF-*.md` —— 按日期累积的交接与踩坑记录，改数据或几何先读最近一份。
-- `nav-design/` —— **一次性设计探索留档，不要往里加代码**（见该目录 README）。
 
 ## 约定
 
