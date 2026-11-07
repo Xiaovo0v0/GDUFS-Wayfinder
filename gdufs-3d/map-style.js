@@ -8,6 +8,7 @@
  var group=new T.Group();scene.add(group);
  var roof=new T.MeshBasicMaterial({color:color(0x42664d),toneMapped:false}),wall=new T.MeshBasicMaterial({color:color(0x345747),toneMapped:false}),land=new T.MeshBasicMaterial({color:color(0x21352a)}),water=new T.MeshBasicMaterial({color:color(0x27565a)}),roadMat=new T.MeshBasicMaterial({color:color(0x3d5243)}),park=new T.MeshBasicMaterial({color:color(0x34543b)});
  var selectedRoof=roof.clone(),selectedWall=wall.clone();selectedRoof.color.lerp(color(0x4e876d),.22);selectedWall.color.lerp(color(0x4e876d),.22);
+ roof.userData.themeRole='roof';wall.userData.themeRole='wall';land.userData.themeRole='land';water.userData.themeRole='water';roadMat.userData.themeRole='road';park.userData.themeRole='park';selectedRoof.userData.themeRole='selected';selectedWall.userData.themeRole='selected';
  function shape(rings){var s=new T.Shape();rings[0].forEach(function(p,i){s[i?'lineTo':'moveTo'](p[0],-p[1]);});(rings.slice(1)||[]).forEach(function(r){var h=new T.Path();r.forEach(function(p,i){h[i?'lineTo':'moveTo'](p[0],-p[1]);});s.holes.push(h);});return s;}
  function flat(rings,mat,y){var m=new T.Mesh(new T.ShapeGeometry(shape(rings)),mat);m.rotation.x=-Math.PI/2;m.position.y=y;group.add(m);return m;}
  D.boundary.forEach(function(r){flat([r],land,-.5);});
@@ -29,11 +30,12 @@
   var options={color:color(gymRoof?0x456a51:tone),map:src.isMeshBasicMaterial?texture:null,side:src.side,transparent:!!src.transparent,opacity:src.opacity==null?1:src.opacity,alphaTest:src.alphaTest||0,toneMapped:false};
   var base=new T.MeshBasicMaterial(options);
   var selected=base.clone();selected.color.lerp(color(gymRoof?0x4e8467:0x4e876d),.22);
+  base.userData.themeRole='building';selected.userData.themeRole='selected';
   var pair={base:base,selected:selected};materialCache.set(src,pair);return pair;
  }
  specialGroups.forEach(function(g){g.visible=true;g.traverse(function(m){if(!m.isMesh)return;var original=m.material,pairs=(Array.isArray(original)?original:[original]).map(function(mat){return styledMaterial(mat,m.userData.building&&m.userData.building.id);});m.userData.styleBase=Array.isArray(original)?pairs.map(function(p){return p.base;}):pairs[0].base;m.userData.styleSelected=Array.isArray(original)?pairs.map(function(p){return p.selected;}):pairs[0].selected;m.material=m.userData.styleBase;m.castShadow=false;m.receiveShadow=false;if(m.userData.building){n.buildingMeshes.push(m);buildings.push(m);}});});
  D.buildings.forEach(function(b){if(specialGroups.some(function(g){var found=false;g.traverse(function(m){if(m.userData.building&&m.userData.building.id===b.id)found=true;});return found;}))return;var geo=new T.ExtrudeGeometry(shape(b.rings),{depth:Math.min(b.height||12,28)*.75,bevelEnabled:false,steps:1});geo.rotateX(-Math.PI/2);var mesh=new T.Mesh(geo,[roof,wall]);mesh.userData.building=b;group.add(mesh);n.buildingMeshes.push(mesh);buildings.push(mesh);});
- function highlight(){var p=n.currentPlaces(),dest=p.to&&n.findPlace(p.to);buildings.forEach(function(m){var selected=dest&&m.userData.building.id===dest.ref;m.material=m.userData.styleBase?(selected?m.userData.styleSelected:m.userData.styleBase):(selected?[selectedRoof,selectedWall]:[roof,wall]);});n.requestRender();}
+ function highlight(){var p=n.currentPlaces(),dest=p.to&&n.findPlace(p.to);buildings.forEach(function(m){var selected=dest&&m.userData.building.id===dest.ref;m.material=m.userData.styleBase?(selected?m.userData.styleSelected:m.userData.styleBase):(selected?[selectedRoof,selectedWall]:[roof,wall]);});window.dispatchEvent(new Event('wayfinder:map-materials'));n.requestRender();}
  new MutationObserver(highlight).observe(document.getElementById('status'),{childList:true,subtree:true});
  document.getElementById('btnRoads').addEventListener('click',function(){roads.visible=this.classList.contains('on');n.requestRender();});
  var mobile=matchMedia('(max-width:760px)');
