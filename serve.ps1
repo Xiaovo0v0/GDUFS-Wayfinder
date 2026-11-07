@@ -1,4 +1,4 @@
-# 尚行 · 广外校园向导 —— 一键起内网服务
+﻿# 尚行 · 广外校园向导 —— 一键起内网服务
 #
 #   .\serve.ps1              开发版：服务 gdufs-3d/（GLB 走 http 才会加载）
 #   .\serve.ps1 -Dist        成品版：服务 deliverables/（单文件网页 + 架构图）
