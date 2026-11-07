@@ -61,6 +61,16 @@
   var spanX = maxX - minX, spanZ = maxZ - minZ;
   var centerX = (minX + maxX) / 2, centerZ = (minZ + maxZ) / 2;
 
+  // 校园外接圆半径：地面淡出、相机距离都以它为基准（南北校各自算）
+  var campusR = 0;
+  D.boundary.forEach(function (ring) {
+    ring.forEach(function (p) {
+      var d = Math.hypot(p[0] - centerX, p[1] - centerZ);
+      if (d > campusR) campusR = d;
+    });
+  });
+  if (!(campusR > 0)) campusR = Math.max(spanX, spanZ) * 0.5;
+
   // ============================================================
   // 2. 场景 / 相机 / 渲染器
   // ============================================================
@@ -68,10 +78,10 @@
 
   // ---- 天空与大气（B1）----
   // 北半球 15:00 的晴天：天顶偏蓝、地平线发白，配合轻雾让远景自然淡出
-  var FOG_COLOR = col(0xcfe3f2);
+  var FOG_COLOR = col(0xe6eddf);
   var sceneSpan = Math.max(spanX, spanZ);
   scene.background = FOG_COLOR.clone();
-  scene.fog = new THREE.Fog(FOG_COLOR.clone(), sceneSpan * 1.15, sceneSpan * 4.5);
+  scene.fog = new THREE.Fog(FOG_COLOR.clone(), sceneSpan * 1.05, sceneSpan * 3.2);
 
   function makeSkyDome(radius) {
     var geo = new THREE.SphereGeometry(radius, 32, 16);
@@ -112,7 +122,7 @@
     return mesh;
   }
 
-  scene.add(makeSkyDome(sceneSpan * 3.2));
+  // A quiet backdrop keeps the map legible without an animated sky.
 
   var camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 4, 14000);
 
@@ -128,13 +138,17 @@
 
   var controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.maxPolarAngle = Math.PI / 2 - 0.03;
+  /* 视距上下限：拉远了画面里只剩校园外那片空地，拉近了会钻进楼里。
+   * 上限同时要容得下 navigator-ui 里 flyTo 的机位（最远约 580 m）。 */
+  controls.minDistance = Math.max(40, campusR * 0.12);
+  controls.maxDistance = Math.max(700, sceneSpan * 1.15, campusR * 1.9);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
 
   function resetView() {
-    var dist = Math.max(spanZ, spanX) * 0.82;
+    var dist = Math.max(spanZ, spanX) * 0.86;
     controls.target.set(centerX, 0, centerZ - spanZ * 0.10);
-    camera.position.set(centerX + dist * 0.07, dist * 0.32, centerZ - dist * 0.86);
+    camera.position.set(centerX + dist * 0.07, dist * 0.44, centerZ - dist * 0.78);
     camera.lookAt(centerX, 0, centerZ - spanZ * 0.10);
     controls.update();
   }
@@ -310,11 +324,17 @@
   }
 
   function ribbonGeometry(pts, width, y, tileLen, cap, miterMax) {
+    // Drop repeated vertices before calculating tangents; never mutate source data.
+    pts = pts.filter(function (p, i) {
+      return i === 0 || Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) > 1e-6;
+    });
+    var closed = pts.length > 3 &&
+      Math.hypot(pts[0][0] - pts[pts.length - 1][0], pts[0][1] - pts[pts.length - 1][1]) < 1e-6;
     var tl = tileLen || 12;
     var ext = cap || 0;
     // 首尾沿切线各延长 ext 米：路口处两段路以任意角度相交时，
     // 方头端点会露出一个三角缺口，延长半个路宽就能把它盖住。
-    if (ext > 0 && pts.length >= 2) {
+    if (ext > 0 && !closed && pts.length >= 2) {
       var p0 = pts[0], p1 = pts[1];
       var d0 = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
       if (d0 > 1e-6) {
@@ -336,9 +356,6 @@
       return empty;
     }
 
-    var closed = n > 3 &&
-      Math.abs(pts[0][0] - pts[n - 1][0]) < 1e-6 &&
-      Math.abs(pts[0][1] - pts[n - 1][1]) < 1e-6;
 
     // 累计弧长 → 贴图沿路连续，不会每段重新起头
     var arc = [0];
@@ -352,13 +369,13 @@
     for (var v = 0; v < n; v++) {
       var nx = 0, nz = 0, cnt = 0;
       if (closed || v > 0) {
-        var pi = closed ? (v - 1 + n) % n : v - 1;
+        var pi = closed && v === 0 ? n - 2 : v - 1;
         var ex = pts[v][0] - pts[pi][0], ez = pts[v][1] - pts[pi][1];
         var el = Math.hypot(ex, ez);
         if (el > 1e-9) { nx += -ez / el; nz += ex / el; cnt++; }
       }
       if (closed || v < n - 1) {
-        var ni = closed ? (v + 1) % n : v + 1;
+        var ni = closed && v === n - 1 ? 1 : v + 1;
         var fx = pts[ni][0] - pts[v][0], fz = pts[ni][1] - pts[v][1];
         var fl = Math.hypot(fx, fz);
         if (fl > 1e-9) { nx += -fz / fl; nz += fx / fl; cnt++; }
@@ -367,7 +384,8 @@
       var ln = Math.hypot(nx, nz);
       if (ln < 1e-9) { NX.push(0); NZ.push(0); SC.push(0); continue; }
       NX.push(nx / ln); NZ.push(nz / ln);
-      SC.push(Math.min(2 / ln, miterMax || 2.2));   // 太尖的角限制斜接长度，免得炸出长刺
+      // One tangent at an open end means scale 1; only corners have two tangents.
+      SC.push(Math.min(cnt / ln, miterMax || 2.2));   // 太尖的角限制斜接长度，免得炸出长刺
     }
 
     var hw = width / 2;
@@ -608,9 +626,79 @@
   var groundTex = makeGrassTexture();
   groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
   groundTex.repeat.set(groundSize / 150, groundSize / 150);
+
+  /* 地面「化进天空」：校园外留一段实心草地，再往外的环带里逐渐透明，
+   * 在方板边缘之前彻底消失——这样既没有「一望无际的空草坪」，
+   * 也不会出现地面方板的硬边。不加山丘/远景楼群，纯靠距离淡出。
+   *
+   * 注意：不能用 alphaMap。three r128 里 alphaMap 与 map 共用 vUv，
+   * 而草地贴图 repeat 了 48 次，遮罩会跟着平铺，整块地面几乎全透明。
+   * 这里按世界坐标算淡出，与贴图无关。
+   */
+  var fadeStartR = campusR * 1.04;   // 从这里开始变淡（米）
+  var fadeEndR = Math.min(groundSize * 0.48, campusR * 1.95);  // 到这里完全透明
+  if (!(fadeEndR > fadeStartR + 80)) { fadeStartR = groundSize * 0.30; fadeEndR = groundSize * 0.46; }
+
+  var groundMat = new THREE.MeshLambertMaterial({
+    map: null,
+    color: col(0xd7e2ce),
+    transparent: true
+  });
+  /* 大尺度色斑（约 1.3 km 一块）：草地贴图是 150 m 一铺，远处会变成均匀的绿噪声。
+   * 这里按世界坐标再采一张低频图，让郊野有明暗起伏，不至于像一块纯色塑料板。 */
+  var groundMacroTex = (function () {
+    var S = 128, c = document.createElement("canvas");
+    c.width = c.height = S;
+    var g = c.getContext("2d");
+    g.fillStyle = "#808080";
+    g.fillRect(0, 0, S, S);
+    var rnd2 = rng(90210);
+    for (var i = 0; i < 260; i++) {
+      var x = rnd2() * S, y = rnd2() * S, r = 6 + rnd2() * 34;
+      var v = rnd2() < 0.5 ? 96 + rnd2() * 30 : 128 + rnd2() * 46;
+      g.fillStyle = "rgba(" + Math.round(v) + "," + Math.round(v) + "," + Math.round(v) + ",0.22)";
+      g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+    }
+    var t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return t;
+  })();
+
+  groundMat.onBeforeCompile = function (shader) {
+    shader.uniforms.uFadeCenter = { value: new THREE.Vector2(centerX, centerZ) };
+    shader.uniforms.uFadeStart = { value: fadeStartR };
+    shader.uniforms.uFadeEnd = { value: fadeEndR };
+    shader.uniforms.uMacroTex = { value: groundMacroTex };
+    shader.uniforms.uOuterTint = { value: new THREE.Color(0xa9bcb1) };
+    shader.vertexShader = "varying vec2 vFadeXZ;\n" + shader.vertexShader.replace(
+      "#include <begin_vertex>",
+      "#include <begin_vertex>\n  vFadeXZ = (modelMatrix * vec4(transformed, 1.0)).xz;"
+    );
+    shader.fragmentShader = [
+      "varying vec2 vFadeXZ;",
+      "uniform vec2 uFadeCenter;",
+      "uniform float uFadeStart;",
+      "uniform float uFadeEnd;",
+      "uniform sampler2D uMacroTex;",
+      "uniform vec3 uOuterTint;"
+    ].join("\n") + "\n" + shader.fragmentShader.replace(
+      "#include <dithering_fragment>",
+      [
+        "#include <dithering_fragment>",
+        "  float fadeD = distance(vFadeXZ, uFadeCenter);",
+        "  vec3 macro = texture2D(uMacroTex, vFadeXZ / 1300.0).rgb;",
+        "  gl_FragColor.rgb *= 0.93 + 0.14 * macro.g;",
+        "  float outerK = smoothstep(uFadeStart - 250.0, uFadeStart + 1100.0, fadeD);",
+        "  gl_FragColor.rgb = mix(gl_FragColor.rgb, uOuterTint, outerK * 0.55);",
+        "  float fadeK = clamp((fadeD - uFadeStart) / max(1.0, uFadeEnd - uFadeStart), 0.0, 1.0);",
+        "  gl_FragColor.a *= 1.0 - fadeK * fadeK * (3.0 - 2.0 * fadeK);"
+      ].join("\n")
+    );
+  };
+
   var ground = new THREE.Mesh(
     new THREE.PlaneGeometry(groundSize, groundSize),
-    new THREE.MeshLambertMaterial({ map: groundTex, color: col(0xb3bda6) })
+    groundMat
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(centerX, -0.6, centerZ);
@@ -2917,6 +3005,7 @@
   // 6.5 优先加载 Blender 导出的 LOD2 模型；失败则保留程序化几何
   // ============================================================
   (function loadDetailedModel() {
+    if (window.GDUFS_MAP_STYLE === "minimal") return;
     if (!THREE.GLTFLoader) { return; }
     // 北校区：north_buildings.glb 是早期从平面图直接挤出的低模，屋顶三角面法线是坏的
     // （俯视看每栋楼都有一块惨白的斜三角），立面也没有分层。这里默认用 north-data.js
@@ -3053,15 +3142,6 @@
       if (px < -60 || px > w + 60 || py < -20 || py > h + 20) {
         it.el.style.display = "none"; continue;
       }
-      var x0 = px - it.w / 2, x1 = px + it.w / 2;
-      var y0 = py - it.h, y1 = py;
-      var clash = false;
-      for (var k = 0; k < placed.length; k++) {
-        var q = placed[k];
-        if (x0 < q[1] + 3 && x1 + 3 > q[0] && y0 < q[3] + 2 && y1 + 2 > q[2]) { clash = true; break; }
-      }
-      if (clash) { it.el.style.display = "none"; continue; }
-      placed.push([x0, x1, y0, y1]);
       it.el.style.display = "";
       it.el.style.transform = "translate(-50%,-100%) translate(" + px.toFixed(1) + "px," + py.toFixed(1) + "px)";
     }
@@ -3170,6 +3250,7 @@
   scene.add(pathGroup);
   var markerGroup = new THREE.Group();
   scene.add(markerGroup);
+  window.__navDebug.buildingMeshes = buildingMeshes; window.__navDebug.pathGroup = pathGroup; window.__navDebug.markerGroup = markerGroup;
 
   function clearGroup(g) {
     while (g.children.length) {
@@ -3209,6 +3290,7 @@
   function setStatus(html, dist) {
     var el = document.getElementById("status");
     el.innerHTML = html;
+    scheduleRender();
     if (dist == null) { el.removeAttribute("data-dist"); }
     else { el.dataset.dist = String(Math.round(dist)); }
   }
@@ -3319,7 +3401,8 @@
     clearGroup(pathGroup);
     drawMarkers();
     if (!startPlace || !endPlace) {
-        setStatus(window.t ? window.t("status.pick") : "请选择起点和终点（可直接点击画面中的建筑）。");
+
+  setStatus(window.t ? window.t("status.pick") : "请选择起点和终点（可直接点击画面中的建筑）。");
       return;
     }
     if (startPlace === endPlace) {
@@ -3362,12 +3445,12 @@
     // 相机 near=4 / far=14000，一千米外深度缓冲精度远小于 0.2 m，只靠抬高会被路面 z-fight 掉。
     var geoOuter = ribbonGeometry(pts, 5.4, 0.72, 12);
     pathGroup.add(new THREE.Mesh(geoOuter, new THREE.MeshBasicMaterial({
-      color: col(0xb8430c), side: THREE.DoubleSide, transparent: true, opacity: 0.92,
+      color: col(0x116652), side: THREE.DoubleSide, transparent: true, opacity: 0.92,
       polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -12
     })));
     var geoInner = ribbonGeometry(pts, 3.4, 0.79, 12);
     pathGroup.add(new THREE.Mesh(geoInner, new THREE.MeshBasicMaterial({
-      color: col(0xffa02e), side: THREE.DoubleSide,
+      color: col(0x39ae91), side: THREE.DoubleSide,
       polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -16
     })));
 
@@ -3375,7 +3458,7 @@
     var accM = 0, nextMark = 100;
     for (var mi = 1; mi < pts.length; mi++) {
       accM += Math.hypot(pts[mi][0] - pts[mi - 1][0], pts[mi][1] - pts[mi - 1][1]);
-      if (accM >= nextMark && nextMark <= res.dist) {
+      if (accM >= nextMark && nextMark <= res.dist && window.GDUFS_MAP_STYLE !== 'minimal') {
         pathGroup.add(distanceSprite(pts[mi][0], pts[mi][1], nextMark));
         nextMark += 100;
       }
@@ -3423,19 +3506,7 @@
         ? '<span class="ok">from my location · ±' + Math.round(myMeta.accuracy) + ' m</span>'
         : '起点为我的位置 · 精度 ±' + Math.round(myMeta.accuracy) + ' 米') + '</div>'
       : "";
-    setStatus(
-      '<div class="res">' +
-        '<div class="res__num"><b>' + Math.round(res.dist) + '</b><i>' + (_e ? "m" : "米") + '</i>' +
-          '<span class="res__pt">' + pts.length + " / PT</span></div>" +
-        '<div class="res__meta">' + _t("status.walk") + " " + mins + " " + _t("status.min") +
-          (viaTunnel ? " · " + _t("status.tunnel") : "") + "</div>" +
-        routeStrip(pts) +
-        '<div class="res__label">' + _t("status.strip") + "</div>" +
-        '<div class="res__from">' + _n(startPlace.label) + " → " + _n(endPlace.label) + "</div>" +
-        mine +
-      "</div>",
-      res.dist
-    );
+    setStatus('<div class="route-metrics"><strong>' + mins + (_e ? ' min' : ' 分钟') + '</strong><span>' + Math.round(res.dist) + (_e ? ' m · walk' : ' 米 · 步行') + '</span></div>' + (viaTunnel ? '<div class="route-note">'+(_e?'Via underground tunnel':'经地下隧道')+'</div>':'') + mine, res.dist);
 
     var routeKey = startPlace.label + ">" + endPlace.label;
     if (routeKey !== lastRouteKey && startPlace !== myPlace) {
@@ -3499,14 +3570,8 @@
       try { window.__onBuildingClick(b); } catch (err) { /* 忽略面板异常 */ }
     }
     if (!place) { setStatus('<span class="warn">该建筑未命名，无法作为导航点。</span>'); return; }
-    if (startPlace === myPlace && !endPlace) {
-      // 已经定位过：点建筑直接当终点，起点保留「我的位置」
-      endPlace = place;
-    } else if (!startPlace || (startPlace && endPlace)) {
-      startPlace = place; endPlace = null;
-    } else {
-      endPlace = place;
-    }
+    endPlace = place;
+    if (startPlace === endPlace) startPlace = null;
     syncSelects();
     route();
   });
@@ -3656,6 +3721,7 @@
    * @param {object} opt {accuracy:米, lat, lon, heading}
    */
   function setMyPosition(x, z, opt) {
+    scheduleRender();
     opt = opt || {};
     if (!isFinite(x) || !isFinite(z)) { return null; }
     var acc = +opt.accuracy;
@@ -3689,6 +3755,7 @@
   }
 
   function clearMyPosition() {
+    scheduleRender();
     if (!myPlace) { return; }
     if (startPlace === myPlace) { startPlace = null; }
     myPlace = null;
@@ -3722,24 +3789,29 @@
   var needle = document.getElementById("needle");
   var camDir = new THREE.Vector3();
 
+  var renderQueued = false;
+  function scheduleRender() { if (!renderQueued && !document.hidden) { renderQueued = true; requestAnimationFrame(animate); } }
   function animate() {
-    requestAnimationFrame(animate);
-    // 漫游（walk.js）接管相机时，暂停轨道控制与相机飞行，避免互相覆盖
-    if (!window.__walkActive) {
-      tickFly();
-      controls.update();
-    }
-    renderer.render(scene, camera);
-    updateLabels();
+    renderQueued = false;
+    if (document.hidden) return;
+    if (!window.__walkActive) { tickFly(); controls.update(); }
+    renderer.render(scene, camera); updateLabels();
+    renderer.domElement.dataset.renderFrame = String(renderer.info.render.frame);
     camera.getWorldDirection(camDir);
-    var ang = Math.atan2(camDir.x, camDir.z) * 180 / Math.PI;
-    needle.style.transform = "rotate(" + (-ang).toFixed(1) + "deg)";
+    needle.style.transform = 'rotate(' + (-Math.atan2(camDir.x, camDir.z) * 180 / Math.PI).toFixed(1) + 'deg)';
+    if (flyState || window.__walkActive) scheduleRender();
   }
+  controls.addEventListener('change', scheduleRender);
+  ['click','change','pointerup','keydown'].forEach(function(type){document.addEventListener(type,scheduleRender);});
+  document.addEventListener('visibilitychange', scheduleRender);
+  THREE.DefaultLoadingManager.onLoad = scheduleRender;
+  window.__navDebug.requestRender = scheduleRender;
 
   window.addEventListener("resize", function () {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    scheduleRender();
   });
 
   // ============================================================
@@ -3816,6 +3888,8 @@
   window.__navDebug.currentPlaces = function () {
     return { from: startPlace && startPlace.label, to: endPlace && endPlace.label };
   };
+  window.__navDebug.selectDestination = function(label) { endPlace = findPlace(label); if (startPlace === endPlace) startPlace = null; syncSelects(); route(); };
+  window.__navDebug.clearSelection = function() { startPlace = null; endPlace = null; window.__lastRoute = null; window.__lastRouteDist = 0; syncSelects(); route(); };
   window.__navDebug.setPlaces = function (fromLabel, toLabel) {
     var f = findPlace(fromLabel), t = findPlace(toLabel);
     if (f) { startPlace = f; }
@@ -3831,11 +3905,12 @@
     return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles };
   };
   window.__navDebug.flyTo = function (x, z, height, dist) {
+    scheduleRender();
     var h = height || 60;
     var d = dist || 220;
     flyState = {
   t0: performance.now(),
-  dur: 900,
+  dur: matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 650,
   fromT: { x: controls.target.x, y: controls.target.y, z: controls.target.z },
   toT: { x: x, y: 0, z: z },
   fromC: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
@@ -3862,5 +3937,5 @@
   }
 
   setStatus(window.t ? window.t("status.pick") : "请选择起点和终点（可直接点击画面中的建筑）。");
-  animate();
+  scheduleRender();
 })();

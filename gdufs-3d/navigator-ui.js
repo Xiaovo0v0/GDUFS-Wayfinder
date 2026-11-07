@@ -49,13 +49,13 @@
 
   function setBadge() {
     if (online === true) {
-      badge.textContent = "在线 · Dify";
+      badge.textContent = "Dify 在线";
       badge.className = "";
     } else if (online === false) {
-      badge.textContent = "离线 · 本地规则";
+      badge.textContent = FORCE_OFFLINE ? "离线 · 本地查询" : "Dify 未连接 · 本地查询";
       badge.className = "off";
     } else {
-      badge.textContent = "就绪";
+      badge.textContent = CFG.key ? "Dify 待连接" : "Dify 未配置";
       badge.className = "";
     }
   }
@@ -155,6 +155,8 @@
   }
 
   function buildCard(card) {
+    var localSvc=(window.GDUFS_SERVICE||[]).find(function(s){return card.service&&(s.sid===card.service.sid||s.title===card.service.title);})||findService(card.title||'');
+    if(localSvc&&window.WayfinderServices){localServiceContext=localSvc;return window.WayfinderServices.render(localSvc);}
     var svc = card.service || findService(card.title || "");
     var c = el("div", "card");
 
@@ -165,12 +167,12 @@
       var has = (svc[campusNow] || []).length > 0;
       var other = campusNow === "north" ? svc.south : svc.north;
       var tag, cls;
-      if (svc.online && !has) { tag = "💻 线上办理"; cls = "badge online"; }
-      else if (has) { tag = "✅ 本校可办"; cls = "badge ok"; }
+      if (svc.online && !has) { tag = "线上办理"; cls = "badge online"; }
+      else if (has) { tag = "本校可办"; cls = "badge ok"; }
       else if ((other || []).length) {
-        tag = "⚠️ 需到" + (campusNow === "north" ? "大学城" : "白云山") + "校区";
+        tag = "需到" + (campusNow === "north" ? "大学城" : "白云山") + "校区";
         cls = "badge warn";
-      } else { tag = "⚪ 官网未公布地点"; cls = "badge mute"; }
+      } else { tag = "地点待确认"; cls = "badge mute"; }
       head.appendChild(el("span", cls, tag));
       if (cls === "badge warn") {
         var toCampus = campusNow === "north" ? "south" : "north";
@@ -201,8 +203,8 @@
     if (svc && svc.hours) {
       var h = parseHours(svc.hours, currentCampus());
       var line = el("div", "hours " + h.state);
-      if (h.state === "open") line.textContent = "🟢 现在可办" + (h.closeAt ? " · " + h.closeAt + " 下班" : "");
-      else if (h.state === "closed") line.textContent = "🔴 今日已下班" + (h.openAt ? " · 开放时间 " + h.openAt : "");
+      if (h.state === "open") line.textContent = "常规开放" + (h.closeAt ? " · " + h.closeAt + " 下班" : "");
+      else if (h.state === "closed") line.textContent = "常规时段外" + (h.openAt ? " · 开放时间 " + h.openAt : "");
       else line.textContent = "⚪ 办公时间：官网未公布";
       c.appendChild(line);
       if (h.state !== "unknown") c.appendChild(el("div", "meta sub", h.text));
@@ -225,6 +227,7 @@
         var r = nav.setPlaces("", p.name);
         var t = nav.findPlace(p.name);
         if (t) nav.flyTo(t.x, t.z, 150, 320);
+        if(t) { document.body.classList.remove('answer-mode'); window.dispatchEvent(new CustomEvent('wayfinder:destination',{detail:t.label})); }
         addSys(r && r.to ? "已在地图上定位到「" + r.to + "」，选个起点就能画路线" : "未找到该地点");
       });
       acts.appendChild(b1);
@@ -255,25 +258,34 @@
       acts.appendChild(b4);
     }
     if (acts.children.length) c.appendChild(acts);
+    var details = el('details'); details.appendChild(el('summary',null,window.GDUFS_LANG.get()==='en'?'Service details':'办理须知'));
+    Array.from(c.children).forEach(function(n){if(n!==head&&n!==acts&&!(n.textContent||'').startsWith('地点：'))details.appendChild(n);});
+    Array.from(acts.children).forEach(function(n){if(n.textContent.indexOf('导航')<0)details.appendChild(n);else{n.textContent=window.GDUFS_LANG.get()==='en'?'Directions':'到这里';n.className='primary';}});
+    c.appendChild(details);
     return c;
   }
 
   var lastQuery = "";
+  var localServiceContext = null;
+  function nearBottom() { return body.scrollHeight - body.clientHeight - body.scrollTop < 80; }
 
   function addMsg(role, text, card) {
-    var m = el("div", "msg " + role, text);
+    var follow = nearBottom();
+    var m = el("div", "msg " + role);
+    if (role === 'bot') window.renderWayfinderMarkdown(m, text); else m.textContent = text;
     if (card && (card.title || card.desc || card.service)) {
       m.appendChild(buildCard(card));
     }
     body.appendChild(m);
-    body.scrollTop = body.scrollHeight;
+    if (follow || role === 'user') body.scrollTop = body.scrollHeight;
     return m;
   }
 
   function addSys(text) {
+    var follow = nearBottom();
     var m = el("div", "msg sys", text);
     body.appendChild(m);
-    body.scrollTop = body.scrollHeight;
+    if (follow) body.scrollTop = body.scrollHeight;
     return m;
   }
 
@@ -292,7 +304,7 @@
   function findPlaceInText(text) {
     if (!nav || !nav.placeLabels) return [];
     var src = text || "";
-    TEXT_ALIAS.forEach(function (p) { if (src.indexOf(p[0]) >= 0) { src += " " + p[1]; } });
+    TEXT_ALIAS.forEach(function (p) { if (src.indexOf(p[0]) >= 0 && nav.findPlace(p[1])) { src = src.replace(p[0], p[1]); } });
     var t = norm(src);
     var hits = [];
     nav.placeLabels.forEach(function (label) {
@@ -308,7 +320,23 @@
       });
       if (!covered) out.push(h);
     });
-    return out.slice(0, 2).map(function (h) { return h.label; });
+    return out.sort(function(a,b){return a.idx-b.idx;}).slice(0, 2).map(function (h) { return h.label; });
+  }
+
+  function routeRequest(q) {
+    if (!/(?:从.+(?:去|到)|怎么去|怎么走|怎样去|路线|导航|带我去)/.test(q)) return null;
+    var campus = currentCampus();
+    if (campus === 'south' && /北门/.test(q) && !nav.placeLabels.includes('北门')) {
+      return { answer:'北门在白云山校区。请切换到白云山校区后再规划路线。', action:'switch-campus', campus:'north' };
+    }
+    var spots = findPlaceInText(q);
+    if (spots.length < 2) return null;
+    var from = nav.findPlace(spots[0]), to = nav.findPlace(spots[1]);
+    if (!from || !to || from.label === to.label) return { answer:'请确认起点和终点。' };
+    var result = nav.setPlaces(from.label,to.label);
+    var distance = Math.round(Number(document.getElementById('status')?.dataset.dist)||0);
+    if (!result || !result.routed || distance <= 0) return { answer:'这两个地点暂时无法沿校内道路连通。请换一个起点或终点。' };
+    return { answer:from.label+' → '+to.label+'\n步行约 '+distance+' 米 · '+Math.max(1,Math.round(distance/70))+' 分钟', routed:true };
   }
 
   // ---------------- 动作执行 ----------------
@@ -480,11 +508,12 @@
     return fetch(CFG.base + "/chat-messages", {
       method: "POST",
       headers: { Authorization: "Bearer " + CFG.key, "Content-Type": "application/json", Accept: "text/event-stream" },
-      body: JSON.stringify({ inputs: {}, query: q, response_mode: "streaming", user: "web-gdufs", conversation_id: conversationId }),
+      body: JSON.stringify({ inputs: (function(){var p=findPlaceInText(q);return {campus:currentCampus(),from_name:p.length>1?p[0]:'',to_name:p.length>1?p[1]:''};})(), query: q, response_mode: "streaming", user: "web-gdufs", conversation_id: conversationId }),
       signal: ctrl.signal,
     })
       .then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
+        if (/text\/html/i.test(r.headers.get('Content-Type') || '')) throw new Error('Dify requires campus network or VPN');
         if (!r.body || !r.body.getReader) {
           // 老浏览器不支持流：退回整段读
           return r.text().then(function (all) {
@@ -538,8 +567,11 @@
   }
 
   function localAnswer(q) {
+    if(/现在.*(能|办|开)|几点|什么材料|带什么|电话|找谁/.test(q)&&!findService(q)){if(localServiceContext)return{text:'',card:{title:localServiceContext.title,service:localServiceContext}};if(/现在.*(能|办|开)/.test(q))return{text:'请先告诉我要办理的事项。'};}
+    var direct = findService(q);
+    if (direct && !/怎么去|怎么走|路线|导航/.test(q)) return {text:'',card:{title:direct.title,service:direct}};
     var spots = findPlaceInText(q);
-    var navWords = /怎么去|怎么走|怎样去|如何到|路线|导航|多远|在哪|位置/.test(q);
+    var navWords = /怎么去|怎么走|怎样去|如何到|路线|导航|多远|在哪|位置|^去/.test(q);
 
     // 「我在哪 / 附近有什么」：定位是前端的确定性事实，不用绕大模型
     var me = myPlaceInfo();
@@ -562,7 +594,7 @@
     }
 
     if (spots.length >= 2) {
-      var r = nav.setPlaces(spots[1], spots[0]);
+      var r = nav.setPlaces(spots[0], spots[1]);
       if (r && r.from && r.to) {
         var f = nav.findPlace(r.from), t = nav.findPlace(r.to);
         if (f && t) nav.flyTo((f.x + t.x) / 2, (f.z + t.z) / 2, 260, 520);
@@ -602,7 +634,7 @@
       if (it.s) parts.push("流程：" + it.s);
       if (it.p) parts.push("电话：" + it.p);
       return {
-        text: parts.join("\n"),
+        text: "",
         card: { title: it.t, desc: it.d || "", url: it.u || it.src || "", service: null },
       };
     }
@@ -668,9 +700,19 @@
     lastHadLoc = !!(myPlaceInfo() && locWords(q));
     addMsg("user", q);
     input.value = "";
+    var directRoute = routeRequest(q);
+    if (directRoute) {
+      addMsg('bot',directRoute.answer);
+      if (directRoute.routed) addSys('路线已绘制');
+      if (directRoute.action === 'switch-campus') {
+        var switchBtn=el('button','ai-campus-switch','切换到白云山校区');
+        switchBtn.type='button';switchBtn.addEventListener('click',function(){var u=new URL(location.href);u.searchParams.set('campus',directRoute.campus);location.href=u.href;});body.appendChild(switchBtn);
+      }
+      return;
+    }
     busy = true;
     sendBtn.disabled = true;
-    var waitLabel = online === false ? "本地规则检索中" : "正在查询校园知识库";
+    var waitLabel = online === false ? "查询中" : "查询中";
     var pending = addSys(waitLabel + "…");
     // 模型有时要 10 秒以上，把秒数显示出来，别让人以为卡死了
     var waitT0 = Date.now();
@@ -683,15 +725,12 @@
     // 流式：第一段文字到了就把等待条换成回答气泡，后面持续追加
     var liveEl = null;
     var onDelta = function (vis) {
+      var follow = nearBottom();
       if (pending) { pending.remove(); pending = null; }
       if (!liveEl) {
         liveEl = addMsg("bot", vis, null);
-      } else if (liveEl.firstChild) {
-        liveEl.firstChild.nodeValue = vis;
-      } else {
-        liveEl.textContent = vis;
-      }
-      body.scrollTop = body.scrollHeight;
+      } else { window.renderWayfinderMarkdown(liveEl, vis); }
+      if (follow) body.scrollTop = body.scrollHeight;
     };
 
     var finish = function (payload, isOnline) {
@@ -706,9 +745,10 @@
       }
       var text = payload.answer || payload.text || "";
       if (liveEl) {
-        liveEl.textContent = text;
+        var follow = nearBottom();
+        window.renderWayfinderMarkdown(liveEl, text);
         if (card && (card.title || card.desc || card.service)) liveEl.appendChild(buildCard(card));
-        body.scrollTop = body.scrollHeight;
+        if (follow) body.scrollTop = body.scrollHeight;
       } else {
         addMsg("bot", text, card);
       }
@@ -743,10 +783,21 @@
         online = false;
         setBadge();
         var local = localAnswer(q);
-        finish({ ...local, text: local.text, answer: local.text + "\n\n（Dify 未响应：" + String(err.message || err).slice(0, 60) + "，已切换到本地规则）" });
+        finish({ ...local, text: local.text, answer: (local.text || "") });
       });
   }
 
+  window.GDUFS_ASSISTANT = { query: send, busy: function(){return busy;}, reconnect: function(){
+    if (busy || !CFG.key || FORCE_OFFLINE) { setBadge(); return Promise.resolve(false); }
+    badge.textContent = 'Dify 连接中…';
+    var ctrl = new AbortController(), timer = setTimeout(function(){ctrl.abort();}, 10000);
+    return fetch(CFG.base + '/parameters', {headers:{Authorization:'Bearer '+CFG.key,Accept:'application/json'},signal:ctrl.signal})
+      .then(function(r){if(!r.ok || !/application\/json/i.test(r.headers.get('content-type')||'')) throw new Error('unavailable');return r.json();})
+      .then(function(){online=true;setBadge();return true;})
+      .catch(function(){online=false;setBadge();return false;})
+      .finally(function(){clearTimeout(timer);});
+  } };
+  window.addEventListener('wayfinder:service-context',function(e){localServiceContext=(window.GDUFS_SERVICE||[]).find(function(s){return s.sid===e.detail;})||localServiceContext;});
   sendBtn.addEventListener("click", function () { send(); });
   input.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
   head.addEventListener("click", function () {
@@ -782,7 +833,7 @@
   var avOpen = document.getElementById("ai-open-ava");
   if (avOpen) avOpen.textContent = enNow ? "Y" : "语";
 
-  addMsg("bot", NORTH ? T("ai.greet.north") : T("ai.greet"));
+
   if (FORCE_OFFLINE) online = false;
   setBadge();
 
